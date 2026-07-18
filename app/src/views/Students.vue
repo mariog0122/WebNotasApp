@@ -1,7 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import { supabase } from '../lib/supabase'
-import { useStudentsQuery, useCoursesQuery, useQuartersQuery, useInstitutionConfigQuery } from '../composables/useQueries'
 import { useNetwork } from '../composables/useNetwork'
 import { computeProjectAverage, computeSubjectTotal, getQuarterOrder, computeTrimesterObservation } from '../lib/reporting'
 import { loadHtml2Pdf } from '../lib/pdf'
@@ -20,17 +19,83 @@ const page = ref(1)
 const pageSize = 50
 const { isOnline } = useNetwork()
 
-const { data: studentsData, isLoading: loading, refetch: fetchStudents } = useStudentsQuery(searchTerm, page, pageSize)
-const students = computed(() => studentsData.value?.data || [])
-const totalCount = computed(() => studentsData.value?.count || 0)
+// Direct Supabase calls instead of vue-query (fixes caching issues)
+const loading = ref(false)
+const students = ref([])
+const totalCount = ref(0)
+const courses = ref([])
+const quarters = ref([])
+const configData = ref(null)
 
-const { data: coursesData, refetch: fetchCourses } = useCoursesQuery()
-const courses = computed(() => coursesData.value || [])
+const fetchStudents = async () => {
+  loading.value = true
+  try {
+    const term = (searchTerm.value || '').trim()
+    const from = (page.value - 1) * pageSize
+    const to = from + pageSize - 1
+    
+    let query = supabase
+      .from('students')
+      .select(`
+        id, full_name, course_id, student_cedula, student_birthdate,
+        student_phone, student_address, representative_name, representative_cedula,
+        representative_phone, representative_alt_phone, student_photo_url,
+        representative_photo_url, created_at,
+        courses (name, level, track)
+      `, { count: 'exact' })
+      .order('full_name', { ascending: true })
+      .range(from, to)
 
-const { data: quartersData, refetch: fetchQuarters } = useQuartersQuery()
-const quarters = computed(() => (quartersData.value || []).slice().sort((a, b) => getQuarterOrder(a.name) - getQuarterOrder(b.name)))
+    if (term) {
+      query = query.or(`full_name.ilike.%${term}%,student_cedula.ilike.%${term}%`)
+    }
 
-const { data: configData, refetch: fetchInstitutionConfig } = useInstitutionConfigQuery()
+    const { data, error, count } = await query
+    if (error) {
+      console.error('Error fetching students:', error.message)
+    } else {
+      students.value = data || []
+      totalCount.value = count || 0
+    }
+  } catch (e) {
+    console.error('Error fetching students:', e)
+  }
+  loading.value = false
+}
+
+const fetchCourses = async () => {
+  const { data, error } = await supabase
+    .from('courses')
+    .select('id, name, academic_year, level, track, created_at')
+    .order('name')
+  if (error) {
+    console.error('Error fetching courses:', error.message)
+  } else {
+    courses.value = data || []
+  }
+}
+
+const fetchQuarters = async () => {
+  const { data, error } = await supabase
+    .from('quarters')
+    .select('id, name, is_active')
+    .order('name')
+  if (error) {
+    console.error('Error fetching quarters:', error.message)
+  } else {
+    quarters.value = (data || []).slice().sort((a, b) => getQuarterOrder(a.name) - getQuarterOrder(b.name))
+  }
+}
+
+const fetchInstitutionConfig = async () => {
+  const { data, error } = await supabase.from('institution_config').select('*').single()
+  if (error && error.code !== 'PGRST116') {
+    console.error('Error fetching institution config:', error.message)
+  } else {
+    configData.value = data || {}
+  }
+}
+
 const selectedStudentIds = ref(new Set())
 const showModal = ref(false)
 const editingStudent = ref(null)
@@ -90,8 +155,6 @@ const form = ref({
   student_photo_url: '',
   representative_photo_url: ''
 })
-
-// fetchStudents is handled by useStudentsQuery now
 
 const toggleStudentSelection = (id) => {
   const next = new Set(selectedStudentIds.value)
@@ -558,6 +621,7 @@ watch(searchTerm, () => {
   if (searchDebounce.value) clearTimeout(searchDebounce.value)
   searchDebounce.value = setTimeout(() => {
     page.value = 1
+    fetchStudents()
   }, 300)
 })
 
@@ -658,8 +722,8 @@ const downloadReportPdf = async () => {
   }
 }
 
-onMounted(() => {
-  // Queries auto-fetch on mount.
+onMounted(async () => {
+  await Promise.all([fetchStudents(), fetchCourses(), fetchQuarters(), fetchInstitutionConfig()])
 })
 </script>
 
