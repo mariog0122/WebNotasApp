@@ -331,7 +331,7 @@ const fetchCourseStudents = async (courseId) => {
   studentsMessage.value = ''
   const { data, error } = await supabase
     .from('students')
-    .select('id, full_name, student_cedula, student_photo_url, representative_photo_url')
+    .select('id, full_name, course_id, student_cedula, student_birthdate, student_phone, student_address, representative_name, representative_cedula, representative_phone, representative_alt_phone, student_photo_url, representative_photo_url, created_at')
     .eq('course_id', courseId)
     .order('full_name')
   if (error) {
@@ -415,7 +415,7 @@ const openStudentModal = (student = null) => {
   if (student) {
     studentForm.value = {
       full_name: student.full_name,
-      course_id: student.course_id,
+      course_id: student.course_id || managingStudentsCourse.value?.id,
       student_cedula: student.student_cedula || '',
       student_birthdate: student.student_birthdate || '',
       student_phone: student.student_phone || '',
