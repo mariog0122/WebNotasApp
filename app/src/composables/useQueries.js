@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/vue-query'
 import { supabase } from '../lib/supabase'
-import { parseStudents, parseCourses, InstitutionConfigSchema } from '../lib/zodSchemas'
+import { InstitutionConfigSchema } from '../lib/zodSchemas'
 
 export function useAcademicYearsQuery() {
   return useQuery({
