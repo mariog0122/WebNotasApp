@@ -1,0 +1,36 @@
+# Archivos sensibles y de configuración local
+*.env
+*.env.local
+.env.*.local
+app/.env.admin
+PassSupabase*.txt
+
+# Dependencias y build
+node_modules/
+dist/
+*.log
+
+# Archivos de IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Excel files temporales
+*.xlsx~$
+*.xls~$
+
+# InsForge & AI agent skills
+.insforge
+.agent
+.agents
+.augment
+.claude
+.cline
+.github/copilot*
+.kilocode
+.qoder
+.qwen
+.roo
+.trae
+.windsurf
+webnotas-next/  

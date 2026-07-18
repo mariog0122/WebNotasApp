@@ -1,0 +1,40 @@
+{
+  "name": "app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@headlessui/vue": "^1.7.23",
+    "@supabase/supabase-js": "^2.49.8",
+    "@tanstack/query-async-storage-persister": "^5.101.2",
+    "@tanstack/query-persist-client-core": "^5.101.2",
+    "@tanstack/vue-query": "^5.101.2",
+    "idb-keyval": "^6.3.0",
+    "lucide-vue-next": "^1.0.0",
+    "pg": "^8.19.0",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.25",
+    "vue-router": "^5.0.2",
+    "vue-sonner": "^2.0.9",
+    "vue-virtual-scroller": "^2.0.0-beta.8",
+    "xlsx": "^0.18.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.0",
+    "@vitejs/plugin-vue": "^6.0.2",
+    "autoprefixer": "^10.4.24",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19",
+    "vite": "^7.3.1",
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^4.0.18"
+  }
+}
