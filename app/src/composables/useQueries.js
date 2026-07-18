@@ -46,7 +46,7 @@ export function useCoursesQuery(academicYearRef) {
       
       const { data, error } = await query
       if (error) throw new Error(error.message)
-      return parseCourses(data || [])
+      return data || []
     }
   })
 }
@@ -89,7 +89,7 @@ export function useStudentsQuery(searchTermRef, pageRef, pageSize = 50) {
 
       const { data, error, count } = await query
       if (error) throw new Error(error.message)
-      return { data: parseStudents(data || []), count: count || 0 }
+      return { data: data || [], count: count || 0 }
     }
   })
 }
