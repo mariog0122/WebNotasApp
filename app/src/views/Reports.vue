@@ -1027,18 +1027,23 @@ watch([selectedStudentId, reportMode], async () => {
         <!-- Firmas -->
         <section class="report-section print-page">
           <div class="report-signatures">
-            <div>
-              <span class="report-meta-label">Fecha</span>
+            <div class="signature-date">
+              <span class="report-meta-label">Fecha de Emisión:</span>
               <span class="report-meta-value">{{ new Date().toLocaleDateString('es-EC') }}</span>
             </div>
-            <div class="report-signature-line">
-              <span>{{ institutionTutorName || 'Tutor' }}</span>
-            </div>
-            <div class="report-signature-line">
-              <span>{{ institutionRectorName || 'Rector/a' }}</span>
-            </div>
-            <div class="report-signature-line">
-              <span>Secretario/a</span>
+            <div class="signature-grid">
+              <div class="report-signature-line">
+                <span class="signature-name">{{ institutionTutorName || 'Tutor' }}</span>
+                <span class="signature-role">DOCENTE TUTOR</span>
+              </div>
+              <div class="report-signature-line">
+                <span class="signature-name">{{ institutionRectorName || 'Rector/a' }}</span>
+                <span class="signature-role">RECTOR/A</span>
+              </div>
+              <div class="report-signature-line">
+                <span class="signature-name">Secretario/a</span>
+                <span class="signature-role">SECRETARIO/A</span>
+              </div>
             </div>
           </div>
         </section>
@@ -1120,18 +1125,23 @@ watch([selectedStudentId, reportMode], async () => {
         <!-- Firmas -->
         <section class="report-section print-page">
           <div class="report-signatures">
-            <div>
-              <span class="report-meta-label">Fecha</span>
+            <div class="signature-date">
+              <span class="report-meta-label">Fecha de Emisión:</span>
               <span class="report-meta-value">{{ new Date().toLocaleDateString('es-EC') }}</span>
             </div>
-            <div class="report-signature-line">
-              <span>{{ institutionTutorName || 'Tutor' }}</span>
-            </div>
-            <div class="report-signature-line">
-              <span>{{ institutionRectorName || 'Rector/a' }}</span>
-            </div>
-            <div class="report-signature-line">
-              <span>Secretario/a</span>
+            <div class="signature-grid">
+              <div class="report-signature-line">
+                <span class="signature-name">{{ institutionTutorName || 'Tutor' }}</span>
+                <span class="signature-role">DOCENTE TUTOR</span>
+              </div>
+              <div class="report-signature-line">
+                <span class="signature-name">{{ institutionRectorName || 'Rector/a' }}</span>
+                <span class="signature-role">RECTOR/A</span>
+              </div>
+              <div class="report-signature-line">
+                <span class="signature-name">Secretario/a</span>
+                <span class="signature-role">SECRETARIO/A</span>
+              </div>
             </div>
           </div>
         </section>
@@ -1502,18 +1512,42 @@ watch([selectedStudentId, reportMode], async () => {
 }
 
 .report-signatures {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 16px;
-  align-items: end;
+  margin-top: 50px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.signature-date {
+  margin-bottom: 40px;
+  text-align: left;
+}
+
+.signature-grid {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
 }
 
 .report-signature-line {
-  border-top: 1px solid var(--line);
+  flex: 1;
+  border-top: 1px solid #1e293b;
   padding-top: 8px;
   text-align: center;
-  font-size: 12px;
-  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+}
+
+.signature-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  text-transform: uppercase;
+}
+
+.signature-role {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
 }
 
 /* ============================================
