@@ -442,7 +442,7 @@ const downloadReportsPdf = async () => {
       margin: 8,
       filename,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: reportMode.value === 'INDIVIDUAL' ? 'portrait' : 'landscape' }
     })
     .from(reportsRef.value)
@@ -1385,7 +1385,8 @@ watch([selectedStudentId, reportMode], async () => {
 }
 
 .report-stack {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 26px;
   margin-top: 22px;
 }
