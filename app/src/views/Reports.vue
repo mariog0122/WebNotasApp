@@ -1045,6 +1045,9 @@ watch([selectedStudentId, reportMode], async () => {
                 <span class="signature-role">SECRETARIO/A</span>
               </div>
             </div>
+            <div class="report-legal-note">
+              <strong>Nota Legal:</strong> El presente documento tiene un fin estrictamente informativo para comunicar los resultados académicos obtenidos por el estudiante. Las calificaciones aquí reflejadas podrían presentar variaciones mínimas respecto al sistema oficial. La validez legal y definitiva de las notas está sujeta a la información registrada y emitida por la plataforma educativa del Ministerio de Educación (MINEDUC).
+            </div>
           </div>
         </section>
       </div>
@@ -1142,6 +1145,9 @@ watch([selectedStudentId, reportMode], async () => {
                 <span class="signature-name">Secretario/a</span>
                 <span class="signature-role">SECRETARIO/A</span>
               </div>
+            </div>
+            <div class="report-legal-note">
+              <strong>Nota Legal:</strong> El presente documento tiene un fin estrictamente informativo para comunicar los resultados académicos obtenidos por el estudiante. Las calificaciones aquí reflejadas podrían presentar variaciones mínimas respecto al sistema oficial. La validez legal y definitiva de las notas está sujeta a la información registrada y emitida por la plataforma educativa del Ministerio de Educación (MINEDUC).
             </div>
           </div>
         </section>
@@ -1549,6 +1555,16 @@ watch([selectedStudentId, reportMode], async () => {
   font-size: 11px;
   color: #64748b;
   margin-top: 2px;
+}
+
+.report-legal-note {
+  margin-top: 40px;
+  font-size: 10.5px;
+  color: #64748b;
+  text-align: justify;
+  line-height: 1.4;
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 12px;
 }
 
 /* ============================================
