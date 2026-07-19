@@ -31,7 +31,21 @@ const selectedQuarter = ref(null)
 const loading = ref(false)
 const error = ref('')
 
-const { data: configData } = useInstitutionConfigQuery()
+const configData = ref({})
+
+const fetchInstitutionConfig = async () => {
+  const { data, error } = await supabase
+    .from('system_config')
+    .select('key, value')
+    .in('key', ['institution_name', 'institution_logo_url', 'institution_tutor_name', 'institution_rector_name', 'academic_periods', 'regimen'])
+  
+  if (error) {
+    console.error('Error fetching institution config:', error.message)
+  } else {
+    const map = Object.fromEntries((data || []).map(item => [item.key, item.value]))
+    configData.value = map || {}
+  }
+}
 const institutionName = computed(() => configData.value?.institution_name || '')
 const institutionLogoUrl = computed(() => configData.value?.institution_logo_url || '')
 const institutionTutorName = computed(() => configData.value?.institution_tutor_name || '')
@@ -573,6 +587,7 @@ const loadIndividualReport = async () => {
 }
 
 onMounted(async () => {
+  await fetchInstitutionConfig()
   // Config, courses, quarters fetched automatically by Vue Query
 
   // Catch Deep-Links from Families Dashboard

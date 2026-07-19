@@ -88,11 +88,16 @@ const fetchQuarters = async () => {
 }
 
 const fetchInstitutionConfig = async () => {
-  const { data, error } = await supabase.from('institution_config').select('*').single()
-  if (error && error.code !== 'PGRST116') {
+  const { data, error } = await supabase
+    .from('system_config')
+    .select('key, value')
+    .in('key', ['institution_name', 'institution_logo_url', 'institution_tutor_name', 'institution_rector_name', 'academic_periods', 'regimen'])
+  
+  if (error) {
     console.error('Error fetching institution config:', error.message)
   } else {
-    configData.value = data || {}
+    const map = Object.fromEntries((data || []).map(item => [item.key, item.value]))
+    configData.value = map || {}
   }
 }
 
