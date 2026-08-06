@@ -63,12 +63,6 @@ export const computeSubjectTotal = (definitions, studentGrades, projectAverage, 
     let count = 0
     defs.forEach(d => {
       let val = parseFloat(studentGrades?.[d.id])
-      // Handle project override
-      if (categories.includes('SUMATIVA') && isProjectDefinition(d) && subjectIsProject) {
-        if (projectAverage !== null && projectAverage !== undefined) {
-          val = projectAverage
-        }
-      }
       if (!isNaN(val)) {
         sum += val
         count++
