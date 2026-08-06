@@ -41,14 +41,16 @@ const isActive = (path) => route.path === path
 
 const navLinks = computed(() => [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-  { name: 'Cursos', path: '/courses', icon: School },
-  { name: 'Asignaturas', path: '/subjects', icon: BookOpen },
-  { name: 'Estudiantes', path: '/students', icon: GraduationCap },
+  ...(isAdmin.value ? [
+    { name: 'Cursos', path: '/courses', icon: School },
+    { name: 'Asignaturas', path: '/subjects', icon: BookOpen },
+    { name: 'Estudiantes', path: '/students', icon: GraduationCap },
+    { name: 'Familias', path: '/families', icon: UsersRound },
+    { name: 'Reportes', path: '/reports', icon: FileBarChart }
+  ] : []),
   { name: 'Calificaciones', path: '/grades', icon: ScrollText },
-  { name: 'Familias', path: '/families', icon: UsersRound },
   { name: 'Alertas DECE', path: '/alerts', icon: ShieldAlert },
   { name: 'Mi Perfil', path: '/profile', icon: User },
-  ...(isAdmin.value ? [{ name: 'Reportes', path: '/reports', icon: FileBarChart }] : []),
   ...(isSuperAdmin.value ? [{ name: 'Súper Admin', path: '/superadmin', icon: Settings }] : [])
 ])
 

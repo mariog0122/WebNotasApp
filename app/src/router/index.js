@@ -22,19 +22,19 @@ const router = createRouter({
             path: '/courses',
             name: 'courses',
             component: () => import('../views/Courses.vue'),
-            meta: { requiresAuth: true }
+            meta: { requiresAuth: true, requiresAdmin: true }
         },
         {
             path: '/subjects',
             name: 'subjects',
             component: () => import('../views/Subjects.vue'),
-            meta: { requiresAuth: true }
+            meta: { requiresAuth: true, requiresAdmin: true }
         },
         {
             path: '/students',
             name: 'students',
             component: () => import('../views/Students.vue'),
-            meta: { requiresAuth: true }
+            meta: { requiresAuth: true, requiresAdmin: true }
         },
         {
             path: '/grades',
@@ -52,7 +52,7 @@ const router = createRouter({
             path: '/families',
             name: 'families',
             component: () => import('../views/Families.vue'),
-            meta: { requiresAuth: true }
+            meta: { requiresAuth: true, requiresAdmin: true }
         },
         {
             path: '/alerts',
