@@ -20,7 +20,8 @@ import {
   School,
   Moon,
   Sun,
-  ShieldAlert
+  ShieldAlert,
+  Settings
 } from 'lucide-vue-next'
 import { useTheme } from '../composables/useTheme'
 
@@ -34,7 +35,8 @@ const institutionName = ref('')
 const institutionLogoUrl = ref('')
 const isCollapsed = ref(false)
 
-const isAdmin = computed(() => authStore.profile?.role === 'admin')
+const isAdmin = computed(() => authStore.profile?.role === 'admin' || authStore.profile?.role === 'superadmin')
+const isSuperAdmin = computed(() => authStore.profile?.role === 'superadmin')
 const isActive = (path) => route.path === path
 
 const navLinks = computed(() => [
@@ -46,7 +48,8 @@ const navLinks = computed(() => [
   { name: 'Familias', path: '/families', icon: UsersRound },
   { name: 'Alertas DECE', path: '/alerts', icon: ShieldAlert },
   { name: 'Mi Perfil', path: '/profile', icon: User },
-  ...(isAdmin.value ? [{ name: 'Reportes', path: '/reports', icon: FileBarChart }] : [])
+  ...(isAdmin.value ? [{ name: 'Reportes', path: '/reports', icon: FileBarChart }] : []),
+  ...(isSuperAdmin.value ? [{ name: 'Súper Admin', path: '/superadmin', icon: Settings }] : [])
 ])
 
 const handleLogout = async () => {
