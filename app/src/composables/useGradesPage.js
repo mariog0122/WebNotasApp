@@ -594,6 +594,22 @@ const loadGradeData = async (courseSubjectId) => {
       return
     }
     gradeDefinitions.value = defs || []
+    
+    // Inject virtual "Proyecto" column if project is active globally for the course
+    if (projectSubjects.value.size > 0) {
+      const hasProjectDef = gradeDefinitions.value.some(d => d.category === 'SUMATIVA' && String(d.name || '').toLowerCase().includes('proyecto'))
+      if (!hasProjectDef) {
+        gradeDefinitions.value.push({
+          id: 'virtual-project-def',
+          course_subject_id: courseSubjectId,
+          quarter_id: selectedQuarter.value,
+          name: 'Proyecto',
+          category: 'SUMATIVA',
+          weight: 1.0,
+          sort_order: 999
+        })
+      }
+    }
     if (!gradeDefinitions.value || gradeDefinitions.value.length === 0) {
       toast.error('No hay columnas de calificacion.')
       return
@@ -719,7 +735,11 @@ const sanitizeScoreInput = (raw) => {
 }
 
 const onGradeInput = (studentId, defId, event) => {
+  if (defId === 'virtual-project-def') return
   const cleaned = sanitizeScoreInput(event.target.value)
+  if (!grades.value[studentId]) {
+    grades.value[studentId] = {}
+  }
   grades.value[studentId][defId] = cleaned
 }
 
@@ -745,8 +765,13 @@ const getClassroomAverages = () => {
     let sum = 0
     let count = 0
     students.value.forEach(stu => {
-      const val = parseFloat(grades.value[stu.id]?.[def.id])
-      if (!isNaN(val)) {
+      let val
+      if (def.id === 'virtual-project-def') {
+        val = getProjectAverage(stu.id)
+      } else {
+        val = parseFloat(grades.value[stu.id]?.[def.id])
+      }
+      if (val !== null && val !== undefined && !isNaN(val)) {
         sum += val
         count++
       }
@@ -839,6 +864,7 @@ const saveGrades = async () => {
     students.value.forEach(s => {
       const sGrades = grades.value[s.id]
       gradeDefinitions.value.forEach(d => {
+        if (d.id === 'virtual-project-def') return
         const val = sGrades[d.id]
         const key = `${s.id}:${d.id}`
         const cleaned = sanitizeScoreInput(val)
