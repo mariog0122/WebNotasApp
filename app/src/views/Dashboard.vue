@@ -23,6 +23,53 @@ const saveError = ref('')
 const saveMessage = ref('')
 const isAdmin = computed(() => authStore.profile?.role === 'admin')
 
+const quarters = ref([])
+const loadingQuarters = ref(false)
+const quartersError = ref('')
+
+const fetchQuarters = async () => {
+  loadingQuarters.value = true
+  quartersError.value = ''
+  try {
+    const { data, error } = await supabase.from('quarters').select('id, name, is_active, is_locked').order('name')
+    if (error) throw error
+    quarters.value = data || []
+  } catch (error) {
+    quartersError.value = translateError(error)
+  }
+  loadingQuarters.value = false
+}
+
+const toggleQuarterLock = async (quarter) => {
+  if (!isAdmin.value) return
+  const newStatus = !quarter.is_locked
+  try {
+    const { error } = await supabase.from('quarters').update({ is_locked: newStatus }).eq('id', quarter.id)
+    if (error) throw error
+    quarter.is_locked = newStatus
+  } catch (err) {
+    alert('Error al cambiar candado del periodo: ' + translateError(err))
+  }
+}
+
+const setActiveQuarter = async (quarter) => {
+  if (!isAdmin.value) return
+  if (quarter.is_active) return
+  try {
+    // Primero desactivamos todos (usamos un ineq para afectar a todos los ids)
+    const allIds = quarters.value.map(q => q.id)
+    await supabase.from('quarters').update({ is_active: false }).in('id', allIds)
+    // Luego activamos el seleccionado
+    const { error } = await supabase.from('quarters').update({ is_active: true }).eq('id', quarter.id)
+    if (error) throw error
+    
+    quarters.value.forEach(q => q.is_active = false)
+    quarter.is_active = true
+  } catch (err) {
+    alert('Error al establecer periodo activo: ' + translateError(err))
+  }
+}
+
 const fetchInstitutionConfig = async () => {
   const { data, error } = await supabase
     .from('system_config')
@@ -104,6 +151,7 @@ const saveInstitution = async () => {
 
 onMounted(() => {
   fetchInstitutionConfig()
+  fetchQuarters()
 })
 </script>
 
@@ -195,6 +243,68 @@ onMounted(() => {
               <p class="text-xs text-slate-500 dark:text-slate-400">El sistema calcula promedios automáticamente. Genere actas y libretas desde la sección de Notas.</p>
             </div>
           </div>
+        </div>
+
+        <div v-if="isAdmin" class="app-card p-6 mb-8 border-amber-200 bg-amber-50/30">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+              </svg>
+              Gestión de Periodos de Calificación
+            </h2>
+            <div class="text-xs text-amber-800 bg-amber-100 px-3 py-1 rounded-full font-medium">Control de Rector</div>
+          </div>
+          
+          <div v-if="loadingQuarters" class="text-sm text-slate-500 py-4">Cargando periodos...</div>
+          <div v-else-if="quartersError" class="text-sm text-rose-600 py-4">{{ quartersError }}</div>
+          <div v-else class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+              <thead>
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Periodo</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Activo (Por Defecto)</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Estado (Bloqueo)</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Acción</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200">
+                <tr v-for="q in quarters" :key="q.id" class="hover:bg-white/50 transition-colors">
+                  <td class="px-4 py-3 text-sm font-medium text-slate-900">
+                    {{ q.name }}
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <input type="radio" name="active_quarter" :checked="q.is_active" @change="setActiveQuarter(q)" 
+                           class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300">
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <span v-if="q.is_locked" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800 border border-rose-200">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                      </svg>
+                      Cerrado
+                    </span>
+                    <span v-else class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z" />
+                      </svg>
+                      Abierto
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <button @click="toggleQuarterLock(q)" 
+                            :class="['px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors focus:ring-2 focus:outline-none', 
+                                     q.is_locked ? 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50 focus:ring-emerald-500' : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 focus:ring-rose-500']">
+                      {{ q.is_locked ? 'Desbloquear Periodo' : 'Bloquear (Cerrar) Periodo' }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="mt-3 text-xs text-slate-500">
+            <strong>Nota:</strong> Los periodos bloqueados previenen que los docentes modifiquen calificaciones en dicho periodo. Actívelo cuando hayan finalizado las juntas de curso.
+          </p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

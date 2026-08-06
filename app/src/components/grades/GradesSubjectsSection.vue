@@ -63,6 +63,17 @@ const gradeBgClass = (val) => {
           </div>
 
           <div v-else>
+            <!-- Banner Periodo Cerrado -->
+            <div v-if="gp.activeQuarterIsLocked" class="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-start gap-3 no-print">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-500 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+              </svg>
+              <div>
+                <h4 class="text-sm font-semibold text-amber-500">Periodo Cerrado</h4>
+                <p class="text-xs text-amber-400/80">Este periodo ha sido bloqueado por el Rector. No se pueden guardar modificaciones.</p>
+              </div>
+            </div>
+
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 no-print">
               <div class="text-sm text-slate-400">
                 Estudiantes en acta: <span class="text-white font-bold tabular-nums">{{ gp.students.length }}</span>
@@ -78,7 +89,7 @@ const gradeBgClass = (val) => {
                 <button
                   type="button"
                   class="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
-                  :disabled="gp.saving"
+                  :disabled="gp.saving || gp.activeQuarterIsLocked"
                   @click="gp.saveCurrentGrades"
                 >
                   <span v-if="gp.saving" class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true" />
@@ -146,7 +157,8 @@ const gradeBgClass = (val) => {
                   <div class="px-4 py-2 w-[350px]">
                     <select
                       v-model="gp.qualitativeScores[student.id]"
-                      class="w-full max-w-md rounded-md border border-slate-600 bg-slate-950 text-white text-sm px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      :disabled="gp.activeQuarterIsLocked"
+                      class="w-full max-w-md rounded-md border border-slate-600 bg-slate-950 text-white text-sm px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:opacity-50"
                     >
                       <option value="">Seleccionar</option>
                       <option v-for="opt in gp.QUALITATIVE_OPTIONS" :key="opt.value" :value="opt.value">
@@ -289,8 +301,9 @@ const gradeBgClass = (val) => {
                   >
                     <input
                       type="number" step="0.01" min="0" max="10"
-                      class="w-full bg-transparent text-center text-sm px-1 focus:bg-blue-900/30 focus:outline-none focus:ring-1 focus:ring-blue-500 text-blue-200 h-full"
+                      class="w-full bg-transparent text-center text-sm px-1 focus:bg-blue-900/30 focus:outline-none focus:ring-1 focus:ring-blue-500 text-blue-200 h-full disabled:opacity-50"
                       placeholder="-" :value="gp.grades[student.id]?.[def.id]"
+                      :disabled="gp.activeQuarterIsLocked"
                       @input="(e) => gp.onGradeInput(student.id, def.id, e)"
                     />
                   </div>
@@ -305,8 +318,9 @@ const gradeBgClass = (val) => {
                   >
                     <input
                       type="number" step="0.01" min="0" max="10"
-                      class="w-full bg-transparent text-center text-sm px-1 focus:bg-purple-900/30 focus:outline-none focus:ring-1 focus:ring-purple-500 text-purple-200 h-full"
+                      class="w-full bg-transparent text-center text-sm px-1 focus:bg-purple-900/30 focus:outline-none focus:ring-1 focus:ring-purple-500 text-purple-200 h-full disabled:opacity-50"
                       placeholder="-" :value="gp.grades[student.id]?.[def.id]"
+                      :disabled="gp.activeQuarterIsLocked"
                       @input="(e) => gp.onGradeInput(student.id, def.id, e)"
                     />
                   </div>
@@ -322,8 +336,9 @@ const gradeBgClass = (val) => {
                     >
                       <input
                         type="number" step="0.01" min="0" max="10"
-                        class="w-full bg-transparent text-center text-sm px-1 focus:bg-amber-900/30 focus:outline-none focus:ring-1 focus:ring-amber-500 text-amber-100 h-full"
+                        class="w-full bg-transparent text-center text-sm px-1 focus:bg-amber-900/30 focus:outline-none focus:ring-1 focus:ring-amber-500 text-amber-100 h-full disabled:opacity-50"
                         placeholder="-" :value="gp.grades[student.id]?.[def.id]"
+                        :disabled="gp.activeQuarterIsLocked"
                         @input="(e) => gp.onGradeInput(student.id, def.id, e)"
                       />
                     </div>
@@ -340,9 +355,8 @@ const gradeBgClass = (val) => {
                   >
                     <input
                       type="number" step="0.01" min="0" max="10"
-                      class="w-full bg-transparent text-center text-sm px-1 focus:bg-emerald-900/30 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-emerald-100 disabled:text-slate-500 h-full"
-                      placeholder="-"
-                      :disabled="def.name.toLowerCase().includes('proyecto') && gp.projectSubjects.size > 0"
+                      class="w-full bg-transparent text-center text-sm px-1 focus:bg-emerald-900/30 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-emerald-100 disabled:text-slate-500 h-full disabled:opacity-50"
+                      :disabled="(def.name.toLowerCase().includes('proyecto') && gp.projectSubjects.size > 0) || gp.activeQuarterIsLocked"
                       :value="def.name.toLowerCase().includes('proyecto') && gp.projectSubjects.size > 0 ? gp.getProjectAverage(student.id) ?? '' : gp.grades[student.id]?.[def.id]"
                       @input="(e) => { if (!def.name.toLowerCase().includes('proyecto') || gp.projectSubjects.size === 0) gp.onGradeInput(student.id, def.id, e) }"
                     />

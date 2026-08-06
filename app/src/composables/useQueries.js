@@ -22,7 +22,7 @@ export function useQuartersQuery() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quarters')
-        .select('id, name, is_active')
+        .select('id, name, is_active, is_locked')
         .order('name')
       if (error) throw new Error(error.message)
       return data || []

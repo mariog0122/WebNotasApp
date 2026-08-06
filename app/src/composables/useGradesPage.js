@@ -17,6 +17,10 @@ const { isOnline } = useNetwork()
 
 const selectedCourse = ref(null)
 const selectedQuarter = ref(null)
+const activeQuarterIsLocked = computed(() => {
+  const current = quarters.value.find(q => q.id === selectedQuarter.value)
+  return current ? !!current.is_locked : false
+})
 const activeSubjectId = ref(null) // The subject currently being graded (expanded)
 const activeSubject = ref(null)
 const studentsCount = ref(0)
@@ -1028,6 +1032,7 @@ const saveHeader = async () => {
     saveProjectSettings,
     selectedCourse,
     selectedQuarter,
+    activeQuarterIsLocked,
     setGradesPage,
     showHeaderModal,
     showProjectModal,
