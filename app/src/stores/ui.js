@@ -4,6 +4,8 @@ import { defineStore } from 'pinia'
 export const useUIStore = defineStore('ui', () => {
     const isAuthLoading = ref(false)
     const showAuthFlash = ref(false)
+    const isMobileMenuOpen = ref(false)
+
     /** Evita que un setTimeout antiguo active el overlay cuando la navegación ya terminó. */
     let authFlashTimer = null
 
@@ -27,5 +29,5 @@ export const useUIStore = defineStore('ui', () => {
         }
     }
 
-    return { isAuthLoading, showAuthFlash, setAuthLoading }
+    return { isAuthLoading, showAuthFlash, setAuthLoading, isMobileMenuOpen }
 })

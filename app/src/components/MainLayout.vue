@@ -2,6 +2,14 @@
 import { ref } from 'vue'
 import Sidebar from './Sidebar.vue'
 import ErrorBoundary from './ErrorBoundary.vue'
+import { useUIStore } from '../stores/ui'
+import { Menu, ChevronLeft } from 'lucide-vue-next'
+
+const uiStore = useUIStore()
+
+const toggleMobileMenu = () => {
+  uiStore.isMobileMenuOpen = !uiStore.isMobileMenuOpen
+}
 
 // Logic to pass down sidebar state if needed, 
 // but for simplicity, the sidebar manages its own state
@@ -16,10 +24,20 @@ import ErrorBoundary from './ErrorBoundary.vue'
     <!-- Main Content Area - Con padding izquierdo para el sidebar -->
     <div class="flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out content-layout-wrapper">
       <!-- Top header (Sticky or static) -->
-      <header class="h-16 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 sticky top-0 z-30 flex items-center justify-between px-8 transition-colors">
-        <div class="flex items-center gap-4">
+      <header class="h-16 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 sticky top-0 z-30 flex items-center justify-between px-4 sm:px-8 transition-colors">
+        <div class="flex items-center gap-3">
+          <!-- Mobile menu toggle -->
+          <button 
+            @click="toggleMobileMenu"
+            class="lg:hidden p-2 -ml-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+            aria-label="Toggle menu"
+          >
+            <Menu v-if="!uiStore.isMobileMenuOpen" class="w-6 h-6" />
+            <ChevronLeft v-else class="w-6 h-6" />
+          </button>
+          
           <!-- Placeholder for breadcrumbs or page title -->
-          <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+          <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight truncate max-w-[200px] sm:max-w-none">
             {{ $route.name ? $route.name.charAt(0).toUpperCase() + $route.name.slice(1) : 'Panel' }}
           </h2>
         </div>
@@ -34,7 +52,7 @@ import ErrorBoundary from './ErrorBoundary.vue'
 
       <!-- Page Content -->
       <main class="flex-1 overflow-x-hidden overflow-y-auto custom-scrollbar-main transition-all duration-300">
-        <div class="p-6 md:p-8">
+        <div class="p-4 sm:p-6 md:p-8">
           <router-view v-slot="{ Component }">
             <transition 
               name="fade-slide" 

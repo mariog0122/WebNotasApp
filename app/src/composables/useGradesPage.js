@@ -50,11 +50,11 @@ const paginatedStudents = computed(() => {
   return list.slice(start, end)
 })
 
-// Memoize heavily used averages for the current page to prevent rendering lag
+// Memoize heavily used averages for all students to prevent rendering lag
 const studentAveragesMap = computed(() => {
   const map = {}
   const subId = activeSubject.value?.subject_id
-  paginatedStudents.value.forEach(stu => {
+  students.value.forEach(stu => {
     map[stu.id] = getStudentAverages(stu.id, subId)
   })
   return map
@@ -607,7 +607,16 @@ const loadGradeData = async (courseSubjectId) => {
     }
     students.value = stus || []
 
-    // 4. Fetch Grades
+    // Inicializar el objeto de calificaciones y la estructura en Reactividad si es que no existe.
+    // Esto asegura que vue detecte y renderice las cajas de input correctamente.
+    const stusArray = stus || []
+    stusArray.forEach(st => {
+      if (!grades.value[st.id]) {
+        grades.value[st.id] = {}
+      }
+    })
+
+    // 4. Load Existing Grades for these columns
     const { data: existingGrades, error: gradesError } = await supabase
       .from('grades')
       .select('student_id, score, grade_definition_id')
@@ -621,15 +630,7 @@ const loadGradeData = async (courseSubjectId) => {
       (existingGrades || []).map(g => `${g.student_id}:${g.grade_definition_id}`)
     )
 
-    // Initialize structure
-    students.value.forEach(s => {
-      grades.value[s.id] = {}
-      defs.forEach(d => {
-        grades.value[s.id][d.id] = null
-      })
-    })
-
-    // Fill existing
+    // Llenar el estado local con las calificaciones existentes, OJO sin pisar las propiedades reactivas previas.
     existingGrades?.forEach(g => {
       if (grades.value[g.student_id]) {
         grades.value[g.student_id][g.grade_definition_id] = g.score
