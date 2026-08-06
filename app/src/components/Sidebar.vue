@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { useUIStore } from '../stores/ui'
 import { useRouter, useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { 
@@ -18,11 +19,13 @@ import {
   Menu,
   School,
   Moon,
-  Sun
+  Sun,
+  ShieldAlert
 } from 'lucide-vue-next'
 import { useTheme } from '../composables/useTheme'
 
 const authStore = useAuthStore()
+const uiStore = useUIStore()
 const router = useRouter()
 const route = useRoute()
 const { theme, toggleTheme } = useTheme()
@@ -30,7 +33,6 @@ const { theme, toggleTheme } = useTheme()
 const institutionName = ref('')
 const institutionLogoUrl = ref('')
 const isCollapsed = ref(false)
-const isMobileMenuOpen = ref(false)
 
 const isAdmin = computed(() => authStore.profile?.role === 'admin')
 const isActive = (path) => route.path === path
@@ -42,6 +44,7 @@ const navLinks = computed(() => [
   { name: 'Estudiantes', path: '/students', icon: GraduationCap },
   { name: 'Calificaciones', path: '/grades', icon: ScrollText },
   { name: 'Familias', path: '/families', icon: UsersRound },
+  { name: 'Alertas DECE', path: '/alerts', icon: ShieldAlert },
   { name: 'Mi Perfil', path: '/profile', icon: User },
   ...(isAdmin.value ? [{ name: 'Reportes', path: '/reports', icon: FileBarChart }] : [])
 ])
@@ -69,28 +72,15 @@ onMounted(() => {
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
 }
-
-const toggleMobileMenu = () => {
-  isMobileMenuOpen.value = !isMobileMenuOpen.value
-}
 </script>
 
 <template>
-  <!-- Mobile Menu Button -->
-  <button 
-    @click="toggleMobileMenu"
-    class="lg:hidden fixed top-4 left-4 z-50 p-2 bg-slate-900 text-white rounded-lg shadow-lg"
-  >
-    <Menu v-if="!isMobileMenuOpen" class="w-6 h-6" />
-    <ChevronLeft v-else class="w-6 h-6" />
-  </button>
-
   <!-- Sidebar Container -->
   <aside 
     :class="[
       'fixed inset-y-0 left-0 z-40 bg-slate-900/95 backdrop-blur-xl text-slate-300 transition-all duration-300 ease-in-out border-r border-slate-800/50 shadow-2xl flex flex-col',
       isCollapsed ? 'w-20' : 'w-64',
-      isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      uiStore.isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
     ]"
   >
     <!-- Logo & Institution Name -->
@@ -111,7 +101,7 @@ const toggleMobileMenu = () => {
         v-for="link in navLinks" 
         :key="link.path"
         :to="link.path"
-        @click="isMobileMenuOpen = false"
+        @click="uiStore.isMobileMenuOpen = false"
         :class="[
           'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative',
           isActive(link.path) 
@@ -134,7 +124,7 @@ const toggleMobileMenu = () => {
       <!-- Profile Action -->
       <router-link 
         to="/profile"
-        @click="isMobileMenuOpen = false"
+        @click="uiStore.isMobileMenuOpen = false"
         class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-800 transition-colors group relative"
       >
         <div class="h-10 w-10 rounded-full border-2 border-slate-700 overflow-hidden flex-shrink-0 group-hover:border-indigo-500 transition-colors shadow-inner bg-slate-800">
@@ -185,8 +175,8 @@ const toggleMobileMenu = () => {
 
   <!-- Overlay for mobile menu -->
   <div 
-    v-if="isMobileMenuOpen" 
-    @click="isMobileMenuOpen = false"
+    v-if="uiStore.isMobileMenuOpen" 
+    @click="uiStore.isMobileMenuOpen = false"
     class="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden"
   ></div>
 </template>

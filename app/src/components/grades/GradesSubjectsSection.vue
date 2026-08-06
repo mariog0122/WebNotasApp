@@ -159,8 +159,9 @@ const gradeBgClass = (val) => {
             </div>
 
             <div v-else class="overflow-x-auto border border-slate-700 rounded-lg shadow-lg bg-slate-950 custom-scrollbar flex flex-col h-[600px]">
+              <div class="min-w-max flex flex-col flex-1 h-full">
               <!-- CABECERAS FLEX -->
-              <div class="min-w-max flex flex-col bg-slate-800 z-30 sticky top-0 border-b-2 border-slate-700">
+              <div class="flex flex-col bg-slate-800 z-30 sticky top-0 border-b-2 border-slate-700">
                 <!-- Fila Superior: Grupos -->
                 <div class="flex text-xs text-white uppercase font-semibold">
                   <div class="p-2 border-r border-slate-700 sticky left-0 bg-slate-800 z-40 w-10 shrink-0 text-center shadow-[2px_0_4px_rgba(0,0,0,0.1)]">#</div>
@@ -246,13 +247,13 @@ const gradeBgClass = (val) => {
 
               <!-- CUERPO VIRTUALIZADO -->
               <RecycleScroller
-                class="min-w-max flex-1"
+                class="flex-1"
                 :items="gp.students"
                 :item-size="44"
                 key-field="id"
                 v-slot="{ item: student, index: idx }"
               >
-                <div class="flex items-center hover:bg-slate-800/50 transition-colors border-b border-slate-700 group h-[44px]">
+                <div class="flex items-center hover:bg-slate-800/50 transition-colors border-b border-slate-700 group h-[44px] w-max min-w-full">
                   <div class="p-2 border-r border-slate-700 text-center sticky left-0 bg-slate-900 group-hover:bg-slate-800 z-10 font-mono text-xs text-slate-500 w-10 shrink-0 shadow-[2px_0_4px_rgba(0,0,0,0.1)] h-full flex items-center justify-center">
                     {{ idx + 1 }}
                   </div>
@@ -289,7 +290,7 @@ const gradeBgClass = (val) => {
                     <input
                       type="number" step="0.01" min="0" max="10"
                       class="w-full bg-transparent text-center text-sm px-1 focus:bg-blue-900/30 focus:outline-none focus:ring-1 focus:ring-blue-500 text-blue-200 h-full"
-                      placeholder="-" :value="gp.grades[student.id][def.id]"
+                      placeholder="-" :value="gp.grades[student.id]?.[def.id]"
                       @input="(e) => gp.onGradeInput(student.id, def.id, e)"
                     />
                   </div>
@@ -305,7 +306,7 @@ const gradeBgClass = (val) => {
                     <input
                       type="number" step="0.01" min="0" max="10"
                       class="w-full bg-transparent text-center text-sm px-1 focus:bg-purple-900/30 focus:outline-none focus:ring-1 focus:ring-purple-500 text-purple-200 h-full"
-                      placeholder="-" :value="gp.grades[student.id][def.id]"
+                      placeholder="-" :value="gp.grades[student.id]?.[def.id]"
                       @input="(e) => gp.onGradeInput(student.id, def.id, e)"
                     />
                   </div>
@@ -322,7 +323,7 @@ const gradeBgClass = (val) => {
                       <input
                         type="number" step="0.01" min="0" max="10"
                         class="w-full bg-transparent text-center text-sm px-1 focus:bg-amber-900/30 focus:outline-none focus:ring-1 focus:ring-amber-500 text-amber-100 h-full"
-                        placeholder="-" :value="gp.grades[student.id][def.id]"
+                        placeholder="-" :value="gp.grades[student.id]?.[def.id]"
                         @input="(e) => gp.onGradeInput(student.id, def.id, e)"
                       />
                     </div>
@@ -342,7 +343,7 @@ const gradeBgClass = (val) => {
                       class="w-full bg-transparent text-center text-sm px-1 focus:bg-emerald-900/30 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-emerald-100 disabled:text-slate-500 h-full"
                       placeholder="-"
                       :disabled="def.name.toLowerCase().includes('proyecto') && gp.projectSubjects.has(gp.activeSubject?.subject_id)"
-                      :value="def.name.toLowerCase().includes('proyecto') && gp.projectSubjects.has(gp.activeSubject?.subject_id) ? gp.getProjectValue(student.id, gp.activeSubject?.subject_id) ?? '' : gp.grades[student.id][def.id]"
+                      :value="def.name.toLowerCase().includes('proyecto') && gp.projectSubjects.has(gp.activeSubject?.subject_id) ? gp.getProjectValue(student.id, gp.activeSubject?.subject_id) ?? '' : gp.grades[student.id]?.[def.id]"
                       @input="(e) => { if (!def.name.toLowerCase().includes('proyecto') || !gp.projectSubjects.has(gp.activeSubject?.subject_id)) gp.onGradeInput(student.id, def.id, e) }"
                     />
                   </div>
@@ -357,7 +358,7 @@ const gradeBgClass = (val) => {
               </RecycleScroller>
 
               <!-- TFOOT PROMEDIOS -->
-              <div class="min-w-max flex text-xs text-white bg-slate-800/80 font-bold border-t-2 border-slate-600 sticky bottom-0 z-30">
+              <div class="flex text-xs text-white bg-slate-800/80 font-bold border-t-2 border-slate-600 sticky bottom-0 z-30">
                 <div class="p-2 border-r border-slate-700 sticky left-0 bg-slate-800 z-40 text-right shadow-[2px_0_4px_rgba(0,0,0,0.1)] w-10 shrink-0"></div>
                 <div class="p-2 border-r border-slate-700 sticky left-10 bg-slate-800 z-40 text-right shadow-[2px_0_4px_rgba(0,0,0,0.1)] w-64 shrink-0 flex items-center justify-end">PROMEDIO DE AULA</div>
                 <div
@@ -405,6 +406,7 @@ const gradeBgClass = (val) => {
                 </div>
               </div>
             </div>
+          </div>
 
 
 
@@ -450,6 +452,171 @@ const gradeBgClass = (val) => {
 </template>
 
 <style scoped>
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
+
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  .bg-slate-900,
+  .bg-slate-800,
+  .bg-slate-700,
+  .bg-gray-900,
+  .bg-gray-800,
+  .bg-gray-700 {
+    background: white !important;
+  }
+
+  .text-white,
+  .text-slate-400,
+  .text-slate-300,
+  .text-slate-200,
+  .text-slate-500,
+  .text-gray-400,
+  .text-gray-300,
+  .text-gray-200,
+  .text-gray-500 {
+    color: #111827 !important;
+  }
+
+  .border-slate-700,
+  .border-slate-600,
+  .border-gray-700,
+  .border-gray-600 {
+    border-color: #e5e7eb !important;
+  }
+
+  table {
+    font-size: 10px;
+    border-collapse: collapse !important;
+  }
+
+  .shadow,
+  .shadow-lg,
+  .shadow-md,
+  .shadow-sm,
+  .shadow-2xl {
+    box-shadow: none !important;
+  }
+
+  .rounded,
+  .rounded-lg,
+  .rounded-md,
+  .rounded-xl {
+    border-radius: 0 !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #d1d5db !important;
+    padding: 4px !important;
+  }
+
+  input {
+    color: #111827 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  .sticky {
+    position: static !important;
+    left: auto !important;
+    z-index: auto !important;
+  }
+
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  .border-l-4 {
+    border-left-width: 1px !important;
+  }
+
+  .text-amber-200,
+  .text-yellow-500,
+  .text-yellow-400,
+  .text-blue-200,
+  .text-purple-200,
+  .text-green-200,
+  .text-emerald-200,
+  .text-indigo-400,
+  .text-red-400 {
+    color: #111827 !important;
+  }
+
+  .print-page {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .print-page:last-of-type {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  .print-header {
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .print-header > div:last-child {
+    text-align: center !important;
+  }
+
+  .print-subtitle {
+    margin-top: 4px !important;
+    line-height: 1.3 !important;
+  }
+
+  .print-footer {
+    margin-top: 12mm !important;
+  }
+
+  .print-page-number {
+    display: inline-block !important;
+  }
+
+  .print-page-number .print-page-current:before {
+    content: counter(page);
+  }
+
+  .print-page-number .print-page-total:before {
+    content: counter(pages);
+  }
+
+  table th,
+  table td {
+    vertical-align: middle !important;
+  }
+
+  table .w-20,
+  table .w-12,
+  .w-16,
+  table .w-64 {
+    width: auto !important;
+  }
+}
+
+.overflow-x-auto.custom-scrollbar::-webkit-scrollbar {
+  height: 12px;
+}
+.overflow-x-auto.custom-scrollbar::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+.overflow-x-auto.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 6px;
+}
+.overflow-x-auto.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
 @media print {
   @page {
     size: A4 landscape;
