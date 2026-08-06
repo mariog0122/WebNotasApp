@@ -696,7 +696,7 @@ const getProjectValue = (studentId, subjectId) => {
 
 const getStudentAverages = (studentId, subjectId) => {
   const sGrades = grades.value[studentId] || {}
-  const pv = getProjectValue(studentId, subjectId)
+  const pv = projectSubjects.value.size > 0 ? getProjectAverage(studentId) : null
   return calculateStudentAverages(sGrades, gradeDefinitions.value, pv)
 }
 

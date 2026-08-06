@@ -342,9 +342,9 @@ const gradeBgClass = (val) => {
                       type="number" step="0.01" min="0" max="10"
                       class="w-full bg-transparent text-center text-sm px-1 focus:bg-emerald-900/30 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-emerald-100 disabled:text-slate-500 h-full"
                       placeholder="-"
-                      :disabled="def.name.toLowerCase().includes('proyecto') && gp.projectSubjects.has(gp.activeSubject?.subject_id)"
-                      :value="def.name.toLowerCase().includes('proyecto') && gp.projectSubjects.has(gp.activeSubject?.subject_id) ? gp.getProjectValue(student.id, gp.activeSubject?.subject_id) ?? '' : gp.grades[student.id]?.[def.id]"
-                      @input="(e) => { if (!def.name.toLowerCase().includes('proyecto') || !gp.projectSubjects.has(gp.activeSubject?.subject_id)) gp.onGradeInput(student.id, def.id, e) }"
+                      :disabled="def.name.toLowerCase().includes('proyecto') && gp.projectSubjects.size > 0"
+                      :value="def.name.toLowerCase().includes('proyecto') && gp.projectSubjects.size > 0 ? gp.getProjectAverage(student.id) ?? '' : gp.grades[student.id]?.[def.id]"
+                      @input="(e) => { if (!def.name.toLowerCase().includes('proyecto') || gp.projectSubjects.size === 0) gp.onGradeInput(student.id, def.id, e) }"
                     />
                   </div>
                   <div class="bg-slate-800/30 text-center font-bold border-r border-slate-700 text-sm tabular-nums w-16 shrink-0 h-full flex items-center justify-center" :class="gradeColorClass(gp.studentAveragesMap[student.id]?.avgSum)">
