@@ -1,5 +1,6 @@
 <script setup>
 import { provide } from 'vue'
+import AcademicYearBanner from '../components/ui/AcademicYearBanner.vue'
 import GradesInstitutionHero from '../components/grades/GradesInstitutionHero.vue'
 import GradesFiltersPanel from '../components/grades/GradesFiltersPanel.vue'
 import GradesTermSummaryCard from '../components/grades/GradesTermSummaryCard.vue'
@@ -15,6 +16,7 @@ provide(gradesPageInjectionKey, gp)
 <template>
   <div class="app-shell">
     <main class="app-container">
+      <AcademicYearBanner module-name="Calificaciones" />
       <GradesInstitutionHero />
       <GradesFiltersPanel />
       <GradesTermSummaryCard />

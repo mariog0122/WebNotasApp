@@ -4,6 +4,10 @@ import { translateError } from '../lib/errorDictionary'
 import { toast } from 'vue-sonner'
 import { getProjectValue as libGetProjectValue, calculateStudentAverages } from '../lib/gradingLogic'
 import { useNetwork } from './useNetwork'
+import { normalizeStoragePath, resolvePrivateImageUrl } from '../lib/storageUtils'
+import { useAuthStore } from '../stores/auth'
+import { useAcademicYearStore } from '../stores/academicYear'
+import { isInstitutionAdmin } from '../lib/permissions'
 
 /** Inyeccion para subvistas del modulo de calificaciones */
 export const gradesPageInjectionKey = Symbol('gradesPage')
@@ -14,10 +18,14 @@ const courses = ref([])
 const quarters = ref([])
 const subjects = ref([]) // Subjects for the selected course
 const { isOnline } = useNetwork()
+const authStore = useAuthStore()
+const academicYearStore = useAcademicYearStore()
 
 const selectedCourse = ref(null)
 const selectedQuarter = ref(null)
+const isYearLocked = computed(() => academicYearStore.isLocked)
 const activeQuarterIsLocked = computed(() => {
+  if (isYearLocked.value && !isInstitutionAdmin(authStore.accessContext)) return true
   const current = quarters.value.find(q => q.id === selectedQuarter.value)
   return current ? !!current.is_locked : false
 })
@@ -138,9 +146,40 @@ onMounted(async () => {
 
 // --- Data Fetching ---
 const fetchCourses = async () => {
-  const { data } = await supabase.from('courses').select('id, name, level, track').order('name')
-  courses.value = data || []
+  const sId = authStore.activeSchoolId || authStore.profile?.school_id
+  let query = supabase.from('courses').select('id, name, level, track, academic_year').order('name')
+  if (sId) {
+    query = query.or(`school_id.eq.${sId},school_id.is.null`)
+  }
+  const yearName = academicYearStore.selectedYearName
+  if (yearName) {
+    query = query.eq('academic_year', yearName)
+  }
+  const { data } = await query
+  let filteredCourses = data || []
+
+  const userIds = [authStore.user?.id, authStore.profile?.id].filter(Boolean)
+  const isAdmin = isInstitutionAdmin(authStore.accessContext)
+
+  if (!isAdmin && userIds.length > 0) {
+    const { data: assignedLinks } = await supabase
+      .from('course_subjects')
+      .select('course_id')
+      .in('teacher_id', userIds)
+
+    const assignedCourseIds = new Set((assignedLinks || []).map(l => l.course_id))
+    filteredCourses = filteredCourses.filter(c => assignedCourseIds.has(c.id))
+  }
+
+  courses.value = filteredCourses
+  if (selectedCourse.value && !courses.value.some(c => c.id === selectedCourse.value)) {
+    selectedCourse.value = null
+  }
 }
+
+watch(() => academicYearStore.selectedYearName, () => {
+  fetchCourses()
+})
 
 const selectedCourseObj = computed(() => courses.value.find(c => c.id === selectedCourse.value))
 const isQualitativeCourse = computed(() => {
@@ -149,14 +188,21 @@ const isQualitativeCourse = computed(() => {
 })
 
 const fetchInstitutionConfig = async () => {
+  const sId = authStore.activeSchoolId || authStore.profile?.school_id
+  if (!sId) return
   const { data, error } = await supabase
     .from('system_config')
     .select('key, value')
+    .eq('school_id', sId)
     .in('key', ['institution_name', 'institution_logo_url', 'institution_tutor_name', 'institution_rector_name', 'academic_periods'])
   if (error) return
   const map = Object.fromEntries((data || []).map(item => [item.key, item.value]))
   institutionName.value = map.institution_name || ''
-  institutionLogoUrl.value = map.institution_logo_url || ''
+  institutionLogoUrl.value = await resolvePrivateImageUrl(
+    supabase,
+    'institution-assets',
+    normalizeStoragePath(map.institution_logo_url, 'institution-assets'),
+  ).catch(() => '')
   institutionTutorName.value = map.institution_tutor_name || ''
   institutionRectorName.value = map.institution_rector_name || ''
   academicPeriods.value = map.academic_periods || 'TRIMESTRE'
@@ -167,11 +213,16 @@ const fetchCourseStudents = async (courseId) => {
     projectStudents.value = []
     return
   }
-  const { data, error } = await supabase
+  const sId = authStore.activeSchoolId || authStore.profile?.school_id
+  let query = supabase
     .from('students')
     .select('id, full_name')
     .eq('course_id', courseId)
     .order('full_name')
+  if (sId) {
+    query = query.or(`school_id.eq.${sId},school_id.is.null`)
+  }
+  const { data, error } = await query
   if (error) {
     toast.error('Error cargando estudiantes', { description: translateError(error) })
     projectStudents.value = []
@@ -195,10 +246,14 @@ const fetchQuarters = async () => {
     quartersError.value = ''
     try {
         // Timeout de seguridad para la carga de datos
-        const fetchPromise = supabase.from('quarters').select('*').order('created_at')
+        const sId = authStore.activeSchoolId || authStore.profile?.school_id
+        let query = supabase.from('quarters').select('*').order('created_at')
+        if (sId) {
+          query = query.or(`school_id.eq.${sId},school_id.is.null`)
+        }
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch Quarters Timeout')), 15000))
         
-        const { data, error } = await Promise.race([fetchPromise, timeoutPromise])
+        const { data, error } = await Promise.race([query, timeoutPromise])
         
         if (error) throw error
         quarters.value = (data || []).filter(q => q.name !== 'test_q')
@@ -216,27 +271,37 @@ const fetchQuarters = async () => {
     }
 }
 
-// When Course changes, load Subjects
-watch(selectedCourse, async (newVal) => {
-  subjects.value = []
+// When Course changes, load Subjects cleanly without blocking select UI (INP < 10ms)
+watch(selectedCourse, (newVal) => {
   activeSubjectId.value = null
   activeSubject.value = null
-  studentsCount.value = 0
   subjectsError.value = ''
-  if (!newVal) return
+  
+  if (!newVal) {
+    subjects.value = []
+    studentsCount.value = 0
+    return
+  }
 
-  await fetchSubjectsForCourse(newVal)
+  // Defer heavy network queries after main thread paints the select change
+  setTimeout(async () => {
+    await fetchSubjectsForCourse(newVal)
+    const sId = authStore.activeSchoolId || authStore.profile?.school_id
+    let countQuery = supabase
+      .from('students')
+      .select('id', { count: 'exact', head: true })
+      .eq('course_id', newVal)
+    if (sId) {
+      countQuery = countQuery.or(`school_id.eq.${sId},school_id.is.null`)
+    }
+    const { count } = await countQuery
+    studentsCount.value = count || 0
 
-  const { count } = await supabase
-    .from('students')
-    .select('id', { count: 'exact', head: true })
-    .eq('course_id', newVal)
-  studentsCount.value = count || 0
-
-  await fetchCourseStudents(newVal)
-  await fetchProjectSettings()
-  await fetchProjectGrades()
-  ensureProjectGrid()
+    await fetchCourseStudents(newVal)
+    await fetchProjectSettings()
+    await fetchProjectGrades()
+    ensureProjectGrid()
+  }, 0)
 })
 
 const fetchSubjectsForCourse = async (courseId) => {
@@ -245,22 +310,35 @@ const fetchSubjectsForCourse = async (courseId) => {
         return
     }
     try {
-        const fetchPromise = supabase
+        const sId = authStore.activeSchoolId || authStore.profile?.school_id
+        let query = supabase
             .from('course_subjects')
             .select(`
                 id,
                 subject_id,
+                teacher_id,
                 subjects (
                     name
                 )
             `)
             .eq('course_id', courseId)
         
+        if (sId) {
+            query = query.or(`school_id.eq.${sId},school_id.is.null`)
+        }
+        
+        const userIds = [authStore.user?.id, authStore.profile?.id].filter(Boolean)
+        const isAdmin = isInstitutionAdmin(authStore.accessContext)
+
+        if (!isAdmin && userIds.length > 0) {
+            query = query.in('teacher_id', userIds)
+        }
+        
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch Subjects Timeout')), 15000))
-        const { data, error } = await Promise.race([fetchPromise, timeoutPromise])
+        const { data, error } = await Promise.race([query, timeoutPromise])
 
         if (error) throw error
-        subjects.value = data.map(item => ({
+        subjects.value = (data || []).map(item => ({
             course_subject_id: item.id,
             subject_id: item.subject_id,
             name: item.subjects?.name || 'Materia desconocida'
@@ -282,13 +360,13 @@ const createDefaultQuarters = async () => {
   quartersError.value = ''
   const items = academicPeriods.value === 'QUIMESTRE'
     ? [
-        { name: 'Primer Quimestre', is_active: true },
-        { name: 'Segundo Quimestre', is_active: false }
+        { name: 'Primer Quimestre', is_active: true, school_id: authStore.activeSchoolId },
+        { name: 'Segundo Quimestre', is_active: false, school_id: authStore.activeSchoolId }
       ]
     : [
-        { name: 'Primer Trimestre', is_active: true },
-        { name: 'Segundo Trimestre', is_active: false },
-        { name: 'Tercer Trimestre', is_active: false }
+        { name: 'Primer Trimestre', is_active: true, school_id: authStore.activeSchoolId },
+        { name: 'Segundo Trimestre', is_active: false, school_id: authStore.activeSchoolId },
+        { name: 'Tercer Trimestre', is_active: false, school_id: authStore.activeSchoolId }
       ]
   const { error } = await supabase
     .from('quarters')
@@ -536,29 +614,62 @@ const openGradeSheet = async (subject) => {
   await loadGradeData(subject.course_subject_id)
 }
 
+// Cache en memoria para evitar parpadeos y CLS al abrir asignaturas repetidas
+const gradesCacheMap = new Map()
+
 const loadGradeData = async (courseSubjectId) => {
-  loadingGrades.value = true
+  const cacheKey = `${selectedCourse.value}_${selectedQuarter.value}_${courseSubjectId}`
   message.value = ''
-  students.value = []
-  gradesPage.value = 1
-  gradeDefinitions.value = []
-  grades.value = {}
-  qualitativeScores.value = {}
-  qualitativeExistingKeys.value = new Set()
+  
+  if (gradesCacheMap.has(cacheKey)) {
+    const cached = gradesCacheMap.get(cacheKey)
+    students.value = cached.students
+    gradeDefinitions.value = cached.gradeDefinitions
+    grades.value = cached.grades
+    qualitativeScores.value = cached.qualitativeScores
+    existingGradeKeys.value = new Set(cached.existingGradeKeys)
+    qualitativeExistingKeys.value = new Set(cached.qualitativeExistingKeys)
+    loadingGrades.value = false
+  } else {
+    loadingGrades.value = true
+    students.value = []
+    gradesPage.value = 1
+    gradeDefinitions.value = []
+    grades.value = {}
+    qualitativeScores.value = {}
+    qualitativeExistingKeys.value = new Set()
+  }
 
   try {
-    if (isQualitativeCourse.value) {
-      const { data: stus, error: studentsError } = await supabase
-        .from('students')
-        .select('id, full_name, representative_name, representative_cedula, representative_phone, student_address')
-        .eq('course_id', selectedCourse.value)
-        .order('full_name')
-      if (studentsError) {
-        toast.error('Error cargando estudiantes', { description: studentsError.message })
-        return
-      }
-      students.value = stus || []
+    const sId = authStore.activeSchoolId || authStore.profile?.school_id
 
+    // 1. Fetch Students for the Course FIRST (Decoupled & Non-blocking)
+    let stuQuery = supabase
+      .from('students')
+      .select('id, full_name, representative_name, representative_cedula, representative_phone, student_address')
+      .eq('course_id', selectedCourse.value)
+      .order('full_name')
+    if (sId) {
+      stuQuery = stuQuery.or(`school_id.eq.${sId},school_id.is.null`)
+    }
+    const { data: stus, error: studentsError } = await stuQuery
+    if (studentsError) {
+      console.error('Error cargando estudiantes:', studentsError)
+      toast.error('Error cargando estudiantes', { description: studentsError.message })
+    }
+    students.value = stus || []
+
+    const stusArray = students.value || []
+    stusArray.forEach(st => {
+      if (!grades.value[st.id]) {
+        grades.value[st.id] = {}
+      }
+      if (qualitativeScores.value[st.id] === undefined) {
+        qualitativeScores.value[st.id] = ''
+      }
+    })
+
+    if (isQualitativeCourse.value) {
       const { data: qGrades, error: qError } = await supabase
         .from('qualitative_grades')
         .select('student_id, score_text')
@@ -568,32 +679,53 @@ const loadGradeData = async (courseSubjectId) => {
         toast.error('Error cargando calificaciones', { description: qError.message })
         return
       }
-      students.value.forEach(s => {
-        qualitativeScores.value[s.id] = ''
-      })
       ;(qGrades || []).forEach(g => {
         qualitativeScores.value[g.student_id] = g.score_text || ''
         qualitativeExistingKeys.value.add(`${g.student_id}`)
       })
+
+      gradesCacheMap.set(cacheKey, {
+        students: [...students.value],
+        gradeDefinitions: [],
+        grades: {},
+        qualitativeScores: { ...qualitativeScores.value },
+        existingGradeKeys: new Set(),
+        qualitativeExistingKeys: new Set(qualitativeExistingKeys.value)
+      })
       return
     }
 
-    // 1. Ensure Definitions (Idempotent check similar to before)
-    const ensured = await ensureDefinitions(courseSubjectId)
-    if (!ensured) return
+    // 2. Ensure Definitions (Atomic RPC / safe fallback)
+    await ensureDefinitions(courseSubjectId)
 
-    // 2. Fetch Definitions
-    const { data: defs, error: defsError } = await supabase
+    // 3. Fetch Definitions
+    let defsQuery = supabase
       .from('grade_definitions')
       .select('*')
       .eq('course_subject_id', courseSubjectId)
       .eq('quarter_id', selectedQuarter.value)
       .order('sort_order')
-    if (defsError) {
-      toast.error('Error cargando columnas', { description: defsError.message })
-      return
+    if (sId) {
+      defsQuery = defsQuery.or(`school_id.eq.${sId},school_id.is.null`)
     }
-    gradeDefinitions.value = defs || []
+    const { data: defs, error: defsError } = await defsQuery
+    if (defsError) {
+      console.warn('Error cargando columnas:', defsError.message)
+    }
+
+    // Use DB definitions or fallback in-memory standard definitions
+    if (defs && defs.length > 0) {
+      gradeDefinitions.value = defs
+    } else {
+      gradeDefinitions.value = DEFAULT_DEFINITIONS.map(d => ({
+        id: `virtual-def-${d.sort_order}`,
+        course_subject_id: courseSubjectId,
+        quarter_id: selectedQuarter.value,
+        name: d.name,
+        category: d.category,
+        sort_order: d.sort_order
+      }))
+    }
     
     // Inject virtual "Proyecto" column if project is active globally for the course
     if (projectSubjects.value.size > 0) {
@@ -610,51 +742,39 @@ const loadGradeData = async (courseSubjectId) => {
         })
       }
     }
-    if (!gradeDefinitions.value || gradeDefinitions.value.length === 0) {
-      toast.error('No hay columnas de calificacion.')
-      return
-    }
 
-    // 3. Fetch Students for the Course
-    const { data: stus, error: studentsError } = await supabase
-      .from('students')
-      .select('id, full_name, representative_phone, representative_name')
-      .eq('course_id', selectedCourse.value)
-      .order('full_name')
-    if (studentsError) {
-      toast.error('Error cargando estudiantes', { description: studentsError.message })
-      return
-    }
-    students.value = stus || []
+    // 4. Load Existing Grades for these columns (if real IDs exist)
+    const realDefIds = gradeDefinitions.value
+      .map(d => d.id)
+      .filter(id => id && !String(id).startsWith('virtual-'))
 
-    // Inicializar el objeto de calificaciones y la estructura en Reactividad si es que no existe.
-    // Esto asegura que vue detecte y renderice las cajas de input correctamente.
-    const stusArray = stus || []
-    stusArray.forEach(st => {
-      if (!grades.value[st.id]) {
-        grades.value[st.id] = {}
+    if (realDefIds.length > 0) {
+      const { data: existingGrades, error: gradesError } = await supabase
+        .from('grades')
+        .select('student_id, score, grade_definition_id')
+        .in('grade_definition_id', realDefIds)
+      if (gradesError) {
+        toast.error('Error cargando calificaciones', { description: gradesError.message })
+      } else {
+        existingGradeKeys.value = new Set(
+          (existingGrades || []).map(g => `${g.student_id}:${g.grade_definition_id}`)
+        )
+
+        existingGrades?.forEach(g => {
+          if (grades.value[g.student_id]) {
+            grades.value[g.student_id][g.grade_definition_id] = g.score
+          }
+        })
       }
-    })
-
-    // 4. Load Existing Grades for these columns
-    const { data: existingGrades, error: gradesError } = await supabase
-      .from('grades')
-      .select('student_id, score, grade_definition_id')
-      .in('grade_definition_id', defs.map(d => d.id))
-    if (gradesError) {
-      toast.error('Error cargando calificaciones', { description: gradesError.message })
-      return
     }
-    
-    existingGradeKeys.value = new Set(
-      (existingGrades || []).map(g => `${g.student_id}:${g.grade_definition_id}`)
-    )
 
-    // Llenar el estado local con las calificaciones existentes, OJO sin pisar las propiedades reactivas previas.
-    existingGrades?.forEach(g => {
-      if (grades.value[g.student_id]) {
-        grades.value[g.student_id][g.grade_definition_id] = g.score
-      }
+    gradesCacheMap.set(cacheKey, {
+      students: [...students.value],
+      gradeDefinitions: [...gradeDefinitions.value],
+      grades: JSON.parse(JSON.stringify(grades.value)),
+      qualitativeScores: {},
+      existingGradeKeys: new Set(existingGradeKeys.value),
+      qualitativeExistingKeys: new Set()
     })
 
   } catch (e) {
@@ -666,28 +786,50 @@ const loadGradeData = async (courseSubjectId) => {
 }
 
 const ensureDefinitions = async (courseSubjectId) => {
-  const { count, error } = await supabase
+  if (!courseSubjectId || !selectedQuarter.value) return false
+  const sId = authStore.activeSchoolId || authStore.profile?.school_id
+
+  // 1. Try atomic RPC first
+  try {
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc('ensure_default_grade_definitions', {
+      p_course_subject_id: courseSubjectId,
+      p_quarter_id: selectedQuarter.value
+    })
+    if (!rpcErr && rpcRes?.success) {
+      return true
+    }
+  } catch (err) {
+    console.warn('RPC ensure_default_grade_definitions not available, falling back:', err)
+  }
+
+  // 2. Direct client verification and creation fallback
+  let query = supabase
     .from('grade_definitions')
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq('course_subject_id', courseSubjectId)
     .eq('quarter_id', selectedQuarter.value)
+  if (sId) {
+    query = query.or(`school_id.eq.${sId},school_id.is.null`)
+  }
+  const { count, error } = await query
   if (error) {
-    toast.error('Error verificando columnas', { description: error.message })
-    return false
+    console.warn('Error verificando columnas:', error.message)
+    return true
   }
   
   if (count === 0) {
     const newDefs = DEFAULT_DEFINITIONS.map(d => ({
       course_subject_id: courseSubjectId,
       quarter_id: selectedQuarter.value,
+      school_id: sId || authStore.activeSchoolId,
       name: d.name,
       category: d.category,
       sort_order: d.sort_order
     }))
-    const { error } = await supabase.from('grade_definitions').insert(newDefs)
-    if (error) {
-      toast.error('Error creando columnas', { description: error.message })
-      return false
+    const { error: insertErr } = await supabase.from('grade_definitions').insert(newDefs)
+    if (insertErr) {
+      console.warn('Advertencia creando columnas en BD (usando fallback en memoria):', insertErr.message)
+      return true
     }
   }
   return true
@@ -741,6 +883,106 @@ const onGradeInput = (studentId, defId, event) => {
     grades.value[studentId] = {}
   }
   grades.value[studentId][defId] = cleaned
+}
+
+const orderedEditableDefs = computed(() => {
+  const individual = gradeDefinitions.value.filter(d => d.category === 'INDIVIDUAL')
+  const grupal = gradeDefinitions.value.filter(d => d.category === 'GRUPAL')
+  const refuerzo = gradeDefinitions.value.filter(d => d.category === 'REFUERZO')
+  const sumativa = gradeDefinitions.value.filter(d => d.category === 'SUMATIVA')
+  return [...individual, ...grupal, ...refuerzo, ...sumativa]
+})
+
+const pasteExcelGradesText = (rawText, startStudentId = null, startDefId = null) => {
+  if (activeQuarterIsLocked.value) {
+    toast.error('Periodo cerrado: No se pueden modificar calificaciones.')
+    return 0
+  }
+  if (!rawText || !rawText.trim()) {
+    toast.error('El texto copiado está vacío.')
+    return 0
+  }
+
+  const rows = rawText
+    .split(/\r\n|\r|\n/)
+    .map(r => r.trim())
+    .filter(r => r.length > 0)
+
+  if (rows.length === 0) return 0
+
+  const startStuIdx = startStudentId 
+    ? Math.max(0, students.value.findIndex(s => s.id === startStudentId)) 
+    : 0
+
+  const defsList = orderedEditableDefs.value
+  const startDefIdx = startDefId 
+    ? Math.max(0, defsList.findIndex(d => d.id === startDefId)) 
+    : 0
+
+  let pastedCount = 0
+
+  rows.forEach((rowStr, rIdx) => {
+    const targetStuIdx = startStuIdx + rIdx
+    if (targetStuIdx >= students.value.length) return
+    const targetStudent = students.value[targetStuIdx]
+    if (!targetStudent) return
+
+    if (!grades.value[targetStudent.id]) {
+      grades.value[targetStudent.id] = {}
+    }
+
+    let cells = rowStr.split('\t')
+    if (cells.length === 1 && rowStr.includes(';')) {
+      cells = rowStr.split(';')
+    }
+
+    cells.forEach((rawCell, cIdx) => {
+      const targetDefIdx = startDefIdx + cIdx
+      if (targetDefIdx >= defsList.length) return
+      const targetDef = defsList[targetDefIdx]
+      if (!targetDef) return
+
+      if (targetDef.name.toLowerCase().includes('proyecto') && projectSubjects.value.size > 0) {
+        return
+      }
+
+      const cellText = rawCell.trim()
+      if (cellText === '' || cellText === '-') {
+        grades.value[targetStudent.id][targetDef.id] = ''
+        pastedCount++
+      } else {
+        const cleaned = sanitizeScoreInput(cellText)
+        if (cleaned !== '') {
+          grades.value[targetStudent.id][targetDef.id] = cleaned
+          pastedCount++
+        }
+      }
+    })
+  })
+
+  if (pastedCount > 0) {
+    toast.success('Calificaciones pegadas desde Excel', {
+      description: `Se insertaron ${pastedCount} notas en la libreta. Recuerda hacer clic en "Guardar cambios".`
+    })
+  } else {
+    toast.error('No se detectaron valores numéricos válidos (0-10) en el texto.')
+  }
+
+  return pastedCount
+}
+
+const handlePasteGrades = (startStudentId, startDefId, event) => {
+  if (activeQuarterIsLocked.value) return
+
+  const clipboardData = event.clipboardData || window.clipboardData
+  if (!clipboardData) return
+  const text = clipboardData.getData('text')
+  if (!text) return
+
+  const count = pasteExcelGradesText(text, startStudentId, startDefId)
+  if (count > 0) {
+    event.preventDefault()
+  }
 }
 
 const onProjectInput = (studentId, subjectId, event) => {
@@ -880,31 +1122,17 @@ const saveGrades = async () => {
       })
     })
 
-    const deleteGrades = async (items) => {
-      if (items.length === 0) return null
-      const chunkSize = 50
-      for (let i = 0; i < items.length; i += chunkSize) {
-        const chunk = items.slice(i, i + chunkSize)
-        const orFilter = chunk
-          .map(item => `and(student_id.eq.${item.student_id},grade_definition_id.eq.${item.grade_definition_id})`)
-          .join(',')
-        const { error } = await supabase.from('grades').delete().or(orFilter)
-        if (error) return error
-      }
-      return null
-    }
+    const { error } = await supabase.rpc('save_grade_batch', {
+      p_upserts: upserts,
+      p_deletes: toDelete
+    })
 
-    const deleteError = await deleteGrades(toDelete)
-    const upsertError = upserts.length > 0
-      ? (await supabase.from('grades').upsert(upserts, { onConflict: 'student_id, grade_definition_id' })).error
-      : null
-
-    if (!deleteError && !upsertError) {
+    if (!error) {
       toDelete.forEach(item => existingGradeKeys.value.delete(`${item.student_id}:${item.grade_definition_id}`))
       upserts.forEach(item => existingGradeKeys.value.add(`${item.student_id}:${item.grade_definition_id}`))
       toast.success('Calificaciones guardadas')
     } else {
-      toast.error('Error al guardar', { description: translateError(deleteError || upsertError) })
+      toast.error('Error al guardar', { description: translateError(error) })
     }
   } catch (error) {
     console.error('Error guardando calificaciones:', error)
@@ -944,36 +1172,26 @@ const saveQualitativeGrades = async () => {
     }
   })
 
-  const deleteGrades = async (items) => {
-    if (items.length === 0) return null
-    const chunkSize = 50
-    for (let i = 0; i < items.length; i += chunkSize) {
-      const chunk = items.slice(i, i + chunkSize)
-      const orFilter = chunk
-        .map(item => `and(student_id.eq.${item.student_id},course_subject_id.eq.${activeSubjectId.value},quarter_id.eq.${selectedQuarter.value})`)
-        .join(',')
-      const { error } = await supabase.from('qualitative_grades').delete().or(orFilter)
-      if (error) return error
+  try {
+    const { error } = await supabase.rpc('save_qualitative_grade_batch', {
+      p_course_subject_id: activeSubjectId.value,
+      p_quarter_id: selectedQuarter.value,
+      p_upserts: upserts,
+      p_delete_student_ids: toDelete.map(item => item.student_id)
+    })
+
+    if (error) {
+      toast.error('Error al guardar', { description: translateError(error) })
+      return
     }
-    return null
-  }
 
-  const deleteError = await deleteGrades(toDelete)
-  const upsertError = upserts.length > 0
-    ? (await supabase
-        .from('qualitative_grades')
-        .upsert(upserts, { onConflict: 'student_id, course_subject_id, quarter_id' })).error
-    : null
-
-  if (!deleteError && !upsertError) {
-    qualitativeExistingKeys.value = new Set(
-      upserts.map(u => `${u.student_id}`)
-    )
+    qualitativeExistingKeys.value = new Set(upserts.map(u => `${u.student_id}`))
     toast.success('Notas guardadas')
-  } else {
-    toast.error('Error al guardar', { description: translateError(deleteError || upsertError) })
+  } catch (error) {
+    toast.error('Error al guardar', { description: translateError(error) })
+  } finally {
+    saving.value = false
   }
-  saving.value = false
 }
 
 const saveCurrentGrades = async () => {
@@ -998,6 +1216,9 @@ const saveHeader = async () => {
      const idx = gradeDefinitions.value.findIndex(d => d.id === editingDefinition.value.id)
      if (idx !== -1) gradeDefinitions.value[idx].name = editingDefinition.value.name
      showHeaderModal.value = false
+     toast.success('Nombre de columna actualizado')
+  } else {
+     toast.error('Error al actualizar columna', { description: translateError(error) })
   }
 }
 
@@ -1033,6 +1254,9 @@ const saveHeader = async () => {
     loadingGrades,
     message,
     onGradeInput,
+    orderedEditableDefs,
+    handlePasteGrades,
+    pasteExcelGradesText,
     onProjectInput,
     openGradeSheet,
     paginatedStudents,
@@ -1058,6 +1282,7 @@ const saveHeader = async () => {
     saveProjectSettings,
     selectedCourse,
     selectedQuarter,
+    isYearLocked,
     activeQuarterIsLocked,
     setGradesPage,
     showHeaderModal,

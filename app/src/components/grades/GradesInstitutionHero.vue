@@ -22,7 +22,7 @@ if (!gp) throw new Error('gradesPageInjectionKey no provisto')
     </div>
     <h1 class="app-title mb-2">Registro de calificaciones</h1>
     <p class="text-sm text-slate-500 mb-6 max-w-2xl">
-      Selecciona curso y periodo, abre cada materia y guarda los cambios. Las medias ponderadas (70% formativo / 30% sumativo) se calculan en tiempo real.
+      Selecciona curso y período, abre cada materia y guarda los cambios. Las medias ponderadas (70% formativo / 30% sumativo) se calculan en tiempo real.
     </p>
 
     <div

@@ -62,7 +62,11 @@ export const computeSubjectTotal = (definitions, studentGrades, projectAverage, 
     let sum = 0
     let count = 0
     defs.forEach(d => {
-      let val = parseFloat(studentGrades?.[d.id])
+      const shouldUseProjectAverage = subjectIsProject && isProjectDefinition(d)
+      const projectValue = parseFloat(projectAverage)
+      const val = shouldUseProjectAverage && !isNaN(projectValue)
+        ? projectValue
+        : parseFloat(studentGrades?.[d.id])
       if (!isNaN(val)) {
         sum += val
         count++

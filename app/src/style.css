@@ -1,8 +1,45 @@
 @tailwind base;
-
-@tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Navegación por teclado: visible, consistente y por encima del layout fijo. */
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 1000;
+  transform: translateY(-160%);
+  border-radius: 0.75rem;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.24);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+:focus-visible {
+  outline: 3px solid #4f46e5;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 :root {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -348,7 +385,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 0.75rem;
   overflow-y: auto;
 }
 
@@ -361,27 +398,38 @@ body {
   border-radius: 20px;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05);
   width: 100%;
-  max-width: 32rem;
+  max-width: min(100%, 32rem);
+  max-height: calc(100dvh - 1.5rem);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   animation: modalSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .dark .modal-panel {
-  background: rgba(30, 41, 59, 0.85);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+  color: #f8fafc;
 }
 
 .modal-panel-lg {
-  max-width: 48rem;
+  max-width: min(100%, 48rem);
 }
 
 .modal-panel-xl {
-  max-width: 64rem;
+  max-width: min(100%, 64rem);
 }
 
 .modal-header {
   padding: 20px 24px 16px;
   border-bottom: 1px solid var(--line);
   background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
+}
+
+.dark .modal-header:not(.modal-header-accent):not(.modal-header-danger):not(.modal-header-warn) {
+  background: #1e293b;
+  border-bottom-color: #334155;
+  color: #f8fafc;
 }
 
 .modal-header-accent {
@@ -435,10 +483,18 @@ body {
   line-height: 1.3;
 }
 
+.dark .modal-title {
+  color: #f8fafc;
+}
+
 .modal-subtitle {
   font-size: 13px;
   color: var(--muted);
   margin-top: 4px;
+}
+
+.dark .modal-subtitle {
+  color: #94a3b8;
 }
 
 .modal-header-accent .modal-subtitle,
@@ -448,6 +504,8 @@ body {
 
 .modal-body {
   padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1 1 auto;
 }
 
 .modal-footer {
@@ -458,6 +516,12 @@ body {
   justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.dark .modal-footer {
+  background: #1e293b;
+  border-top-color: #334155;
 }
 
 /* Form fields inside modals */
@@ -475,6 +539,11 @@ body {
   letter-spacing: 0.01em;
 }
 
+.dark .modal-field label,
+.dark .modal-label {
+  color: #e2e8f0;
+}
+
 .modal-field .app-input {
   margin-top: 0;
 }
@@ -485,6 +554,10 @@ body {
   margin: 20px 0;
 }
 
+.dark .modal-divider {
+  border-top-color: #334155;
+}
+
 .modal-section-title {
   font-size: 14px;
   font-weight: 700;
@@ -493,6 +566,10 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.dark .modal-section-title {
+  color: #f8fafc;
 }
 
 .modal-section-title::before {
@@ -890,3 +967,24 @@ body {
 .dark [class*="hover:text-emerald-900"]:hover { color: #6ee7b7 !important; }
 .dark [class*="hover:text-rose-800"]:hover { color: #fda4af !important; }
 .dark [class*="hover:text-slate-900"]:hover { color: #f8fafc !important; }
+
+/* ============================================
+   LIGHT MODE CONTRAST & LEGIBILITY FIXES
+   ============================================ */
+html:not(.dark) .divide-slate-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) input.bg-slate-950,
+html:not(.dark) select.bg-slate-950,
+html:not(.dark) textarea.bg-slate-950 {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html:not(.dark) input.bg-slate-950::placeholder,
+html:not(.dark) textarea.bg-slate-950::placeholder {
+  color: #64748b !important;
+}
+

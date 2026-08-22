@@ -3,6 +3,10 @@ import { ref, onMounted, computed } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/auth'
 import { useNetwork } from '../composables/useNetwork'
+import { normalizeStoragePath, resolvePrivateImageUrl, uploadPrivateImage, validateImageFile } from '../lib/storageUtils'
+import { isInstitutionAdmin } from '../lib/permissions'
+
+import { toast } from 'vue-sonner'
 
 const authStore = useAuthStore()
 const { isOnline } = useNetwork()
@@ -25,30 +29,174 @@ const profile = ref({
 const photoFile = ref(null)
 const photoPreview = ref('')
 const newPhotoUrl = ref('')
+const photoStoragePath = ref('')
+
+const isSchoolAdmin = computed(() => isInstitutionAdmin(authStore.accessContext))
+const isRectorOrAdmin = computed(() => {
+  const currentRole = profile.value?.role || authStore.accessContext?.activeMembership?.role || authStore.userRole
+  if (currentRole === 'teacher') return false
+  return ['admin', 'school_admin', 'rector'].includes(currentRole) || authStore.accessContext?.isPlatformAdmin === true
+})
+
+const tenantSubscription = ref(null)
+const studentCount = ref(0)
+
+const uploadingProof = ref(false)
+const proofUrl = ref('')
+const proofFile = ref(null)
+
+const fetchSubscription = async () => {
+  if (!authStore.activeSchoolId) return
+  try {
+    const schoolId = authStore.activeSchoolId || authStore.profile?.school_id || profile.value?.school_id
+    if (!schoolId) return
+
+    const { count } = await supabase.from('students').select('*', { count: 'exact', head: true }).eq('school_id', schoolId)
+    studentCount.value = count || 0
+
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('*, plans(name, code, monthly_price, annual_price, student_limit, trial_days)')
+      .eq('school_id', schoolId)
+      .maybeSingle()
+    const { data: limit } = await supabase.from('tenant_limits').select('*').eq('school_id', schoolId).maybeSingle()
+    const { data: school } = await supabase.from('schools').select('name, status').eq('id', schoolId).maybeSingle()
+
+    const status = sub?.status || school?.status || 'trial'
+    const isTrial = status === 'trial'
+    const effectiveDate = isTrial ? (sub?.trial_ends_at || sub?.next_billing_date) : sub?.next_billing_date
+
+    let renewalDateStr = 'Sin fecha programada'
+    let daysRemaining = null
+
+    if (effectiveDate) {
+      const dt = new Date(effectiveDate)
+      renewalDateStr = dt.toLocaleDateString('es-EC', { year: 'numeric', month: 'short', day: 'numeric' })
+      const diffMs = dt.getTime() - Date.now()
+      daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+    }
+
+    const priceVal = sub?.agreed_price ?? (sub?.billing_cycle === 'yearly' ? sub?.plans?.annual_price : sub?.plans?.monthly_price) ?? 89
+
+    tenantSubscription.value = {
+      plan_name: sub?.plans?.name || 'Plan Institucional Estándar',
+      price: priceVal,
+      billing_cycle: sub?.billing_cycle || 'monthly',
+      status: status,
+      is_trial: isTrial,
+      days_remaining: daysRemaining,
+      renewal_date: renewalDateStr,
+      raw_renewal_date: effectiveDate,
+      max_students: limit?.max_students || sub?.plans?.student_limit || 500
+    }
+
+    const { data: billing } = await supabase
+      .from('tenant_billing_profiles')
+      .select('latest_receipt_url')
+      .eq('school_id', schoolId)
+      .maybeSingle()
+    if (billing?.latest_receipt_url) {
+      proofUrl.value = billing.latest_receipt_url
+    }
+  } catch (err) {
+    console.error('Error fetching subscription in Profile:', err)
+  }
+}
+
+const onProofFileChange = (e) => {
+  const file = e.target.files?.[0]
+  if (file) {
+    proofFile.value = file
+  }
+}
+
+const uploadProof = async () => {
+  if (!proofFile.value) {
+    toast.error('Selecciona una foto o imagen del comprobante de pago.')
+    return
+  }
+  const targetSchoolId = authStore.activeSchoolId || authStore.profile?.school_id || profile.value?.school_id
+  if (!targetSchoolId) {
+    toast.error('No se pudo identificar la institución asociada a tu perfil.')
+    return
+  }
+
+  uploadingProof.value = true
+  try {
+    const fileExt = proofFile.value.name.split('.').pop()
+    const filePath = `receipts/${targetSchoolId}_${Date.now()}.${fileExt}`
+    
+    const { error: uploadErr } = await supabase.storage
+      .from('billing-proofs')
+      .upload(filePath, proofFile.value, { upsert: true })
+
+    if (uploadErr) throw uploadErr
+
+    const { data: publicUrlData } = supabase.storage
+      .from('billing-proofs')
+      .getPublicUrl(filePath)
+
+    const publicUrl = publicUrlData?.publicUrl || filePath
+
+    // 1. Invocar RPC canónico
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc('upload_tenant_payment_proof', {
+      p_school_id: targetSchoolId,
+      p_receipt_url: publicUrl,
+      p_notes: 'Comprobante subido por usuario contratante'
+    })
+
+    if (rpcErr || !rpcRes?.success) {
+      // 2. Fallback de inserción/actualización directa
+      const { error: upsertErr } = await supabase
+        .from('tenant_billing_profiles')
+        .upsert({
+          school_id: targetSchoolId,
+          latest_receipt_url: publicUrl,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'school_id' })
+
+      if (upsertErr) throw (rpcErr || upsertErr)
+    }
+
+    proofUrl.value = publicUrl
+    toast.success('¡Foto de comprobante de pago cargada exitosamente!')
+    proofFile.value = null
+  } catch (err) {
+    toast.error('Error al subir el comprobante: ' + (err.message || 'Verifica la conexión'))
+  } finally {
+    uploadingProof.value = false
+  }
+}
 
 const SPECIALIZATION_OPTIONS = [
+  'Rector / Rectora',
+  'Vicerrector / Vicerrectora',
+  'Inspector(a) General / Inspección',
+  'Psicólogo(a) / DECE',
+  'Secretaría / Colecturía',
   'Lengua y Literatura',
-  'Matematica',
+  'Matemática',
   'Ciencias Naturales',
   'Estudios Sociales',
-  'Educacion Cultural y Artistica',
-  'Educacion Fisica',
-  'Fisica',
-  'Quimica',
-  'Biologia',
+  'Educación Cultural y Artística',
+  'Educación Física',
+  'Física',
+  'Química',
+  'Biología',
   'Historia',
-  'Geografia',
-  'Filosofia',
-  'Lengua Extranjera',
-  'Informatica',
-  'Religion',
+  'Geografía',
+  'Filosofía',
+  'Lengua Extranjera (Inglés)',
+  'Informática / Computación',
+  'Religión / Formación Cristiana',
   'Proyecto Interdisciplinario',
-  'Orientacion Vocacional',
+  'Orientación Vocacional',
   'Otro'
 ]
 
 onMounted(async () => {
   await fetchProfile()
+  await fetchSubscription()
 })
 
 const fetchProfile = async () => {
@@ -65,16 +213,23 @@ const fetchProfile = async () => {
       if (error) throw error
 
       if (data) {
+        photoStoragePath.value = normalizeStoragePath(data.photo_url, 'profile-photos')
+        const signedPhotoUrl = await resolvePrivateImageUrl(
+          supabase,
+          'profile-photos',
+          photoStoragePath.value,
+        ).catch(() => '')
         profile.value = {
+          role: data.role || 'teacher',
           full_name: data.full_name || '',
           email: data.email || user.email,
           phone: data.phone || '',
           address: data.address || '',
           specialization: data.specialization || '',
           hire_date: data.hire_date || '',
-          photo_url: data.photo_url || ''
+          photo_url: signedPhotoUrl
         }
-        photoPreview.value = data.photo_url || ''
+        photoPreview.value = signedPhotoUrl
       }
     }
   } catch (error) {
@@ -88,13 +243,10 @@ const onPhotoChange = (event) => {
   const file = event.target.files?.[0] || null
   if (!file) return
 
-  if (!file.type.startsWith('image/')) {
-    saveError.value = 'Por favor selecciona una imagen'
-    return
-  }
-
-  if (file.size > 5 * 1024 * 1024) {
-    saveError.value = 'La imagen debe ser menor a 5MB'
+  try {
+    validateImageFile(file)
+  } catch (error) {
+    saveError.value = error.message
     return
   }
 
@@ -113,22 +265,7 @@ const uploadPhoto = async (userId) => {
 
   const ext = photoFile.value.name.split('.').pop()
   const fileName = `${userId}/profile-${Date.now()}.${ext}`
-  const filePath = `profile-photos/${fileName}`
-
-  const { data, error } = await supabase.storage
-    .from('profile-photos')
-    .upload(fileName, photoFile.value, {
-      cacheControl: '3600',
-      upsert: true
-    })
-
-  if (error) throw error
-
-  const { data: { publicUrl } } = supabase.storage
-    .from('profile-photos')
-    .getPublicUrl(fileName)
-
-  return publicUrl
+  return uploadPrivateImage(supabase, 'profile-photos', photoFile.value, fileName)
 }
 
 const saveProfile = async () => {
@@ -144,10 +281,10 @@ const saveProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('No hay usuario autenticado')
 
-    let photoUrl = profile.value.photo_url
+    let photoPath = photoStoragePath.value
 
     if (photoFile.value) {
-      photoUrl = await uploadPhoto(user.id)
+      photoPath = await uploadPhoto(user.id)
     }
 
     const updates = {
@@ -157,7 +294,7 @@ const saveProfile = async () => {
       address: profile.value.address || null,
       specialization: profile.value.specialization || null,
       hire_date: profile.value.hire_date || null,
-      photo_url: photoUrl || null
+      photo_url: photoPath || null
     }
 
     const { error } = await supabase
@@ -167,7 +304,10 @@ const saveProfile = async () => {
 
     if (error) throw error
 
-    profile.value.photo_url = photoUrl
+    photoStoragePath.value = photoPath
+    profile.value.photo_url = await resolvePrivateImageUrl(supabase, 'profile-photos', photoPath).catch(() => '')
+    photoPreview.value = profile.value.photo_url
+    if (authStore.profile) authStore.profile.photo_url = profile.value.photo_url
     photoFile.value = null
     saveSuccess.value = true
 
@@ -184,7 +324,7 @@ const saveProfile = async () => {
 
 const removePhoto = () => {
   photoFile.value = null
-  photoPreview.value = profile.value.photo_url || ''
+  photoPreview.value = ''
   newPhotoUrl.value = ''
 }
 </script>
@@ -194,21 +334,21 @@ const removePhoto = () => {
     <main class="app-container">
       <div class="max-w-3xl mx-auto">
         <div class="mb-8">
-          <h1 class="app-title">Mi Perfil</h1>
-          <p class="text-slate-500 mt-1">Completa tu informacion personal y profesional</p>
+          <h1 class="app-title text-slate-900 dark:text-white">Mi Perfil</h1>
+          <p class="text-slate-500 dark:text-slate-400 mt-1">Completa tu información personal y profesional</p>
         </div>
 
         <div v-if="loading" class="text-center py-12">
           <div class="animate-spin h-8 w-8 border-4 border-teal-500 border-t-transparent rounded-full mx-auto"></div>
-          <p class="text-slate-500 mt-4">Cargando perfil...</p>
+          <p class="text-slate-500 dark:text-slate-400 mt-4">Cargando perfil...</p>
         </div>
 
-        <div v-else class="app-card p-8 md:p-12 shadow-sm rounded-2xl border border-slate-200/60 bg-white">
+        <div v-else class="app-card p-8 md:p-12 shadow-sm rounded-2xl border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900">
           <form @submit.prevent="saveProfile" class="space-y-10">
             <!-- Foto de Perfil -->
-            <div class="flex flex-col items-center pb-6 border-b border-slate-200">
+            <div class="flex flex-col items-center pb-6 border-b border-slate-200 dark:border-slate-800">
               <div class="relative">
-                <div class="h-32 w-32 rounded-full overflow-hidden bg-slate-200 border-4 border-white shadow-lg">
+                <div class="h-32 w-32 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 border-4 border-white dark:border-slate-700 shadow-lg">
                   <img
                     v-if="photoPreview"
                     :src="photoPreview"
@@ -229,7 +369,7 @@ const removePhoto = () => {
                   <input type="file" accept="image/*" class="hidden" @change="onPhotoChange" />
                 </label>
               </div>
-              <p class="text-sm text-slate-500 mt-3">Foto de perfil (max 5MB)</p>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-3">Foto de perfil (max 5MB)</p>
               <button
                 v-if="photoPreview && !photoFile"
                 type="button"
@@ -242,10 +382,10 @@ const removePhoto = () => {
 
             <!-- Datos Personales -->
             <div>
-              <h3 class="text-lg font-semibold text-slate-900 mb-4">Datos Personales</h3>
+              <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Datos Personales</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-slate-700 mb-1">Nombre Completo</label>
+                  <label class="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">Nombre Completo</label>
                   <input
                     v-model="profile.full_name"
                     type="text"
@@ -256,18 +396,18 @@ const removePhoto = () => {
                 </div>
 
                 <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-slate-700 mb-1">Correo Electronico</label>
+                  <label class="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">Correo Electrónico</label>
                   <input
                     v-model="profile.email"
                     type="email"
                     disabled
-                    class="app-input bg-slate-100 cursor-not-allowed opacity-60"
+                    class="app-input bg-slate-100 dark:bg-slate-800/80 cursor-not-allowed opacity-60"
                   />
                   <p class="text-xs text-slate-400 mt-1">El correo no se puede cambiar</p>
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-slate-700 mb-1">Telefono</label>
+                  <label class="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">Teléfono</label>
                   <input
                     v-model="profile.phone"
                     type="tel"
@@ -277,7 +417,7 @@ const removePhoto = () => {
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de Contratacion</label>
+                  <label class="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">Fecha de Contratación</label>
                   <input
                     v-model="profile.hire_date"
                     type="date"
@@ -286,12 +426,12 @@ const removePhoto = () => {
                 </div>
 
                 <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-slate-700 mb-1">Direccion</label>
+                  <label class="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">Dirección</label>
                   <textarea
                     v-model="profile.address"
                     rows="2"
                     class="app-input"
-                    placeholder="Direccion de residencia"
+                    placeholder="Dirección de residencia"
                   ></textarea>
                 </div>
               </div>
@@ -299,28 +439,121 @@ const removePhoto = () => {
 
             <!-- Datos Profesionales -->
             <div>
-              <h3 class="text-lg font-semibold text-slate-900 mb-4">Datos Profesionales</h3>
+              <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Datos Profesionales</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-slate-700 mb-1">Especializacion / Materia que Dicta</label>
+                  <label class="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">Especialización / Materia que Dicta</label>
                   <select v-model="profile.specialization" class="app-input">
-                    <option value="">Selecciona una especializacion</option>
+                    <option value="">Selecciona una especialización</option>
                     <option v-for="spec in SPECIALIZATION_OPTIONS" :key="spec" :value="spec">
                       {{ spec }}
                     </option>
                   </select>
-                  <p class="text-xs text-slate-400 mt-1">Selecciona la materia principal que enseas</p>
+                  <p class="text-xs text-slate-400 mt-1">Selecciona la materia principal que enseñas</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- SUSCRIPCIÓN E INFORMACIÓN DE PLAN (Rector / Administrador Institucional únicamente) -->
+            <div v-if="isRectorOrAdmin && tenantSubscription" class="pt-6 border-t border-slate-200 dark:border-slate-800">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">Suscripción & Plan Institucional</h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Gestión de la licencia de uso y límites de estudiantes de tu colegio</p>
+                </div>
+                <span :class="[
+                  'px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border',
+                  tenantSubscription.status === 'active' ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' :
+                  tenantSubscription.status === 'trial' ? 'bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-800' :
+                  'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                ]">
+                  {{ tenantSubscription.status === 'trial' ? 'Período de Prueba' : tenantSubscription.status === 'active' ? 'Suscripción Activa' : tenantSubscription.status === 'past_due' ? 'Pago Vencido' : tenantSubscription.status === 'suspended' ? 'Suspendida' : tenantSubscription.status }}
+                </span>
+              </div>
+
+              <div class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <span class="text-xs text-slate-400 font-medium block">Plan Contratado</span>
+                    <strong class="text-slate-900 dark:text-white text-sm block font-bold">{{ tenantSubscription.plan_name }}</strong>
+                    <span class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
+                      ${{ tenantSubscription.price }} USD / {{ tenantSubscription.billing_cycle === 'yearly' ? 'año' : 'mes' }}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span class="text-xs text-slate-400 font-medium block">Uso de Estudiantes</span>
+                    <strong class="text-slate-900 dark:text-white text-sm block font-bold">{{ studentCount }} / {{ tenantSubscription.max_students }}</strong>
+                    <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full mt-1.5 overflow-hidden">
+                      <div class="bg-indigo-600 h-full rounded-full" :style="{ width: Math.min(100, (studentCount / tenantSubscription.max_students) * 100) + '%' }"></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span class="text-xs text-slate-400 font-medium block">
+                      {{ tenantSubscription.is_trial ? 'Fin de Período de Prueba' : 'Próxima Renovación' }}
+                    </span>
+                    <strong class="text-slate-900 dark:text-white text-sm block font-bold">{{ tenantSubscription.renewal_date }}</strong>
+                    <span v-if="tenantSubscription.is_trial && tenantSubscription.days_remaining !== null" :class="tenantSubscription.days_remaining <= 3 ? 'text-rose-500 font-bold' : 'text-sky-500 font-semibold'" class="text-xs">
+                      {{ tenantSubscription.days_remaining > 0 ? `${tenantSubscription.days_remaining} días restantes` : 'Prueba finalizada' }}
+                    </span>
+                    <span v-else class="text-xs text-slate-500 dark:text-slate-400">
+                      Ciclo {{ tenantSubscription.billing_cycle === 'yearly' ? 'Anual' : 'Mensual' }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-200/80 dark:border-slate-800 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <span class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider block">Comprobante de Pago o Factura</span>
+                      <span class="text-xs text-slate-500 dark:text-slate-400 block">Sube una foto o imagen del recibo/transferencia bancaria para verificación del superadmin.</span>
+                    </div>
+                  </div>
+
+                  <div v-if="proofUrl" class="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl flex items-center justify-between gap-3 text-xs">
+                    <span class="text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-1.5">
+                      ✓ Foto de comprobante cargada
+                    </span>
+                    <a :href="proofUrl" target="_blank" rel="noopener noreferrer" class="font-bold text-emerald-700 dark:text-emerald-400 underline hover:text-emerald-900">
+                      Ver comprobante 👁️
+                    </a>
+                  </div>
+
+                  <div class="flex flex-col sm:flex-row items-center gap-3">
+                    <input 
+                      type="file" 
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      @change="onProofFileChange"
+                      class="block w-full text-xs text-slate-500 dark:text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-950 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100"
+                    />
+                    <button 
+                      type="button" 
+                      @click="uploadProof"
+                      :disabled="uploadingProof || !proofFile"
+                      class="w-full sm:w-auto whitespace-nowrap px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs shadow-sm disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      {{ uploadingProof ? 'Subiendo…' : '📤 Cargar Comprobante' }}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <span class="text-slate-500 dark:text-slate-400">Para cambios de plan o ampliación de estudiantes, contáctanos directamente.</span>
+                  <div class="flex items-center gap-3">
+                    <router-link to="/planes" class="font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700">Ver planes disponibles →</router-link>
+                  </div>
                 </div>
               </div>
             </div>
 
             <!-- Mensajes de estado -->
-            <div v-if="saveError" class="rounded-xl bg-rose-50 border border-rose-200 p-4">
-              <p class="text-sm text-rose-700">{{ saveError }}</p>
+            <div v-if="saveError" class="rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 p-4">
+              <p class="text-sm text-rose-700 dark:text-rose-300">{{ saveError }}</p>
             </div>
 
-            <div v-if="saveSuccess" class="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
-              <p class="text-sm text-emerald-700 flex items-center gap-2">
+            <div v-if="saveSuccess" class="rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 p-4">
+              <p class="text-sm text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
@@ -328,8 +561,8 @@ const removePhoto = () => {
               </p>
             </div>
 
-            <!-- Boton Guardar -->
-            <div class="flex justify-end pt-4 border-t border-slate-200">
+            <!-- Botón Guardar -->
+            <div class="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="submit"
                 :disabled="saving"

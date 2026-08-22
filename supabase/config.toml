@@ -1,0 +1,29 @@
+project_id = "webnotas"
+
+[auth]
+site_url = "https://sandybrown-alpaca-347737.hostingersite.com"
+additional_redirect_urls = [
+  "https://sandybrown-alpaca-347737.hostingersite.com/**",
+  "https://sandybrown-alpaca-347737.hostingersite.com/login",
+  "https://sandybrown-alpaca-347737.hostingersite.com/auth/callback",
+  "https://sandybrown-alpaca-347737.hostingersite.com/reset-password",
+  "https://sandybrown-alpaca-347737.hostingersite.com/change-password",
+]
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = false
+max_frequency = "1m"
+otp_length = 8
+otp_expiry = 3600
+
+[storage.vector]
+enabled = false
+max_buckets = 10
+max_indexes = 5

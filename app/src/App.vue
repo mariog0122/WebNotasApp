@@ -7,6 +7,7 @@ import { useNetwork } from './composables/useNetwork'
 import InteractiveGridPattern from './components/InteractiveGridPattern.vue'
 import MainLayout from './components/MainLayout.vue'
 import ErrorBoundary from './components/ErrorBoundary.vue'
+import BrandLogo from './components/ui/BrandLogo.vue'
 import { Toaster, toast } from 'vue-sonner'
 
 const route = useRoute()
@@ -49,7 +50,7 @@ onMounted(() => {
   }
 })
 
-const isLoginPage = computed(() => route.name === 'login')
+const isPublicPage = computed(() => ['login', 'planes', 'terminos', 'privacidad'].includes(route.name))
 </script>
 
 <template>
@@ -57,7 +58,7 @@ const isLoginPage = computed(() => route.name === 'login')
     <!-- Global Background Grid - DISABLED: was blocking pointer events across the app -->
     <!--
     <InteractiveGridPattern
-      v-if="!isLoginPage"
+      v-if="!isPublicPage"
       class="fixed inset-0 z-0 opacity-40 pointer-events-none"
       :width="40"
       :height="40"
@@ -79,7 +80,7 @@ const isLoginPage = computed(() => route.name === 'login')
             </svg>
           </div>
           <div class="text-center">
-            <p class="text-slate-900 font-bold text-lg">WebNotas</p>
+            <BrandLogo variant="compact" class="text-xl" />
             <p class="text-slate-500 text-sm">Verificando sesión segura...</p>
           </div>
         </div>
@@ -91,7 +92,7 @@ const isLoginPage = computed(() => route.name === 'login')
       <Suspense>
         <template #default>
           <div>
-            <template v-if="isLoginPage">
+            <template v-if="isPublicPage">
               <router-view />
             </template>
             

@@ -358,3 +358,87 @@ create index if not exists grades_student_id_idx on public.grades (student_id);
 create index if not exists project_subject_grades_student_idx on public.project_subject_grades (student_id);
 create index if not exists project_subject_grades_course_quarter_idx on public.project_subject_grades (course_id, quarter_id);
 create index if not exists qualitative_grades_course_quarter_idx on public.qualitative_grades (course_subject_id, quarter_id);
+
+-- TENANT FEATURES (Módulos por Institución)
+create table if not exists public.tenant_features (
+    school_id uuid references public.schools(id) on delete cascade not null,
+    feature_key text not null,
+    enabled boolean default true not null,
+    config jsonb default '{}'::jsonb not null,
+    updated_at timestamptz default timezone('utc'::text, now()) not null,
+    primary key (school_id, feature_key)
+);
+alter table public.tenant_features enable row level security;
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='tenant_features' and policyname='SuperAdmin and School Members Read Features') then
+    create policy "SuperAdmin and School Members Read Features" on public.tenant_features for select using (true);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='tenant_features' and policyname='SuperAdmin Manage Features') then
+    create policy "SuperAdmin Manage Features" on public.tenant_features for all using (public.is_superadmin());
+  end if;
+end $$;
+
+-- TENANT LIMITS (Límites por Institución)
+create table if not exists public.tenant_limits (
+    school_id uuid references public.schools(id) on delete cascade primary key,
+    max_users integer default 50 not null,
+    max_teachers integer default 20 not null,
+    max_students integer default 500 not null,
+    storage_mb integer default 5120 not null,
+    max_documents integer default 1000 not null,
+    max_emails_month integer default 5000 not null,
+    max_api_requests integer default 100000 not null,
+    updated_at timestamptz default timezone('utc'::text, now()) not null
+);
+alter table public.tenant_limits enable row level security;
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='tenant_limits' and policyname='SuperAdmin and School Members Read Limits') then
+    create policy "SuperAdmin and School Members Read Limits" on public.tenant_limits for select using (true);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='tenant_limits' and policyname='SuperAdmin Manage Limits') then
+    create policy "SuperAdmin Manage Limits" on public.tenant_limits for all using (public.is_superadmin());
+  end if;
+end $$;
+
+-- AUDIT LOG (Logs de Auditoría Globales)
+create table if not exists public.audit_log (
+    id uuid default uuid_generate_v4() primary key,
+    school_id uuid references public.schools(id) on delete cascade,
+    user_id uuid references auth.users(id) on delete set null,
+    action text not null,
+    table_name text,
+    record_id text,
+    old_values jsonb,
+    new_values jsonb,
+    ip_address text,
+    created_at timestamptz default timezone('utc'::text, now()) not null
+);
+alter table public.audit_log enable row level security;
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='audit_log' and policyname='Read audit logs for admins') then
+    create policy "Read audit logs for admins" on public.audit_log for select using (true);
+  end if;
+end $$;
+
+-- IMPERSONATION LOGS (Logs de Soporte e Impersonación)
+create table if not exists public.impersonation_logs (
+    id uuid default uuid_generate_v4() primary key,
+    actor_id uuid references auth.users(id) on delete cascade not null,
+    impersonated_user_id uuid references auth.users(id) on delete cascade not null,
+    school_id uuid references public.schools(id) on delete cascade not null,
+    reason text not null,
+    started_at timestamptz default timezone('utc'::text, now()) not null,
+    ended_at timestamptz,
+    ip_address text,
+    user_agent text
+);
+alter table public.impersonation_logs enable row level security;
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='impersonation_logs' and policyname='Read impersonation logs') then
+    create policy "Read impersonation logs" on public.impersonation_logs for select using (true);
+  end if;
+end $$;

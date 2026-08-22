@@ -5,27 +5,71 @@ import { useAuthStore } from '../stores/auth'
 import { supabase } from '../lib/supabase'
 import { translateError } from '../lib/errorDictionary'
 import { toast } from 'vue-sonner'
+import BrandLogo from '../components/ui/BrandLogo.vue'
+import GalaxyBackground from '../components/ui/GalaxyBackground.vue'
+import { DEMO_REQUEST_URL } from '../lib/brand'
+import { APP_URL } from '../lib/appUrl'
+import { ArrowRight, Building2, Check, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-vue-next'
 
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
+const showPassword = ref(false)
 const router = useRouter()
 const authStore = useAuthStore()
 
-const canvasRef = ref(null)
-let animationId = null
+let authStateSubscription = null
 
-const isRegistering = ref(false)
-const regEmail = ref('')
-const regPassword = ref('')
-const regLoading = ref(false)
+const isRecovering = ref(false)
+const isUpdatingPassword = ref(false)
+const recoverEmail = ref('')
+const recoverLoading = ref(false)
+const newPassword = ref('')
+const updateLoading = ref(false)
 
-const toggleMode = () => {
-    isRegistering.value = !isRegistering.value
-    email.value = ''
-    password.value = ''
-    regEmail.value = ''
-    regPassword.value = ''
+const toggleRecover = () => {
+    isRecovering.value = true
+    recoverEmail.value = email.value
+}
+const cancelRecover = () => {
+    isRecovering.value = false
+}
+
+const handleRecoverPassword = async () => {
+  if (!recoverEmail.value) return
+  recoverLoading.value = true
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(recoverEmail.value, {
+      redirectTo: `${APP_URL}/reset-password`,
+    })
+    if (error) throw error
+    toast.success('Correo enviado', { description: 'Revisa tu bandeja de entrada o spam para restablecer tu contraseña.' })
+    isRecovering.value = false
+  } catch (error) {
+    toast.error('Error al enviar correo', { description: translateError(error) })
+  } finally {
+    recoverLoading.value = false
+  }
+}
+
+const handleUpdatePassword = async () => {
+  if (!newPassword.value || newPassword.value.length < 6) {
+    toast.warning('Contraseña muy corta', { description: 'Debe tener al menos 6 caracteres.' })
+    return
+  }
+  updateLoading.value = true
+  try {
+    const { error } = await supabase.auth.updateUser({ password: newPassword.value })
+    if (error) throw error
+    toast.success('Contraseña actualizada', { description: 'Tu contraseña ha sido cambiada exitosamente.' })
+    isUpdatingPassword.value = false
+    await supabase.auth.signOut()
+    router.push('/login')
+  } catch (error) {
+    toast.error('Error al actualizar', { description: translateError(error) })
+  } finally {
+    updateLoading.value = false
+  }
 }
 
 const handleLogin = async () => {
@@ -42,273 +86,562 @@ const handleLogin = async () => {
   }
 }
 
-const handleRegister = async () => {
-    regLoading.value = true
-
-    const domain = '@docentes.educacion.edu.ec'
-    if (!regEmail.value.endsWith(domain)) {
-        toast.warning('Error de Seguridad', {
-          description: `Solo se permiten correos institucionales terminados en ${domain}`
-        })
-        regLoading.value = false
-        return
-    }
-
-    if (!regPassword.value || regPassword.value.length < 6) {
-        toast.warning('Contraseña muy corta', {
-          description: 'La contraseña debe tener al menos 6 caracteres.'
-        })
-        regLoading.value = false
-        return
-    }
-
-    try {
-        const { error } = await supabase.auth.signUp({
-            email: regEmail.value,
-            password: regPassword.value,
-        })
-        
-        if (error) throw error
-
-        toast.success('Registro Exitoso', {
-          description: 'Revisa tu correo electrónico para confirmar tu cuenta.'
-        })
-        
-        regEmail.value = ''
-        regPassword.value = ''
-        setTimeout(() => {
-            isRegistering.value = false
-        }, 1500)
-    } catch (error) {
-        toast.error('Error de Registro', {
-          description: translateError(error)
-        })
-    } finally {
-        regLoading.value = false
-    }
-}
-
-const initCanvas = () => {
-  const canvas = canvasRef.value
-  if (!canvas) return
-  
-  const ctx = canvas.getContext('2d')
-  let width = canvas.width = canvas.parentElement.clientWidth
-  let height = canvas.height = canvas.parentElement.clientHeight
-  
-  const stars = []
-  const starCount = 300
-  const speed = 2
-
-  class Star {
-    constructor() {
-      this.x = Math.random() * width - width / 2
-      this.y = Math.random() * height - height / 2
-      this.z = Math.random() * width
-      this.pz = this.z
-    }
-
-    update() {
-      this.z = this.z - speed
-      if (this.z < 1) {
-        this.z = width
-        this.x = Math.random() * width - width / 2
-        this.y = Math.random() * height - height / 2
-        this.pz = this.z
-      }
-    }
-
-    draw() {
-      const sx = (this.x / this.z) * width + width / 2
-      const sy = (this.y / this.z) * width + height / 2
-      const r = (1 - this.z / width) * 2.5
-      const px = (this.x / this.pz) * width + width / 2
-      const py = (this.y / this.pz) * width + height / 2
-      this.pz = this.z
-
-      if (sx > 0 && sx < width && sy > 0 && sy < height) {
-        ctx.fillStyle = `rgba(255, 255, 255, ${1 - this.z / width})`
-        ctx.beginPath()
-        ctx.arc(sx, sy, r, 0, Math.PI * 2)
-        ctx.fill()
-
-        ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - this.z / width) * 0.5})`
-        ctx.lineWidth = r
-        ctx.beginPath()
-        ctx.moveTo(px, py)
-        ctx.lineTo(sx, sy)
-        ctx.stroke()
-      }
-    }
-  }
-
-  for (let i = 0; i < starCount; i++) {
-    stars.push(new Star())
-  }
-
-  const animate = () => {
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.4)'
-    ctx.fillRect(0, 0, width, height)
-    stars.forEach(star => {
-      star.update()
-      star.draw()
-    })
-    animationId = requestAnimationFrame(animate)
-  }
-
-  animate()
-
-  const handleResize = () => {
-    width = canvas.width = canvas.parentElement.clientWidth
-    height = canvas.height = canvas.parentElement.clientHeight
-  }
-  
-  window.addEventListener('resize', handleResize)
-  canvas._resizeHandler = handleResize
-}
-
 onMounted(() => {
-  initCanvas()
+  // Detect password recovery link
+  const { data } = supabase.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      isUpdatingPassword.value = true
+    }
+  })
+  authStateSubscription = data.subscription
+  
+  // Fallback for query param detection
+  if (
+    window.location.pathname === '/reset-password'
+    || window.location.pathname === '/change-password'
+    || window.location.hash.includes('type=recovery')
+    || window.location.search.includes('type=recovery')
+  ) {
+    isUpdatingPassword.value = true
+  }
 })
 
 onUnmounted(() => {
-  cancelAnimationFrame(animationId)
-  const canvas = canvasRef.value
-  if (canvas?._resizeHandler) {
-    window.removeEventListener('resize', canvas._resizeHandler)
-    delete canvas._resizeHandler
-  }
+  authStateSubscription?.unsubscribe()
+  authStateSubscription = null
 })
 </script>
 
 <template>
-  <div class="min-h-screen flex bg-slate-50 relative overflow-hidden">
-    <div class="hidden lg:flex lg:w-1/2 relative bg-slate-900 items-center justify-center overflow-hidden">
-      <div class="absolute inset-0 z-0">
-        <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=2069&auto=format&fit=crop" 
-             alt="Docente" 
-             class="w-full h-full object-cover opacity-60 mix-blend-overlay" />
-        <div class="absolute inset-0 bg-gradient-to-br from-indigo-900/95 via-slate-900/90 to-slate-900/95 mix-blend-multiply"></div>
-      </div>
+  <main class="login-shell">
+    <section
+      data-testid="login-brand-panel"
+      class="login-brand-panel hidden lg:flex"
+      aria-label="Presentación de LOGREVA"
+    >
+      <GalaxyBackground />
 
-      <canvas ref="canvasRef" class="absolute inset-0 w-full h-full z-0 opacity-40"></canvas>
+      <div class="brand-content">
+        <BrandLogo variant="horizontal" tone="light" class="brand-lockup" />
 
-      <div class="relative z-10 p-12 text-white max-w-lg pointer-events-none select-none">
-        <div class="mb-8">
-           <div class="h-16 w-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6 shadow-2xl border border-white/20">
-             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-cyan-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path d="M12 14l9-5-9-5-9 5 9 5z" />
-               <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
-             </svg>
-           </div>
-           
-           <h1 class="text-5xl font-extrabold mb-6 leading-tight tracking-tight drop-shadow-lg">
-             Gestiona el <br>
-             <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400 filter drop-shadow-lg">Futuro Educativo</span>
-           </h1>
-           <p class="text-slate-300 text-lg leading-relaxed font-light drop-shadow-md">
-             Control total de calificaciones y reportes en una plataforma diseñada para la excelencia académica. Optimiza tu tiempo y enfócate en lo que importa: enseñar.
-           </p>
+        <div class="brand-message">
+          <p class="brand-eyebrow">PLATAFORMA INSTITUCIONAL</p>
+          <h1>
+            Gestión Académica
+            <span>Centralizada</span>
+          </h1>
+          <p class="brand-promise">Donde cada institución logra su excelencia académica.</p>
+
+          <ul class="brand-benefits" aria-label="Beneficios principales">
+            <li><span><Check aria-hidden="true" /></span>Control académico en tiempo real</li>
+            <li><span><Check aria-hidden="true" /></span>Trazabilidad lista para auditoría</li>
+            <li><span><Check aria-hidden="true" /></span>Reportes claros para decidir mejor</li>
+          </ul>
         </div>
 
-        <div class="mt-12">
-          <div class="bg-slate-900/40 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-300">
-            <div class="absolute inset-0 pointer-events-none z-0">
-              <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 translate-x-[-150%] animate-laser-scan w-1/2 h-full"></div>
-            </div>
-            <div class="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl blur opacity-5 group-hover:opacity-20 transition duration-1000 group-hover:duration-200"></div>
-            <div class="relative flex items-start gap-4 z-10">
-              <div class="h-12 w-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0 border border-white/5">
-                <svg class="h-6 w-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <div>
-                <h3 class="font-bold text-white mb-1">Acceso Seguro</h3>
-                <p class="text-sm text-slate-400">Autenticación protegida por Supabase y sesiones persistentes.</p>
-              </div>
-            </div>
+        <div class="secure-card">
+          <div class="secure-card__icon"><ShieldCheck aria-hidden="true" /></div>
+          <div>
+            <p class="secure-card__title">Acceso Seguro</p>
+            <p>Autenticación protegida con Supabase Auth y sesiones JWT.</p>
           </div>
+          <span class="secure-card__status">PROTEGIDO</span>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-10 relative z-10">
-      <div class="w-full max-w-md">
-        <div class="text-center mb-8 lg:hidden">
-          <div class="mx-auto h-16 w-16 bg-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/30">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path d="M12 14l9-5-9-5-9 5 9 5z" />
-              <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-            </svg>
-          </div>
-          <h1 class="text-3xl font-bold text-slate-900">Sistema de Notas</h1>
-          <p class="text-slate-500 mt-2">Plataforma académica</p>
+    <section class="login-access-panel">
+      <div class="access-decoration access-decoration--top" aria-hidden="true"></div>
+      <div class="access-decoration access-decoration--bottom" aria-hidden="true"></div>
+
+      <div class="login-access-wrap">
+        <div class="mobile-brand lg:hidden">
+          <BrandLogo variant="horizontal" class="text-xl" />
         </div>
 
-        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-          <div class="mb-6">
-            <h2 class="text-2xl font-bold text-slate-900">{{ isRegistering ? 'Registro Docente' : 'Bienvenido' }}</h2>
-            <p class="text-slate-500 mt-1">
-              {{ isRegistering ? 'Crea tu cuenta con correo institucional' : 'Ingresa tus credenciales para continuar' }}
+        <div data-testid="login-card" class="login-card">
+          <div class="login-card__accent" aria-hidden="true"></div>
+          <div class="login-card__header">
+            <div class="login-card__shield"><LockKeyhole aria-hidden="true" /></div>
+            <h2>
+              {{ isUpdatingPassword ? 'Nueva contraseña' : (isRecovering ? 'Recuperar contraseña' : 'Bienvenido a Logreva') }}
+            </h2>
+            <p>
+              {{ isUpdatingPassword ? 'Crea una contraseña segura para continuar' : (isRecovering ? 'Te enviaremos un enlace seguro de recuperación' : 'Ingresa tus credenciales institucionales') }}
             </p>
           </div>
 
-          <form v-if="!isRegistering" @submit.prevent="handleLogin" class="space-y-5">
+          <form v-if="isUpdatingPassword" @submit.prevent="handleUpdatePassword" class="login-form">
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">Correo electrónico</label>
-              <input v-model="email" type="email" required class="app-input" placeholder="correo@institucion.edu.ec" />
+              <label for="new-password">Nueva contraseña</label>
+              <div class="login-control">
+                <LockKeyhole aria-hidden="true" />
+                <input id="new-password" v-model="newPassword" type="password" autocomplete="new-password" required placeholder="Mínimo 6 caracteres" />
+              </div>
             </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">Contraseña</label>
-              <input v-model="password" type="password" required class="app-input" placeholder="••••••••" />
-            </div>
-
-            <button type="submit" :disabled="loading" class="w-full app-btn app-btn-primary py-3 disabled:opacity-60">
-              {{ loading ? 'Ingresando...' : 'Iniciar Sesión' }}
+            <button type="submit" :disabled="updateLoading" class="login-primary-button">
+              <span>{{ updateLoading ? 'Actualizando...' : 'Guardar nueva contraseña' }}</span>
+              <ArrowRight v-if="!updateLoading" aria-hidden="true" />
             </button>
           </form>
 
-          <form v-else @submit.prevent="handleRegister" class="space-y-5">
+          <form v-else-if="isRecovering" @submit.prevent="handleRecoverPassword" class="login-form">
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">Correo institucional</label>
-              <input v-model="regEmail" type="email" required class="app-input" placeholder="usuario@docentes.educacion.edu.ec" />
+              <label for="recover-email">Correo electrónico</label>
+              <div class="login-control">
+                <Mail aria-hidden="true" />
+                <input id="recover-email" v-model="recoverEmail" type="email" autocomplete="email" required placeholder="correo@institucion.edu.ec" />
+              </div>
             </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">Contraseña</label>
-              <input v-model="regPassword" type="password" required class="app-input" placeholder="Mínimo 6 caracteres" />
-            </div>
-
-            <button type="submit" :disabled="regLoading" class="w-full app-btn app-btn-primary py-3 disabled:opacity-60">
-              {{ regLoading ? 'Registrando...' : 'Crear Cuenta' }}
+            <button type="submit" :disabled="recoverLoading" class="login-primary-button">
+              <span>{{ recoverLoading ? 'Enviando...' : 'Enviar enlace seguro' }}</span>
+              <ArrowRight v-if="!recoverLoading" aria-hidden="true" />
             </button>
+            <button type="button" @click="cancelRecover" class="login-secondary-action">Volver al inicio de sesión</button>
           </form>
 
-          <div class="mt-6 text-center">
-            <button @click="toggleMode" class="text-sm font-semibold text-indigo-600 hover:text-indigo-700">
-              {{ isRegistering ? 'Ya tengo una cuenta' : 'Crear cuenta docente' }}
-            </button>
-          </div>
+          <template v-else>
+            <form @submit.prevent="handleLogin" class="login-form">
+              <div>
+                <label for="login-email">Correo electrónico</label>
+                <div class="login-control">
+                  <Mail aria-hidden="true" />
+                  <input id="login-email" v-model="email" type="email" inputmode="email" autocomplete="email" required placeholder="correo@institucion.edu.ec" />
+                </div>
+              </div>
+
+              <div>
+                <label for="login-password">Contraseña</label>
+                <div class="login-control login-control--password">
+                  <LockKeyhole aria-hidden="true" />
+                  <input id="login-password" v-model="password" :type="showPassword ? 'text' : 'password'" autocomplete="current-password" required placeholder="••••••••" />
+                  <button v-if="!showPassword" type="button" aria-label="Mostrar contraseña" @click="showPassword = true" class="password-toggle">
+                    <Eye aria-hidden="true" />
+                  </button>
+                  <button v-else type="button" aria-label="Ocultar contraseña" @click="showPassword = false" class="password-toggle">
+                    <EyeOff aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+
+              <button type="submit" :disabled="loading" class="login-primary-button">
+                <span>{{ loading ? 'Ingresando...' : 'Iniciar sesión' }}</span>
+                <ArrowRight v-if="!loading" aria-hidden="true" />
+              </button>
+
+              <button type="button" @click="toggleRecover" class="forgot-password">¿Olvidaste tu contraseña?</button>
+            </form>
+
+            <div class="commercial-actions">
+              <p>
+                ¿No tienes cuenta?
+                <a :href="DEMO_REQUEST_URL" target="_blank" rel="noopener noreferrer">Solicita una demo</a>
+              </p>
+              <router-link to="/planes" class="plans-link">
+                <Building2 aria-hidden="true" />
+                <span>Ver Planes, Precios y Seguridad</span>
+                <ArrowRight aria-hidden="true" />
+              </router-link>
+            </div>
+          </template>
         </div>
+
+        <footer class="login-footer">
+          <p>© 2026 Logreva · Por Adyron S.A.S · <router-link to="/terminos">Términos</router-link> · <router-link to="/privacidad">Privacidad</router-link></p>
+          <p>Creado en Ecuador para Latinoamérica 🇪🇨 · Por Adyron S.A.S</p>
+        </footer>
       </div>
-    </div>
-  </div>
+    </section>
+  </main>
 </template>
 
 <style scoped>
-@keyframes laser-scan {
-  0% {
-    transform: translateX(-150%) skewX(-12deg);
-  }
-  100% {
-    transform: translateX(350%) skewX(-12deg);
-  }
+.login-shell {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100svh;
+  overflow: hidden;
+  background: #f8fafc;
 }
 
-.animate-laser-scan {
-  animation: laser-scan 3s ease-in-out infinite;
+.login-brand-panel {
+  position: relative;
+  width: 52%;
+  min-height: 100vh;
+  align-items: stretch;
+  overflow: hidden;
+  background: #020817;
+}
+
+.brand-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  max-width: 760px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: clamp(2.5rem, 5vw, 5.5rem);
+  flex-direction: column;
+  justify-content: center;
+  color: white;
+}
+
+.brand-lockup {
+  position: absolute;
+  top: clamp(2.5rem, 5vh, 4.5rem);
+  left: clamp(2.5rem, 5vw, 5.5rem);
+  font-size: clamp(1.25rem, 1.55vw, 1.7rem);
+}
+
+.brand-message {
+  max-width: 590px;
+  padding-top: 3rem;
+}
+
+.brand-eyebrow {
+  margin-bottom: 1.15rem;
+  color: #67e8f9;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+}
+
+.brand-message h1 {
+  margin: 0;
+  font-size: clamp(3rem, 4.6vw, 5.35rem);
+  font-weight: 900;
+  letter-spacing: -0.052em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.brand-message h1 span {
+  display: block;
+  margin-top: 0.14em;
+  color: #22d3ee;
+  background: linear-gradient(95deg, #22d3ee 5%, #38bdf8 58%, #60a5fa 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-promise {
+  max-width: 500px;
+  margin-top: 1.65rem;
+  color: #cbd5e1;
+  font-size: clamp(1rem, 1.3vw, 1.25rem);
+  line-height: 1.7;
+}
+
+.brand-benefits {
+  display: grid;
+  margin-top: 2rem;
+  gap: 0.8rem;
+  color: #e2e8f0;
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.brand-benefits li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-benefits li > span {
+  display: grid;
+  width: 1.55rem;
+  height: 1.55rem;
+  place-items: center;
+  border: 1px solid rgba(34, 211, 238, 0.34);
+  border-radius: 999px;
+  color: #22d3ee;
+  background: rgba(8, 145, 178, 0.12);
+}
+
+.brand-benefits svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  stroke-width: 3;
+}
+
+.secure-card {
+  display: flex;
+  position: absolute;
+  right: clamp(2.5rem, 5vw, 5.5rem);
+  bottom: clamp(2.4rem, 5vh, 4.5rem);
+  left: clamp(2.5rem, 5vw, 5.5rem);
+  max-width: 590px;
+  padding: 1.1rem 1.2rem;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 1.15rem;
+  background: linear-gradient(120deg, rgba(15, 23, 42, 0.62), rgba(8, 47, 73, 0.35));
+  box-shadow: 0 22px 70px rgba(2, 6, 23, 0.35), inset 0 1px rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+}
+
+.secure-card__icon {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-radius: 0.85rem;
+  color: #22d3ee;
+  background: rgba(6, 182, 212, 0.1);
+}
+
+.secure-card__icon svg { width: 1.45rem; }
+.secure-card__title { margin-bottom: 0.25rem; color: white; font-weight: 800; }
+.secure-card p:last-child { color: #94a3b8; font-size: 0.76rem; line-height: 1.5; }
+
+.secure-card__status {
+  margin-left: auto;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  border-radius: 999px;
+  color: #67e8f9;
+  font-size: 0.54rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.login-access-panel {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(34, 211, 238, 0.08), transparent 28%),
+    linear-gradient(145deg, #f8fafc 0%, #ffffff 45%, #f1f5f9 100%);
+}
+
+.access-decoration {
+  position: absolute;
+  border: 1px solid rgba(7, 154, 183, 0.13);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.access-decoration--top { width: 15rem; height: 15rem; top: -8rem; right: -7rem; box-shadow: 0 0 0 28px rgba(7, 154, 183, 0.025); }
+.access-decoration--bottom { width: 10rem; height: 10rem; bottom: -6rem; left: -5rem; box-shadow: 0 0 0 22px rgba(7, 154, 183, 0.02); }
+
+.login-access-wrap {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 31rem;
+}
+
+.mobile-brand { margin-bottom: 1.75rem; text-align: center; }
+
+.login-card {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(1.5rem, 5vw, 2.65rem);
+  border: 1px solid rgba(203, 213, 225, 0.72);
+  border-radius: 1.6rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 34px 90px -42px rgba(15, 23, 42, 0.48), 0 12px 30px -20px rgba(15, 23, 42, 0.2), inset 0 1px white;
+  backdrop-filter: blur(18px);
+}
+
+.login-card__accent {
+  position: absolute;
+  top: 0;
+  right: 16%;
+  left: 16%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #079ab7, transparent);
+  box-shadow: 0 0 22px rgba(7, 154, 183, 0.55);
+}
+
+.login-card__header { margin-bottom: 2rem; text-align: center; }
+
+.login-card__shield {
+  display: grid;
+  width: 3.6rem;
+  height: 3.6rem;
+  margin: 0 auto 1rem;
+  place-items: center;
+  border: 1px solid rgba(7, 154, 183, 0.16);
+  border-radius: 1.1rem;
+  color: #07839c;
+  background: linear-gradient(145deg, #ecfeff, #e6f8f7);
+  box-shadow: 0 12px 24px -16px rgba(7, 154, 183, 0.7), inset 0 1px white;
+}
+
+.login-card__shield svg { width: 1.65rem; height: 1.65rem; stroke-width: 1.8; }
+.login-card__header h2 { color: #0b1530; font-size: clamp(1.55rem, 4vw, 2rem); font-weight: 900; letter-spacing: -0.035em; }
+.login-card__header p { margin-top: 0.5rem; color: #64748b; font-size: 0.9rem; }
+
+.login-form { display: grid; gap: 1.15rem; }
+.login-form label { display: block; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.8rem; font-weight: 800; }
+
+.login-control {
+  display: flex;
+  min-height: 3.2rem;
+  padding: 0 0.95rem;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid #dbe3ed;
+  border-radius: 0.8rem;
+  background: #fbfdff;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.025);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.login-control:focus-within { border-color: rgba(7, 154, 183, 0.72); background: white; box-shadow: 0 0 0 4px rgba(7, 154, 183, 0.1); }
+.login-control > svg { width: 1.1rem; height: 1.1rem; flex: 0 0 auto; color: #64748b; stroke-width: 1.8; }
+.login-control input { width: 100%; min-width: 0; border: 0; outline: 0; color: #0f172a; background: transparent; font-size: 0.9rem; }
+.login-control input::placeholder { color: #94a3b8; }
+.login-control--password { padding-right: 0.55rem; }
+
+.password-toggle {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.6rem;
+  color: #64748b;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.password-toggle:hover { color: #087c93; background: #ecfeff; }
+.password-toggle svg { width: 1.05rem; height: 1.05rem; }
+
+.login-primary-button {
+  display: flex;
+  min-height: 3.35rem;
+  margin-top: 0.15rem;
+  padding: 0 1.2rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  border-radius: 0.82rem;
+  color: white;
+  background: linear-gradient(100deg, #087c78 0%, #079ab7 56%, #06b6d4 100%);
+  box-shadow: 0 16px 30px -18px rgba(7, 154, 183, 0.95), inset 0 1px rgba(255, 255, 255, 0.22);
+  font-size: 0.9rem;
+  font-weight: 850;
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+.login-primary-button:hover:not(:disabled) { transform: translateY(-1px); filter: saturate(1.08); box-shadow: 0 20px 34px -18px rgba(7, 154, 183, 1); }
+.login-primary-button:disabled { cursor: wait; opacity: 0.62; }
+.login-primary-button svg { width: 1.05rem; height: 1.05rem; }
+
+.forgot-password, .login-secondary-action { justify-self: center; color: #087c93; font-size: 0.78rem; font-weight: 750; }
+.forgot-password:hover, .login-secondary-action:hover { color: #075f72; text-decoration: underline; text-underline-offset: 3px; }
+
+.commercial-actions { margin-top: 1.45rem; padding-top: 1.35rem; border-top: 1px solid #edf1f5; text-align: center; }
+.commercial-actions > p { color: #64748b; font-size: 0.78rem; }
+.commercial-actions > p a { margin-left: 0.25rem; color: #087c93; font-weight: 850; }
+.commercial-actions > p a:hover { color: #075f72; }
+
+.plans-link {
+  display: flex;
+  margin-top: 1.15rem;
+  padding: 0.9rem 1rem;
+  align-items: center;
+  gap: 0.65rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.8rem;
+  color: #334155;
+  background: #f8fafc;
+  font-size: 0.76rem;
+  font-weight: 800;
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+
+.plans-link:hover { border-color: rgba(7, 154, 183, 0.28); color: #087c93; background: #f0fdff; }
+.plans-link svg { width: 1rem; height: 1rem; color: #087c93; }
+.plans-link span { flex: 1; text-align: left; }
+
+.login-footer { margin-top: 1.25rem; color: #64748b; text-align: center; font-size: 0.68rem; line-height: 1.75; }
+.login-footer a:hover { color: #087c93; }
+
+.dark .login-card {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(51, 65, 85, 0.7);
+  box-shadow: 0 34px 90px -42px rgba(0, 0, 0, 0.8), inset 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.dark .login-card__header h2 {
+  color: #f8fafc;
+}
+
+.dark .login-card__header p {
+  color: #94a3b8;
+}
+
+.dark .login-form label {
+  color: #e2e8f0;
+}
+
+.dark .login-control {
+  background: rgba(2, 6, 23, 0.6);
+  border-color: #334155;
+}
+
+.dark .login-control:focus-within {
+  background: rgba(2, 6, 23, 0.9);
+  border-color: #06b6d4;
+}
+
+.dark .login-control input {
+  color: #f8fafc;
+}
+
+.dark .plans-link {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+.dark .plans-link:hover {
+  background: rgba(15, 23, 42, 0.9);
+  color: #38bdf8;
+  border-color: #0284c7;
+}
+
+.dark .commercial-actions {
+  border-top-color: #1e293b;
+}
+
+@media (min-width: 1024px) {
+  .login-access-panel { width: 48%; padding: 2rem; }
+}
+
+@media (max-height: 820px) and (min-width: 1024px) {
+  .brand-content { padding-top: 5.5rem; padding-bottom: 8rem; }
+  .brand-message h1 { font-size: clamp(2.8rem, 4vw, 4.2rem); }
+  .brand-promise { margin-top: 1.1rem; }
+  .brand-benefits { margin-top: 1.25rem; gap: 0.55rem; }
+  .secure-card { bottom: 1.5rem; }
+  .login-card { padding-top: 1.6rem; padding-bottom: 1.6rem; }
+  .login-card__header { margin-bottom: 1.25rem; }
+  .login-card__shield { width: 3rem; height: 3rem; margin-bottom: 0.75rem; }
+}
+
+@media (max-width: 639px) {
+  .login-access-panel { align-items: flex-start; padding: 1.1rem 0.9rem 1.5rem; overflow-y: auto; }
+  .login-access-wrap { margin: auto 0; }
+  .login-card { border-radius: 1.35rem; }
+  .login-footer { margin-top: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-primary-button, .login-control, .plans-link, .password-toggle { transition: none; }
 }
 </style>

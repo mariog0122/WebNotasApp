@@ -14,24 +14,20 @@ const updateSW = registerSW({
     console.log('[PWA] Nueva versión disponible. Actualice para ver los cambios.')
   },
   onOfflineReady() {
-    console.log('[PWA] WebNotas lista para trabajar sin conexión.')
+    console.log('[PWA] LOGREVA está lista para trabajar sin conexión.')
   },
 })
 
 import { VueQueryPlugin, QueryClient } from '@tanstack/vue-query'
-import { persistQueryClient } from '@tanstack/query-persist-client-core'
-import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
-import { get, set, del } from 'idb-keyval'
+import { del } from 'idb-keyval'
+import { supabase } from './lib/supabase'
+import { installErrorTelemetry } from './lib/telemetry'
 
-const idbValidKey = {
-  getItem: async (key) => await get(key),
-  setItem: async (key, value) => await set(key, value),
-  removeItem: async (key) => await del(key),
+// Retira datos académicos que versiones anteriores persistían durante siete días.
+if ('caches' in globalThis) {
+  void globalThis.caches.delete('supabase-api-cache')
 }
-
-const persister = createAsyncStoragePersister({
-  storage: idbValidKey,
-})
+void del('REACT_QUERY_OFFLINE_CACHE')
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,18 +41,13 @@ const queryClient = new QueryClient({
 
 const app = createApp(App)
 
+installErrorTelemetry(app, supabase, {
+  release: import.meta.env.VITE_APP_RELEASE || 'unknown',
+})
+
 app.use(createPinia())
 app.use(router)
 app.use(VueVirtualScroller)
-app.use(VueQueryPlugin, { 
-  queryClient,
-  clientPersister: (queryClient) => {
-    return persistQueryClient({
-      queryClient,
-      persister,
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week cache
-    })
-  }
-})
+app.use(VueQueryPlugin, { queryClient })
 
 app.mount('#app')

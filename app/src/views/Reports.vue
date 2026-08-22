@@ -2,22 +2,28 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase'
-import { useCoursesQuery, useQuartersQuery, useInstitutionConfigQuery } from '../composables/useQueries'
+import { useCoursesQuery, useQuartersQuery } from '../composables/useQueries'
 import { computeProjectAverage, computeSubjectTotal, getQuarterOrder, truncate2, computeFinalAnnual, computeFinalObservation, getPeriodLabel, computeTrimesterObservation } from '../lib/reporting'
-import { loadHtml2Pdf } from '../lib/pdf'
+import { normalizeStoragePath, resolvePrivateImageUrl } from '../lib/storageUtils'
+import { useAuthStore } from '../stores/auth'
+import { useAcademicYearStore } from '../stores/academicYear'
+import { isInstitutionAdmin } from '../lib/permissions'
+import AcademicYearBanner from '../components/ui/AcademicYearBanner.vue'
 
 const route = useRoute()
+const authStore = useAuthStore()
+const academicYearStore = useAcademicYearStore()
 
-const { data: coursesData } = useCoursesQuery()
+const { data: coursesData, refetch: refetchCourses } = useCoursesQuery(computed(() => academicYearStore.selectedYearName))
 const courses = computed(() => coursesData.value || [])
 
-const { data: quartersData } = useQuartersQuery()
+const { data: quartersData, refetch: refetchQuarters } = useQuartersQuery()
 const quarters = computed(() => (quartersData.value || []).slice().sort((a, b) => getQuarterOrder(a.name) - getQuarterOrder(b.name)))
 const students = ref([])
 const courseSubjects = ref([])
 
 const reportMode = ref('GENERAL')
-const isExportingPdf = ref(false)
+
 const selectedStudentId = ref(null)
 const individualLoading = ref(false)
 const individualError = ref('')
@@ -31,18 +37,32 @@ const selectedQuarter = ref(null)
 const loading = ref(false)
 const error = ref('')
 
+watch(courses, (newCourses) => {
+  if (selectedCourse.value && !newCourses.some(c => c.id === selectedCourse.value)) {
+    selectedCourse.value = null
+  }
+})
+
 const configData = ref({})
 
 const fetchInstitutionConfig = async () => {
-  const { data, error } = await supabase
+  const sId = authStore.activeSchoolId || authStore.profile?.school_id
+  if (!sId) return
+  const { data, error: cfgErr } = await supabase
     .from('system_config')
     .select('key, value')
+    .eq('school_id', sId)
     .in('key', ['institution_name', 'institution_logo_url', 'institution_tutor_name', 'institution_rector_name', 'academic_periods', 'regimen'])
   
-  if (error) {
-    console.error('Error fetching institution config:', error.message)
+  if (cfgErr) {
+    console.error('Error fetching institution config:', cfgErr.message)
   } else {
     const map = Object.fromEntries((data || []).map(item => [item.key, item.value]))
+    map.institution_logo_url = await resolvePrivateImageUrl(
+      supabase,
+      'institution-assets',
+      normalizeStoragePath(map.institution_logo_url, 'institution-assets'),
+    ).catch(() => '')
     configData.value = map || {}
   }
 }
@@ -51,7 +71,7 @@ const institutionLogoUrl = computed(() => configData.value?.institution_logo_url
 const institutionTutorName = computed(() => configData.value?.institution_tutor_name || '')
 const institutionRectorName = computed(() => configData.value?.institution_rector_name || '')
 const academicPeriods = computed(() => configData.value?.academic_periods || 'TRIMESTRE')
-const regime = computed(() => configData.value?.regimen || 'SIERRA_AMAZONIA')
+const regime = computed(() => configData.value?.regimen || 'COSTA_GALAPAGOS')
 
 const definitionsByQuarter = ref({})
 const gradesByStudent = ref({})
@@ -73,14 +93,6 @@ const isQualitativeCourse = computed(() => {
   return ['INICIAL', 'PREPARATORIA', 'ELEMENTAL'].includes(level)
 })
 
-// Data is now fetched by Vue Query
-watch(quarters, (newVal) => {
-  if (newVal && newVal.length > 0 && !selectedQuarter.value) {
-    const active = newVal.find(q => q.is_active) || newVal[0]
-    selectedQuarter.value = active?.id || null
-  }
-}, { immediate: true })
-
 const fetchCourseData = async () => {
   if (!selectedCourse.value) return
   loading.value = true
@@ -89,18 +101,33 @@ const fetchCourseData = async () => {
   qualitativeGradesByStudent.value = {}
   try {
     const courseId = selectedCourse.value
-    const { data: stus, error: stusError } = await supabase
+    const sId = authStore.activeSchoolId || authStore.profile?.school_id
+
+    let stusQuery = supabase
       .from('students')
       .select('id, full_name, representative_name, representative_phone')
       .eq('course_id', courseId)
       .order('full_name')
+    if (sId) {
+      stusQuery = stusQuery.or(`school_id.eq.${sId},school_id.is.null`)
+    }
+    const { data: stus, error: stusError } = await stusQuery
     if (stusError) throw stusError
     students.value = stus || []
 
-    const { data: cs, error: csError } = await supabase
+    let csQuery = supabase
       .from('course_subjects')
-      .select('id, subject_id, subjects (name)')
+      .select('id, subject_id, teacher_id, subjects (name)')
       .eq('course_id', courseId)
+    if (sId) {
+      csQuery = csQuery.or(`school_id.eq.${sId},school_id.is.null`)
+    }
+    const userId = authStore.user?.id || authStore.profile?.id
+    const isAdmin = isInstitutionAdmin(authStore.accessContext)
+    if (!isAdmin && userId) {
+      csQuery = csQuery.eq('teacher_id', userId)
+    }
+    const { data: cs, error: csError } = await csQuery
     if (csError) throw csError
     courseSubjects.value = cs || []
 
@@ -115,10 +142,14 @@ const fetchCourseData = async () => {
       return
     }
 
-    const { data: defs, error: defsError } = await supabase
+    let defsQuery = supabase
       .from('grade_definitions')
       .select('id, course_subject_id, quarter_id, name, category, sort_order')
       .in('course_subject_id', courseSubjectIds)
+    if (sId) {
+      defsQuery = defsQuery.or(`school_id.eq.${sId},school_id.is.null`)
+    }
+    const { data: defs, error: defsError } = await defsQuery
     if (defsError) throw defsError
 
     const defIds = (defs || []).map(d => d.id)
@@ -221,6 +252,55 @@ const fetchCourseData = async () => {
   }
   loading.value = false
 }
+
+watch(() => authStore.activeSchoolId, async () => {
+  selectedCourse.value = null
+  await fetchInstitutionConfig()
+  await refetchCourses()
+  await refetchQuarters()
+})
+
+// Auto-select first course when courses data is loaded
+watch(courses, (newCourses) => {
+  if (newCourses && newCourses.length > 0) {
+    if (!selectedCourse.value || !newCourses.some(c => c.id === selectedCourse.value)) {
+      const qCourse = route.query.course_id
+      if (qCourse && newCourses.some(c => c.id === qCourse)) {
+        selectedCourse.value = qCourse
+      } else {
+        selectedCourse.value = newCourses[0].id
+      }
+    }
+  } else {
+    selectedCourse.value = null
+    students.value = []
+  }
+}, { immediate: true })
+
+watch(quarters, (newVal) => {
+  if (newVal && newVal.length > 0) {
+    if (!selectedQuarter.value || !newVal.some(q => q.id === selectedQuarter.value)) {
+      const active = newVal.find(q => q.is_active) || newVal[0]
+      selectedQuarter.value = active?.id || null
+    }
+  }
+}, { immediate: true })
+
+watch(selectedCourse, (newVal) => {
+  if (newVal) {
+    fetchCourseData()
+  }
+})
+
+onMounted(async () => {
+  await fetchInstitutionConfig()
+  if (courses.value && courses.value.length > 0 && !selectedCourse.value) {
+    selectedCourse.value = courses.value[0].id
+  }
+  if (selectedCourse.value) {
+    fetchCourseData()
+  }
+})
 
 const getQuarterName = (id) => quarters.value.find(q => q.id === id)?.name || ''
 const orderedQuarters = computed(() => quarters.value.slice().sort((a, b) => getQuarterOrder(a.name) - getQuarterOrder(b.name)))
@@ -425,32 +505,20 @@ const handlePrint = () => {
 
 const downloadReportsPdf = async () => {
   if (!reportsRef.value) return
-  const courseName = courses.value.find(c => c.id === selectedCourse.value)?.name || 'curso'
-  const quarterName = quarters.value.find(q => q.id === selectedQuarter.value)?.name || 'trimestre'
-  const studentName = students.value.find(s => s.id === selectedStudentId.value)?.full_name || ''
-  const base = reportMode.value === 'INDIVIDUAL' && studentName
-    ? `Reporte_${studentName}_${quarterName}`
-    : `Reportes_${courseName}_${quarterName}`
-  const filename = `${base}.pdf`.replace(/\s+/g, '_')
   try {
-    isExportingPdf.value = true
-    // Wait for DOM to update with the header before capturing
-    await new Promise(resolve => setTimeout(resolve, 100))
-    const html2pdf = await loadHtml2Pdf()
-    await html2pdf()
-    .set({
-      margin: 8,
-      filename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: reportMode.value === 'INDIVIDUAL' ? 'portrait' : 'landscape' }
-    })
-    .from(reportsRef.value)
-    .save()
+    // Inject @page rule dynamically to handle landscape vs portrait
+    let styleEl = document.getElementById('print-page-style')
+    if (!styleEl) {
+      styleEl = document.createElement('style')
+      styleEl.id = 'print-page-style'
+      document.head.appendChild(styleEl)
+    }
+    const orientation = reportMode.value === 'GENERAL' ? 'landscape' : 'portrait'
+    styleEl.innerHTML = `@page { size: A4 ${orientation}; margin: 12mm 10mm 14mm 10mm; }`
+
+    window.print()
   } catch (e) {
-    alert('No se pudo generar el PDF. Usa Imprimir y guarda como PDF.')
-  } finally {
-    isExportingPdf.value = false
+    alert('No se pudo generar el PDF. Hubo un error inesperado.')
   }
 }
 
@@ -497,24 +565,11 @@ const saveSupplementary = async () => {
   })
 
   try {
-    if (upserts.length > 0) {
-      const { error } = await supabase
-        .from('supplementary_exams')
-        .upsert(upserts, { onConflict: 'student_id, course_subject_id' })
-      if (error) throw error
-    }
-
-    if (toDelete.length > 0) {
-      const chunkSize = 50
-      for (let i = 0; i < toDelete.length; i += chunkSize) {
-        const chunk = toDelete.slice(i, i + chunkSize)
-        const orFilter = chunk
-          .map(item => `and(student_id.eq.${item.student_id},course_subject_id.eq.${item.course_subject_id})`)
-          .join(',')
-        const { error } = await supabase.from('supplementary_exams').delete().or(orFilter)
-        if (error) throw error
-      }
-    }
+    const { error } = await supabase.rpc('save_supplementary_batch', {
+      p_upserts: upserts,
+      p_deletes: toDelete
+    })
+    if (error) throw error
 
     supplementaryExistingKeys.value = new Set(
       upserts.map(u => `${u.student_id}:${u.course_subject_id}`)
@@ -601,7 +656,7 @@ onMounted(async () => {
        loadIndividualReport()
        if (route.query.download === '1') {
          setTimeout(() => {
-            generateIndividualReportPdf()
+            downloadReportsPdf()
          }, 500)
        }
     }, 1500)
@@ -626,16 +681,19 @@ watch([selectedStudentId, reportMode], async () => {
 <template>
   <div class="min-h-screen report-shell">
     <main class="report-page">
+      <!-- Academic Year Banner (oculto al imprimir) -->
+      <AcademicYearBanner module-name="Reportes y Boletines" class="no-print mb-6" />
+
       <header class="report-hero">
         <div class="report-hero-row">
           <div class="report-brand">
             <div class="report-logo">
-              <img v-if="institutionLogoUrl" :src="institutionLogoUrl" alt="Logo institucion" />
+              <img v-if="institutionLogoUrl" :src="institutionLogoUrl" alt="Logo institucional" />
               <span v-else>Logo</span>
             </div>
             <div>
-              <p class="report-kicker">Sistema de Notas</p>
-              <h2 class="report-title">{{ institutionName || 'Institucion' }}</h2>
+              <p class="report-kicker">LOGREVA · Gestión Académica</p>
+              <h2 class="report-title">{{ institutionName || 'Institución' }}</h2>
               <p class="report-subtitle">Reportes Trimestrales y Finales</p>
             </div>
           </div>
@@ -646,18 +704,18 @@ watch([selectedStudentId, reportMode], async () => {
             </div>
             <div>
               <span class="report-meta-label">Documento</span>
-              <span class="report-meta-value">Informe academico</span>
+              <span class="report-meta-value">Informe académico</span>
             </div>
             <div>
               <span class="report-meta-label">Curso</span>
               <span class="report-meta-value">{{ courses.find(c => c.id === selectedCourse)?.name || '-' }}</span>
             </div>
             <div>
-              <span class="report-meta-label">Regimen</span>
-              <span class="report-meta-value">{{ regime === 'COSTA_GALAPAGOS' ? 'Costa-Galapagos' : 'Sierra-Amazonia' }}</span>
+              <span class="report-meta-label">Régimen</span>
+              <span class="report-meta-value">{{ regime === 'COSTA_GALAPAGOS' ? 'Costa-Galápagos' : 'Sierra-Amazonía' }}</span>
             </div>
             <div>
-              <span class="report-meta-label">Periodos</span>
+              <span class="report-meta-label">Períodos</span>
               <span class="report-meta-value">{{ academicPeriods === 'QUIMESTRE' ? 'Quimestres' : 'Trimestres' }}</span>
             </div>
           </div>
@@ -674,7 +732,7 @@ watch([selectedStudentId, reportMode], async () => {
             </select>
           </div>
           <div>
-            <label class="report-label">Periodo</label>
+            <label class="report-label">Período</label>
             <select v-model="selectedQuarter" class="report-select">
               <option v-for="q in quarters" :key="q.id" :value="q.id">{{ q.name }}</option>
             </select>
@@ -705,70 +763,29 @@ watch([selectedStudentId, reportMode], async () => {
       </section>
 
       <div v-if="error" class="report-alert report-alert-error">{{ error }}</div>
-      <div v-if="!projectAvailable" class="report-alert report-alert-warn">
-        Modulo de Proyecto no instalado. Ejecuta el SQL `project_global_schema.sql` en la base (InsForge).
-      </div>
       <div v-if="loading" class="report-loading">Cargando reportes...</div>
 
       <div ref="reportsRef" v-else-if="selectedCourse && students.length > 0 && reportMode === 'GENERAL'" class="report-stack">
-        <!-- CABECERA PARA PDF (OCULTA EN PANTALLA, VISIBLE AL EXPORTAR) -->
-        <div v-if="isExportingPdf" class="pdf-export-header">
-          <div class="pdf-header-content">
-            <div class="pdf-logo-placeholder">
-              <img v-if="institutionLogoUrl" :src="institutionLogoUrl" alt="Logo" class="pdf-logo" />
-              <div v-else class="pdf-logo-fallback">Logo</div>
-            </div>
-            <div class="pdf-header-text">
-              <h1 class="pdf-institution">{{ institutionName || 'Unidad Educativa' }}</h1>
-              <h2 class="pdf-title">Reporte Consolidado de Calificaciones</h2>
-              <p class="pdf-subtitle">
-                Periodo: {{ getQuarterName(selectedQuarter) }} | Curso: {{ courses.find(c => c.id === selectedCourse)?.name || '-' }}
-              </p>
-              <p class="pdf-date">Generado el: {{ new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) }}</p>
-            </div>
+        <!-- CABECERA PARA PDF (VISIBLE AL EXPORTAR O IMPRIMIR) -->
+        <div class="report-header screen-hidden">
+          <img v-if="institutionLogoUrl" :src="institutionLogoUrl" alt="Logo" class="report-logo" />
+          <div v-else style="width: 70px; height: 70px; background: #e2e8f0; display:flex; align-items:center; justify-content:center; flex-shrink:0;">Logo</div>
+          <div class="report-header-content">
+            <h1 style="margin: 0; color: #0f172a; font-size: 20px; font-weight: 800; text-transform: uppercase;">{{ institutionName || 'Unidad Educativa' }}</h1>
+            <h2 style="margin: 0; color: #0f766e; font-size: 14px; font-weight: 700; margin-top: 2px;">Reporte Consolidado de Calificaciones</h2>
+            <p style="margin: 0; color: #475569; font-size: 11px; margin-top: 4px;">
+              Período: {{ getQuarterName(selectedQuarter) }} | Curso: {{ courses.find(c => c.id === selectedCourse)?.name || '-' }}
+            </p>
+            <p style="margin: 0; color: #475569; font-size: 10px; margin-top: 2px;">Generado el: {{ new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) }}</p>
           </div>
-          <hr class="pdf-divider" />
         </div>
 
-        <!-- PROYECTO INTERDISCIPLINARIO -->
+        <!-- SÁBANA POR TRIMESTRE -->
         <section class="report-section print-page">
           <div class="report-section-head">
             <div>
-              <p class="report-pill">Proyecto Interdisciplinario</p>
-              <h3>Proyecto Interdisciplinario - {{ getQuarterName(selectedQuarter) }}</h3>
-              <p class="report-section-note">Curso: {{ courses.find(c => c.id === selectedCourse)?.name || '-' }}</p>
-            </div>
-            <p class="report-section-note">Promedio por asignaturas seleccionadas</p>
-          </div>
-          <div v-if="(projectSettingsByQuarter[selectedQuarter] || []).length === 0" class="report-empty">
-            No hay asignaturas seleccionadas para proyecto en este trimestre.
-          </div>
-          <div v-else class="report-table-wrap">
-            <table class="report-table">
-              <thead>
-                <tr>
-                  <th>Estudiante</th>
-                  <th class="text-right">Promedio Proyecto</th>
-                  <th class="text-right">Total Trimestre (15%)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="stu in students" :key="stu.id">
-                  <td>{{ stu.full_name }}</td>
-                  <td class="text-right">{{ getProjectAverageForStudent(stu.id)?.toFixed(2) || '-' }}</td>
-                  <td class="text-right">{{ getProjectTotalForStudent(stu.id)?.toFixed(2) || '-' }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- SABANA POR TRIMESTRE -->
-        <section class="report-section print-page">
-          <div class="report-section-head">
-            <div>
-              <p class="report-pill">Sabana</p>
-              <h3>Sabana de Calificaciones - {{ getQuarterName(selectedQuarter) }}</h3>
+              <p class="report-pill">Sábana</p>
+              <h3>Sábana de Calificaciones - {{ getQuarterName(selectedQuarter) }}</h3>
             </div>
           </div>
           <div v-if="isQualitativeCourse" class="report-table-wrap">
@@ -829,14 +846,14 @@ watch([selectedStudentId, reportMode], async () => {
             <div>
               <p class="report-pill">Alertas</p>
               <h3>Rendimiento Bajo (Promedio &lt; 7)</h3>
-              <p class="report-section-note">Envia un mensaje al representante con el detalle de notas.</p>
+              <p class="report-section-note">Envía un mensaje al representante con el detalle de notas.</p>
             </div>
           </div>
           <div v-if="isQualitativeCourse" class="report-empty">
             Este reporte no aplica para cursos cualitativos.
           </div>
           <div v-else-if="underperformingStudents.length === 0" class="report-empty">
-            No hay estudiantes con promedio menor a 7 en este periodo.
+            No hay estudiantes con promedio menor a 7 en este período.
           </div>
           <div v-else class="report-table-wrap">
             <table class="report-table report-table-compact">
@@ -874,7 +891,7 @@ watch([selectedStudentId, reportMode], async () => {
               </tbody>
             </table>
             <p class="report-hint mt-3">
-              Nota: el numero del representante debe incluir codigo de pais (ej. 593XXXXXXXXX).
+              Nota: el número del representante debe incluir código de país (ej. 593XXXXXXXXX).
             </p>
           </div>
         </section>
@@ -883,9 +900,9 @@ watch([selectedStudentId, reportMode], async () => {
         <section class="report-section no-print">
           <div class="report-section-head">
             <div>
-              <p class="report-pill">Verificacion</p>
+              <p class="report-pill">Verificación</p>
               <h3>Consistencia de Notas</h3>
-              <p class="report-section-note">Estudiantes con asignaturas sin promedio en el periodo seleccionado.</p>
+              <p class="report-section-note">Estudiantes con asignaturas sin promedio en el período seleccionado.</p>
             </div>
           </div>
           <div v-if="isQualitativeCourse" class="report-empty">
@@ -1053,23 +1070,18 @@ watch([selectedStudentId, reportMode], async () => {
       </div>
 
       <div ref="reportsRef" v-else-if="selectedCourse && reportMode === 'INDIVIDUAL'" class="report-stack">
-        <!-- CABECERA PARA PDF (OCULTA EN PANTALLA, VISIBLE AL EXPORTAR) -->
-        <div v-if="isExportingPdf" class="pdf-export-header">
-          <div class="pdf-header-content">
-            <div class="pdf-logo-placeholder">
-              <img v-if="institutionLogoUrl" :src="institutionLogoUrl" alt="Logo" class="pdf-logo" />
-              <div v-else class="pdf-logo-fallback">Logo</div>
-            </div>
-            <div class="pdf-header-text">
-              <h1 class="pdf-institution">{{ institutionName || 'Unidad Educativa' }}</h1>
-              <h2 class="pdf-title">Reporte Individual de Calificaciones</h2>
-              <p class="pdf-subtitle">
-                Periodo: {{ getQuarterName(selectedQuarter) }} | Curso: {{ courses.find(c => c.id === selectedCourse)?.name || '-' }} | Estudiante: {{ students.find(s => s.id === selectedStudentId)?.full_name || '-' }}
-              </p>
-              <p class="pdf-date">Generado el: {{ new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) }}</p>
-            </div>
+        <!-- CABECERA PARA PDF (VISIBLE AL EXPORTAR O IMPRIMIR) -->
+        <div class="report-header screen-hidden">
+          <img v-if="institutionLogoUrl" :src="institutionLogoUrl" alt="Logo" class="report-logo" />
+          <div v-else style="width: 70px; height: 70px; background: #e2e8f0; display:flex; align-items:center; justify-content:center; flex-shrink:0;">Logo</div>
+          <div class="report-header-content">
+            <h1 style="margin: 0; color: #0f172a; font-size: 20px; font-weight: 800; text-transform: uppercase;">{{ institutionName || 'Unidad Educativa' }}</h1>
+            <h2 style="margin: 0; color: #0f766e; font-size: 14px; font-weight: 700; margin-top: 2px;">Reporte Individual de Calificaciones</h2>
+            <p style="margin: 0; color: #475569; font-size: 11px; margin-top: 4px;">
+              Periodo: {{ getQuarterName(selectedQuarter) }} | Curso: {{ courses.find(c => c.id === selectedCourse)?.name || '-' }} | Estudiante: {{ students.find(s => s.id === selectedStudentId)?.full_name || '-' }}
+            </p>
+            <p style="margin: 0; color: #475569; font-size: 10px; margin-top: 2px;">Generado el: {{ new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) }}</p>
           </div>
-          <hr class="pdf-divider" />
         </div>
 
         <section class="report-section print-page">
@@ -1179,7 +1191,6 @@ watch([selectedStudentId, reportMode], async () => {
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap');
 
 :global(.report-shell) {
   --paper: #f6f1ea;
@@ -1567,155 +1578,63 @@ watch([selectedStudentId, reportMode], async () => {
   padding-top: 12px;
 }
 
-/* ============================================
-   PDF EXPORT HEADER
-   ============================================ */
-.pdf-export-header {
-  margin-bottom: 24px;
-  color: #0f172a;
-  background: white;
-  padding: 10px 0;
+.dark .report-hero,
+.dark .report-card,
+.dark .report-section {
+  background: #0f172a;
+  border-color: #1e293b;
+  color: #f8fafc;
 }
 
-.pdf-header-content {
-  display: flex;
-  align-items: center;
-  gap: 20px;
+.dark .report-logo {
+  background: #1e293b;
+  border-color: #334155;
 }
 
-.pdf-logo-placeholder {
-  width: 80px;
-  height: 80px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #f1f5f9;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 1px solid #e2e8f0;
+.dark .report-select {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
 }
 
-.pdf-logo {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  padding: 4px;
+.dark .report-btn-ghost {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
 }
 
-.pdf-logo-fallback {
-  color: #94a3b8;
-  font-size: 14px;
-  font-weight: 600;
-  text-transform: uppercase;
+.dark .report-table thead {
+  background: #1e293b;
+  color: #f8fafc;
 }
 
-.pdf-header-text {
-  flex: 1;
+.dark .report-table th,
+.dark .report-table td {
+  border-bottom-color: #1e293b;
+  color: #f8fafc;
 }
 
-.pdf-institution {
-  font-size: 24px;
-  font-weight: 800;
-  margin: 0 0 4px;
-  color: #0f172a;
-  text-transform: uppercase;
-  letter-spacing: -0.5px;
+.dark .report-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.pdf-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #0f766e;
-  margin: 0 0 4px;
+.dark .report-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.07);
 }
 
-.pdf-subtitle, .pdf-date {
-  font-size: 13px;
-  color: #475569;
-  margin: 0 0 2px;
+.dark .report-pill {
+  background: #042f2e;
+  color: #5eead4;
 }
 
-.pdf-divider {
-  margin-top: 16px;
-  border: none;
-  border-top: 3px solid #0f766e;
-  border-bottom: 1px solid #e2e8f0;
-  height: 5px;
-  background: transparent;
+.dark .report-input-small {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
 }
 
-@media print {
-  nav,
-  button,
-  select,
-  .no-print {
-    display: none !important;
-  }
-
-  body,
-  html {
-    background: white !important;
-  }
-
-  table {
-    font-size: 10px;
-    border-collapse: collapse !important;
-  }
-
-  th,
-  td {
-    border: 1px solid #d1d5db !important;
-    padding: 4px !important;
-  }
-
-  .print-page {
-    page-break-after: auto !important;
-    break-after: auto !important;
-  }
-
-  .print-page:last-of-type {
-    page-break-after: auto;
-    break-after: auto;
-  }
-
-  .report-shell,
-  .report-section,
-  .report-hero,
-  .report-card {
-    box-shadow: none !important;
-    background: white !important;
-    border-color: #e5e7eb !important;
-  }
-
-  .report-title,
-  .report-section h3 {
-    color: #111827 !important;
-  }
-
-  .report-pill {
-    background: #e5f4f2 !important;
-    color: #0f766e !important;
-  }
-
-  .report-section {
-    padding: 10px 12px !important;
-  }
-
-  .report-hero,
-  .report-card {
-    padding: 10px 12px !important;
-  }
-
-  .report-stack {
-    gap: 10px !important;
-  }
-
-  .report-table-compact th,
-  .report-table-compact td {
-    padding: 4px 6px !important;
-    font-size: 10px !important;
-  }
+.dark .signature-name {
+  color: #f8fafc;
 }
 
 @media (max-width: 900px) {
@@ -1726,6 +1645,262 @@ watch([selectedStudentId, reportMode], async () => {
   .report-meta {
     text-align: left;
     width: 100%;
+  }
+}
+</style>
+
+<!-- =============================================
+     PRINT STYLES — NON-SCOPED so they can reach
+     parent containers (sidebar, header, main, body)
+     ============================================= -->
+<style>
+/* Hide the report-header on screen; show only when printing */
+.report-header.screen-hidden {
+  display: none !important;
+}
+
+@media print {
+  /* ── Reset the entire page ── */
+  @page {
+    size: A4;
+    margin: 12mm 10mm 14mm 10mm;
+  }
+
+  html, body {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    min-height: 0 !important;
+  }
+
+  * {
+    box-sizing: border-box;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* ── Kill the app shell (sidebar, top header, wrappers) ── */
+  aside,
+  nav,
+  header,
+  .content-layout-wrapper > header,
+  button,
+  select,
+  label,
+  .no-print,
+  .report-hero,
+  .report-card,
+  .report-controls,
+  .report-actions,
+  .report-inline-actions,
+  .modal-container,
+  .modal-backdrop {
+    display: none !important;
+  }
+
+  /* ── Unwrap ALL layout containers ── */
+  .content-layout-wrapper,
+  .flex.min-h-screen,
+  main,
+  .report-shell,
+  .report-page,
+  .report-stack {
+    display: block !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    position: static !important;
+  }
+
+  /* ── Show the print-only header ── */
+  .report-header.screen-hidden {
+    display: flex !important;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 10px 0;
+    padding-bottom: 8px;
+    border-bottom: 2.5px solid #0f766e;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .report-header .report-logo,
+  .report-header img {
+    width: 55px !important;
+    height: 55px !important;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    padding: 3px;
+  }
+
+  .report-header-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ── Sections: flat document style, no cards ── */
+  .report-section {
+    margin-top: 14px !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .report-section-head {
+    break-after: avoid;
+    page-break-after: avoid;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 6px !important;
+  }
+
+  .report-pill {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    border: 1px solid #94a3b8 !important;
+    font-size: 8px !important;
+    padding: 1px 6px !important;
+    border-radius: 3px !important;
+    font-weight: 700 !important;
+    display: inline-block;
+    margin-bottom: 3px !important;
+  }
+
+  .report-section h3 {
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    margin: 2px 0 4px !important;
+  }
+
+  .report-section-note {
+    font-size: 9px !important;
+    color: #64748b !important;
+  }
+
+  /* ── Tables: tight, bordered, professional ── */
+  table,
+  .report-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: auto !important;
+    margin-top: 4px !important;
+    font-size: 8.5px !important;
+    line-height: 1.3;
+  }
+
+  .report-table th,
+  .report-table td {
+    border: 1px solid #94a3b8 !important;
+    padding: 4px 5px !important;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    color: #0f172a !important;
+  }
+
+  .report-table th {
+    background: #e2e8f0 !important;
+    font-weight: 700 !important;
+    text-align: left;
+    font-size: 8px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .report-table tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    background-color: transparent !important;
+  }
+
+  .report-table tbody tr:nth-child(even) {
+    background: #f8fafc !important;
+  }
+
+  .report-table thead {
+    display: table-header-group !important;
+    background-color: transparent !important;
+  }
+
+  .report-table tfoot {
+    display: table-footer-group !important;
+  }
+
+  .report-table .subhead {
+    font-size: 7px !important;
+    color: #475569 !important;
+  }
+
+  .report-table-wrap {
+    overflow: visible !important;
+  }
+
+  /* ── Signatures ── */
+  .report-signatures {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-top: 30px !important;
+  }
+
+  .signature-grid {
+    gap: 16px !important;
+  }
+
+  .report-signature-line {
+    border-top: 1px solid #1e293b !important;
+    padding-top: 6px !important;
+  }
+
+  .signature-name {
+    font-size: 10px !important;
+  }
+
+  .signature-role {
+    font-size: 8px !important;
+  }
+
+  .report-legal-note {
+    margin-top: 24px !important;
+    font-size: 8px !important;
+    color: #64748b !important;
+  }
+
+  /* ── Misc ── */
+  .report-title {
+    font-size: 14px !important;
+    color: #0f172a !important;
+  }
+
+  .report-legend {
+    font-size: 8px !important;
+  }
+
+  .report-empty {
+    font-size: 10px !important;
+  }
+
+  .report-table-compact th,
+  .report-table-compact td {
+    padding: 3px 4px !important;
+    font-size: 8px !important;
   }
 }
 </style>

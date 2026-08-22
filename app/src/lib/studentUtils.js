@@ -1,3 +1,5 @@
+import { uploadPrivateImage } from './storageUtils'
+
 /**
  * Utilidades compartidos para gestión de estudiantes
  * Funciones reutilizables para validación y subida de fotos
@@ -105,13 +107,10 @@ export const getFileExt = (file) => {
  * @param {Object} supabase - Cliente (capa de compatibilidad)
  * @param {File} file - Archivo a subir
  * @param {string} path - Ruta destino en el bucket
- * @returns {Promise<string>} - URL pública de la foto
+ * @returns {Promise<string>} - Ruta persistente del objeto privado
  */
 export const uploadPhoto = async (supabase, file, path) => {
-    const { error } = await supabase.storage.from('student-photos').upload(path, file, { upsert: true })
-    if (error) throw error
-    const { data } = supabase.storage.from('student-photos').getPublicUrl(path)
-    return data.publicUrl
+    return uploadPrivateImage(supabase, 'student-photos', file, path)
 }
 
 /**
@@ -125,4 +124,189 @@ export const createPhotoPreview = (file, fallbackUrl = '') => {
         return URL.createObjectURL(file)
     }
     return fallbackUrl || ''
+}
+
+export const normalizeHeader = (value) => {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .toUpperCase()
+        .trim()
+}
+
+export const sanitizeDate = (val) => {
+    if (!val) return null
+    if (val instanceof Date && !isNaN(val)) {
+        return val.toISOString().split('T')[0]
+    }
+    const str = String(val).trim()
+    if (!str) return null
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str
+    const parts = str.split(/[/.-]/)
+    if (parts.length === 3) {
+        if (parts[0].length === 4) {
+            return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`
+        } else if (parts[2].length === 4) {
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+        }
+    }
+    return null
+}
+
+/**
+ * Parsea el contenido en texto de un archivo CSV para extraer estudiantes.
+ * @param {string} text - Contenido crudo del archivo CSV
+ * @returns {{ entries: Array, errors: Array }}
+ */
+export const parseStudentCsvText = (text) => {
+    if (!text || !text.trim()) {
+        return { entries: [], errors: ['El contenido está vacío.'] }
+    }
+    const cleanText = text.replace(/^\uFEFF/, '')
+    const lines = cleanText.split(/\r\n|\n|\r/).filter(l => l.trim().length > 0)
+    if (lines.length === 0) {
+        return { entries: [], errors: ['No hay líneas de texto.'] }
+    }
+
+    const sample = lines.slice(0, Math.min(5, lines.length)).join('\n')
+    let delimiter = ','
+    const commaCount = (sample.match(/,/g) || []).length
+    const semiCount = (sample.match(/;/g) || []).length
+    const tabCount = (sample.match(/\t/g) || []).length
+    const pipeCount = (sample.match(/\|/g) || []).length
+    if (semiCount > commaCount && semiCount > tabCount) delimiter = ';'
+    else if (tabCount > commaCount && tabCount > semiCount) delimiter = '\t'
+    else if (pipeCount > commaCount) delimiter = '|'
+
+    const rawRows = lines.map(line => {
+        const row = []
+        let current = ''
+        let inQuotes = false
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i]
+            if (char === '"') {
+                if (inQuotes && line[i + 1] === '"') {
+                    current += '"'
+                    i++
+                } else {
+                    inQuotes = !inQuotes
+                }
+            } else if (char === delimiter && !inQuotes) {
+                row.push(current.trim().replace(/^["']|["']$/g, ''))
+                current = ''
+            } else {
+                current += char
+            }
+        }
+        row.push(current.trim().replace(/^["']|["']$/g, ''))
+        return row
+    })
+
+    let headerIdx = -1
+    let colName = -1, colCedula = -1, colBirth = -1, colPhone = -1, colAddress = -1
+    let colRepName = -1, colRepCedula = -1, colRepPhone = -1, colRepAltPhone = -1
+
+    for (let r = 0; r < Math.min(rawRows.length, 10); r++) {
+        const row = rawRows[r]
+        if (!Array.isArray(row)) continue
+        let foundNameCol = false
+        row.forEach((cell, cIdx) => {
+            const h = normalizeHeader(cell)
+            if (!h) return
+
+            if (h.includes('REPRESENTANTE') || h.includes('APODERADO') || h.includes('TUTOR') || h.includes('PADRE') || h.includes('MADRE')) {
+                if (h.includes('CEDULA') || h.includes('DNI') || h.includes('IDENTIFICACION') || h.includes('DOC')) {
+                    colRepCedula = cIdx
+                } else if (h.includes('ALT') || h.includes('OTRO') || h.includes('FIJO') || h.includes('CONVENCIONAL')) {
+                    colRepAltPhone = cIdx
+                } else if (h.includes('TEL') || h.includes('CEL') || h.includes('MOVIL') || h.includes('WHATSAPP')) {
+                    colRepPhone = cIdx
+                } else if (h.includes('NOMBRE') || h.includes('APELLIDO') || h.includes('COMPLETO')) {
+                    colRepName = cIdx
+                }
+            } else {
+                if (h.includes('CEDULA') || h.includes('DNI') || h.includes('IDENTIFICACION') || h.includes('DOC')) {
+                    colCedula = cIdx
+                } else if (h.includes('NACIMIENTO') || h.includes('FECHA') || h.includes('CUMPLE')) {
+                    colBirth = cIdx
+                } else if (h.includes('TELEFONO') || h.includes('CELULAR') || h.includes('MOVIL') || h.includes('WHATSAPP') || h.includes('TEL')) {
+                    colPhone = cIdx
+                } else if (h.includes('DIRECCION') || h.includes('DOMICILIO') || h.includes('RESIDENCIA') || h.includes('UBICACION')) {
+                    colAddress = cIdx
+                } else if (h.includes('NOMBRE') || h.includes('APELLIDO') || h.includes('ESTUDIANTE') || h.includes('ALUMNO')) {
+                    colName = cIdx
+                    foundNameCol = true
+                }
+            }
+        })
+
+        if (foundNameCol || colName !== -1) {
+            headerIdx = r
+            break
+        }
+    }
+
+    if (colName === -1) {
+        for (let r = 0; r < rawRows.length; r++) {
+            const row = rawRows[r]
+            if (!Array.isArray(row)) continue
+            for (let c = 0; c < row.length; c++) {
+                const val = String(row[c] || '').trim()
+                if (val && isNaN(Number(val)) && val.length > 5 && val.includes(' ')) {
+                    colName = c
+                    headerIdx = r > 0 ? r - 1 : 0
+                    break
+                }
+            }
+            if (colName !== -1) break
+        }
+    }
+
+    if (colName === -1) {
+        return { entries: [], errors: ['No se encontró columna de NOMBRES COMPLETOS de estudiantes en el archivo.'] }
+    }
+
+    const entries = []
+    const errors = []
+    const startRow = headerIdx !== -1 ? headerIdx + 1 : 0
+
+    for (let i = startRow; i < rawRows.length; i++) {
+        const row = rawRows[i]
+        if (!Array.isArray(row)) continue
+
+        const name = colName !== -1 && row[colName] != null ? String(row[colName]).trim() : ''
+        const cedula = colCedula !== -1 && row[colCedula] != null ? String(row[colCedula]).trim() : ''
+        const birth = colBirth !== -1 && row[colBirth] != null ? sanitizeDate(row[colBirth]) : null
+        const phone = colPhone !== -1 && row[colPhone] != null ? String(row[colPhone]).trim() : ''
+        const address = colAddress !== -1 && row[colAddress] != null ? String(row[colAddress]).trim() : ''
+        const repName = colRepName !== -1 && row[colRepName] != null ? String(row[colRepName]).trim() : ''
+        const repCedula = colRepCedula !== -1 && row[colRepCedula] != null ? String(row[colRepCedula]).trim() : ''
+        const repPhone = colRepPhone !== -1 && row[colRepPhone] != null ? String(row[colRepPhone]).trim() : ''
+        const repAltPhone = colRepAltPhone !== -1 && row[colRepAltPhone] != null ? String(row[colRepAltPhone]).trim() : ''
+
+        if (!name || name.length < 2) continue
+        if (!isNaN(Number(name)) && !name.includes(' ')) continue
+
+        const upper = normalizeHeader(name)
+        if (['NOMBRES', 'APELLIDOS', 'NOMBRES COMPLETOS', 'NOMBRES Y APELLIDOS', 'NO.', 'N°', 'NOMBRE', 'ESTUDIANTE'].includes(upper)) continue
+
+        entries.push({
+            full_name: name,
+            student_cedula: cedula || null,
+            student_birthdate: birth || null,
+            student_phone: phone || '',
+            student_address: address || '',
+            representative_name: repName || '',
+            representative_cedula: repCedula || '',
+            representative_phone: repPhone || '',
+            representative_alt_phone: repAltPhone || ''
+        })
+    }
+
+    if (entries.length === 0) {
+        return { entries: [], errors: ['No se detectaron filas de estudiantes válidas en el archivo.'] }
+    }
+
+    return { entries, errors }
 }

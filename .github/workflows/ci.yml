@@ -1,0 +1,49 @@
+name: Production quality gate
+
+on:
+  pull_request:
+  push:
+    branches: [main, "fix/**", "codex/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    env:
+      VITE_SUPABASE_URL: https://example.supabase.co
+      VITE_SUPABASE_ANON_KEY: ci-placeholder-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Unit and contract tests
+        run: npm run test -- --run
+      - name: Production build
+        run: npm run build
+      - name: Compressed bundle budget
+        run: npm run check:bundle
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Protected-route browser test
+        run: npm run test:e2e
+      - name: Upload production bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: webnotas-production-bundle
+          path: app/dist
+          if-no-files-found: error
+          retention-days: 14

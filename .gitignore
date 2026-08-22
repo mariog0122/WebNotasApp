@@ -4,18 +4,26 @@
 .env.*.local
 app/.env.admin
 PassSupabase*.txt
+*.txt
 
 # Dependencias y build
 node_modules/
 dist/
+*.zip
+app/*.zip
 *.log
+backups/
+app/playwright-report/
+app/test-results/
 
 # Archivos de IDE
 .vscode/*
 !.vscode/extensions.json
 .idea/
 
-# Excel files temporales
+# Excel files
+*.xlsx
+*.xls
 *.xlsx~$
 *.xls~$
 

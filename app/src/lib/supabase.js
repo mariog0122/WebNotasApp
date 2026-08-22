@@ -5,7 +5,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error(
-    '[WebNotas] Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia app/.env.example a app/.env.local y configura tu proyecto Supabase.'
+    '[Logreva] Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia app/.env.example a app/.env.local y configura tu proyecto Supabase.'
   )
 }
 
