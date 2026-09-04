@@ -107,10 +107,10 @@ onMounted(() => {
         v-for="alert in alerts" 
         :key="alert.id" 
         :class="[
-          'p-3.5 rounded-xl border text-sm font-medium flex items-center gap-3 shadow-sm transition-all',
-          alert.type === 'danger' ? 'bg-rose-950/40 border-rose-800/60 text-rose-300' : 
-          alert.type === 'warning' ? 'bg-amber-950/40 border-amber-800/60 text-amber-300' : 
-          'bg-sky-950/40 border-sky-800/60 text-sky-300'
+          'p-3.5 rounded-xl border text-sm font-semibold flex items-center gap-3 shadow-xs transition-all',
+          alert.type === 'danger' ? 'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300' : 
+          alert.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300' : 
+          'bg-sky-50 border-sky-200 text-sky-800 dark:bg-sky-950/40 dark:border-sky-800/60 dark:text-sky-300'
         ]"
       >
         <AlertTriangle class="w-5 h-5 shrink-0" />
@@ -121,71 +121,71 @@ onMounted(() => {
     <!-- Indicadores Principales KPIs Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- Total Tenants -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-slate-700 transition-all">
+      <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm relative overflow-hidden group hover:border-slate-300 dark:hover:border-slate-700 transition-all">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Instituciones</span>
-          <div class="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Instituciones</span>
+          <div class="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl">
             <Building2 class="w-5 h-5" />
           </div>
         </div>
         <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-extrabold text-white tracking-tight">{{ metrics.totalTenants }}</span>
-          <span class="text-xs font-medium text-emerald-400">{{ metrics.activeTenants }} activas</span>
+          <span class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{{ metrics.totalTenants }}</span>
+          <span class="text-xs font-medium text-emerald-600 dark:text-emerald-400">{{ metrics.activeTenants }} activas</span>
         </div>
-        <div class="mt-3 text-xs text-slate-400 flex gap-2">
-          <span class="text-sky-400">{{ metrics.trialTenants }} en prueba</span> • 
-          <span class="text-rose-400">{{ metrics.suspendedTenants }} suspendidas</span>
+        <div class="mt-3 text-xs text-slate-500 dark:text-slate-400 flex gap-2">
+          <span class="text-sky-600 dark:text-sky-400 font-medium">{{ metrics.trialTenants }} en prueba</span> • 
+          <span class="text-rose-600 dark:text-rose-400 font-medium">{{ metrics.suspendedTenants }} suspendidas</span>
         </div>
       </div>
 
       <!-- Total Usuarios -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-slate-700 transition-all">
+      <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm relative overflow-hidden group hover:border-slate-300 dark:hover:border-slate-700 transition-all">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Usuarios Totales</span>
-          <div class="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Usuarios Totales</span>
+          <div class="p-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
             <Users class="w-5 h-5" />
           </div>
         </div>
         <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-extrabold text-white tracking-tight">{{ metrics.totalUsers }}</span>
-          <span class="text-xs text-slate-400">en plataforma</span>
+          <span class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{{ metrics.totalUsers }}</span>
+          <span class="text-xs text-slate-500 dark:text-slate-400">en plataforma</span>
         </div>
-        <div class="mt-3 text-xs text-slate-400">
-          <span class="text-indigo-300 font-medium">{{ metrics.totalTeachers }}</span> docentes activos
+        <div class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+          <span class="text-indigo-600 dark:text-indigo-300 font-semibold">{{ metrics.totalTeachers }}</span> docentes activos
         </div>
       </div>
 
       <!-- Total Estudiantes -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-slate-700 transition-all">
+      <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm relative overflow-hidden group hover:border-slate-300 dark:hover:border-slate-700 transition-all">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Estudiantes</span>
-          <div class="p-2 bg-sky-500/10 text-sky-400 rounded-xl">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Estudiantes</span>
+          <div class="p-2 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-xl">
             <GraduationCap class="w-5 h-5" />
           </div>
         </div>
         <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-extrabold text-white tracking-tight">{{ metrics.totalStudents }}</span>
-          <span class="text-xs text-slate-400">matriculados</span>
+          <span class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{{ metrics.totalStudents }}</span>
+          <span class="text-xs text-slate-500 dark:text-slate-400">matriculados</span>
         </div>
-        <div class="mt-3 text-xs text-slate-400">
+        <div class="mt-3 text-xs text-slate-500 dark:text-slate-400">
           Matrícula centralizada
         </div>
       </div>
 
       <!-- MRR / Facturación -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-slate-700 transition-all">
+      <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm relative overflow-hidden group hover:border-slate-300 dark:hover:border-slate-700 transition-all">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Ingreso Mensual (MRR)</span>
-          <div class="p-2 bg-teal-500/10 text-teal-400 rounded-xl">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Ingreso Mensual (MRR)</span>
+          <div class="p-2 bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-xl">
             <DollarSign class="w-5 h-5" />
           </div>
         </div>
         <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-extrabold text-emerald-400 tracking-tight">${{ metrics.mrr.toFixed(2) }}</span>
-          <span class="text-xs text-slate-400">/ mes</span>
+          <span class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">${{ metrics.mrr.toFixed(2) }}</span>
+          <span class="text-xs text-slate-500 dark:text-slate-400">/ mes</span>
         </div>
-        <div class="mt-3 text-xs text-slate-400">
-          Ingreso Anual Estimado: <strong class="text-slate-200">${{ metrics.arr.toFixed(2) }} USD</strong>
+        <div class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+          Ingreso Anual Estimado: <strong class="text-slate-800 dark:text-slate-200">${{ metrics.arr.toFixed(2) }} USD</strong>
         </div>
       </div>
     </div>
@@ -193,13 +193,13 @@ onMounted(() => {
     <!-- Actividad Reciente & Métricas Secundarias -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Actividad Reciente del Sistema -->
-      <div class="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div class="lg:col-span-2 bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
           <div class="flex items-center gap-2">
-            <Activity class="w-5 h-5 text-indigo-400" />
-            <h3 class="font-bold text-white tracking-tight">Actividad Reciente del Sistema</h3>
+            <Activity class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <h3 class="font-bold text-slate-900 dark:text-white tracking-tight">Actividad Reciente del Sistema</h3>
           </div>
-          <span class="text-xs text-slate-400">Auditoría en tiempo real</span>
+          <span class="text-xs text-slate-500 dark:text-slate-400">Auditoría en tiempo real</span>
         </div>
 
         <div v-if="recentActivity.length === 0" class="py-8 text-center text-slate-500 text-sm">
@@ -210,41 +210,41 @@ onMounted(() => {
           <div 
             v-for="log in recentActivity" 
             :key="log.id" 
-            class="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 border border-slate-800/80 hover:bg-slate-800/70 transition-colors text-sm"
+            class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 hover:bg-slate-100/80 dark:hover:bg-slate-800/70 transition-colors text-sm"
           >
             <div class="flex items-center gap-3">
               <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
               <div>
-                <span class="font-semibold text-slate-200">{{ log.action }}</span>
-                <span class="text-slate-400 text-xs ml-2">en <code class="text-indigo-300 font-mono">{{ log.table_name }}</code></span>
+                <span class="font-semibold text-slate-800 dark:text-slate-200">{{ log.action }}</span>
+                <span class="text-slate-500 dark:text-slate-400 text-xs ml-2">en <code class="text-indigo-600 dark:text-indigo-300 font-mono">{{ log.table_name }}</code></span>
               </div>
             </div>
-            <span class="text-xs text-slate-400">{{ new Date(log.created_at).toLocaleString() }}</span>
+            <span class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ new Date(log.created_at).toLocaleString() }}</span>
           </div>
         </div>
       </div>
 
       <!-- Estado de Infraestructura & Seguridad -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-4">
-        <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
-          <ShieldCheck class="w-5 h-5 text-emerald-400" />
-          <h3 class="font-bold text-white tracking-tight">Estado de Seguridad</h3>
+      <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+          <ShieldCheck class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          <h3 class="font-bold text-slate-900 dark:text-white tracking-tight">Estado de Seguridad</h3>
         </div>
 
-        <div class="space-y-3 text-sm text-slate-300">
-          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 border border-slate-800/80">
+        <div class="space-y-3 text-sm text-slate-700 dark:text-slate-300">
+          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80">
             <span>Aislamiento RLS Multi-tenant</span>
-            <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/10 text-emerald-400">ACTIVO</span>
+            <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">ACTIVO</span>
           </div>
 
-          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 border border-slate-800/80">
+          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80">
             <span>Impersonación Server-side</span>
-            <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/10 text-emerald-400">REGISTRADA</span>
+            <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">REGISTRADA</span>
           </div>
 
-          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 border border-slate-800/80">
+          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80">
             <span>Control de Límites & Storage</span>
-            <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/10 text-emerald-400">MONITOREADO</span>
+            <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">MONITOREADO</span>
           </div>
         </div>
       </div>

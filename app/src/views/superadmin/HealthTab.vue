@@ -53,19 +53,19 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow-md">
+    <div class="flex items-center justify-between bg-white dark:bg-slate-900/80 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
       <div>
-        <h3 class="font-bold text-lg text-white flex items-center gap-2">
-          <Activity class="w-5 h-5 text-emerald-400" /> Monitor de Salud del Sistema
+        <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+          <Activity class="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> Monitor de Salud del Sistema
         </h3>
-        <p class="text-xs text-slate-400 mt-0.5">Diagnóstico server-side seguro de servicios de infraestructura SaaS.</p>
-        <p v-if="lastChecked" class="text-[11px] text-slate-500 mt-1">Última medición: {{ new Date(lastChecked).toLocaleString() }}</p>
+        <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Diagnóstico server-side seguro de servicios de infraestructura SaaS.</p>
+        <p v-if="lastChecked" class="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-1">Última medición: {{ new Date(lastChecked).toLocaleString() }}</p>
       </div>
 
       <button 
         @click="checkHealth" 
         :disabled="testing"
-        class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg"
+        class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-indigo-600/20 cursor-pointer disabled:opacity-50"
       >
         <RefreshCw :class="['w-4 h-4', testing ? 'animate-spin' : '']" /> Check Status
       </button>
@@ -76,24 +76,24 @@ onMounted(() => {
       <div 
         v-for="serv in services" 
         :key="serv.name"
-        class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg flex items-center justify-between hover:border-slate-700 transition-colors"
+        class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex items-center justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
       >
         <div class="flex items-center gap-3">
-          <div class="p-3 bg-slate-800 rounded-xl text-indigo-400">
+          <div class="p-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl text-indigo-600 dark:text-indigo-400">
             <component :is="serv.icon" class="w-5 h-5" />
           </div>
           <div>
-            <div class="font-bold text-sm text-white">{{ serv.name }}</div>
-            <div class="text-xs text-slate-400 mt-0.5">{{ serv.detail }}</div>
+            <div class="font-bold text-sm text-slate-900 dark:text-white">{{ serv.name }}</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ serv.detail }}</div>
             <div class="text-[11px] text-slate-500 font-mono mt-1">Respuesta: {{ serv.latency }}</div>
           </div>
         </div>
 
         <span :class="[
           'px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider',
-          serv.status === 'operational' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-          serv.status === 'degraded' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-          'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+          serv.status === 'operational' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20' :
+          serv.status === 'degraded' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20' :
+          'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20'
         ]">
           {{ serv.status === 'operational' ? 'Operativo' : serv.status === 'degraded' ? 'Degradado' : 'Caído' }}
         </span>

@@ -213,20 +213,20 @@ const confirmToggleLock = async () => {
         </div>
 
         <!-- Right Section: Interactive Year Switcher & Padlock Lock Button -->
-        <div v-if="props.showSwitcher && academicYears.length > 0" class="flex flex-wrap items-center gap-2.5 shrink-0 self-start md:self-center">
+        <div v-if="props.showSwitcher && academicYears.length > 0" class="w-full md:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0 self-stretch md:self-center pt-3 md:pt-0 border-t md:border-t-0 border-slate-200/60 dark:border-slate-800/60">
           
           <!-- Year Selector -->
-          <div class="flex flex-col items-start md:items-end">
+          <div class="flex-1 sm:flex-initial flex flex-col items-start md:items-end min-w-0">
             <label for="banner-year-select" class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
               <ArrowRightLeft class="w-3 h-3" />
               Ciclo Lectivo:
             </label>
-            <div class="relative flex items-center">
+            <div class="relative w-full sm:w-auto flex items-center">
               <select 
                 id="banner-year-select"
                 :value="academicYearStore.selectedYearId"
                 @change="onYearChange"
-                class="app-input py-1.5 px-3 text-xs sm:text-sm font-semibold rounded-xl bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm focus:ring-2 focus:ring-indigo-500/50 cursor-pointer min-w-[140px]"
+                class="app-input py-1.5 px-3 text-xs sm:text-sm font-semibold rounded-xl bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm focus:ring-2 focus:ring-indigo-500/50 cursor-pointer w-full sm:min-w-[140px]"
                 aria-label="Seleccionar año lectivo a trabajar"
               >
                 <option v-for="y in academicYears" :key="y.id" :value="y.id">
@@ -237,7 +237,7 @@ const confirmToggleLock = async () => {
           </div>
 
           <!-- BOTÓN CANDADO DE BLOQUEO / DESBLOQUEO -->
-          <div class="flex flex-col items-start md:items-end">
+          <div class="flex-1 sm:flex-initial flex flex-col items-start md:items-end min-w-0">
             <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
               Candado:
             </span>
@@ -251,7 +251,7 @@ const confirmToggleLock = async () => {
                   : 'bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700',
                 canManageLock ? 'cursor-pointer hover:scale-[1.02] active:scale-95' : 'opacity-80 cursor-default'
               ]"
-              class="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl border text-xs sm:text-sm font-bold shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500"
+              class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border text-xs sm:text-sm font-bold shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 min-h-[34px]"
               :title="canManageLock ? (isLocked ? 'Clic para desbloquear año lectivo' : 'Clic para bloquear año lectivo contra modificaciones') : 'Bloqueo gestionado por Rectoría y Administradores'"
               :aria-label="isLocked ? 'Desbloquear año lectivo' : 'Bloquear año lectivo'"
             >
@@ -266,7 +266,7 @@ const confirmToggleLock = async () => {
             v-if="isAdmin && $route.path !== '/courses'"
             type="button"
             @click="goToCourses"
-            class="p-2 text-slate-600 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded-xl hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 mt-auto"
+            class="hidden sm:flex p-2 text-slate-600 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded-xl hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 mt-auto items-center justify-center"
             title="Administrar Años Lectivos en Cursos"
           >
             <School class="w-4 h-4" />

@@ -47,11 +47,11 @@ onUnmounted(() => {
     <!-- Sidebar -->
     <Sidebar />
 
-    <!-- Main Content Area - Con padding izquierdo para el sidebar -->
+    <!-- Main Content Area - Sincronizado exactamente con el sidebar -->
     <div 
       :class="[
         'flex-1 flex flex-col min-h-screen min-w-0 transition-all duration-300 ease-in-out',
-        uiStore.isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
+        uiStore.isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'
       ]"
     >
       <!-- Top header (Sticky) -->

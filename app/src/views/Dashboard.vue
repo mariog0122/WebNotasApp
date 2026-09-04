@@ -1083,77 +1083,124 @@ onMounted(() => {
           </p>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <router-link v-if="isAdmin" to="/courses" class="app-card p-1 group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div class="px-5 py-6 relative overflow-hidden rounded-2xl">
-              <div class="absolute inset-0 bg-gradient-to-br from-teal-500/5 to-teal-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-              <div class="relative flex items-center">
-                <div class="flex-shrink-0 bg-gradient-to-br from-teal-600 to-teal-500 rounded-2xl p-3.5 shadow-lg shadow-teal-600/20">
-                  <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dt class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Gestión Académica</dt>
-                  <dd class="mt-1"><div class="text-2xl font-bold text-slate-900 dark:text-white">Cursos</div></dd>
-                </div>
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- TARJETAS DE ACCESO RÁPIDO A MÓDULOS (RESPONSIVO TOTAL)      -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <div class="dash-modules-grid">
+          <!-- Cursos -->
+          <router-link 
+            v-if="isAdmin" 
+            to="/courses" 
+            class="dash-module-card group"
+            style="--accent-color: #0d9488; --accent-glow: rgba(13,148,136,0.12);"
+          >
+            <div class="dash-module-top">
+              <div class="dash-module-icon" style="background: linear-gradient(135deg, #0d9488, #14b8a6); box-shadow: 0 4px 12px rgba(13,148,136,0.25);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
               </div>
-              <div class="relative mt-4"><span class="text-sm font-semibold text-teal-700 group-hover:text-teal-600 transition-colors">Ver listado &rarr;</span></div>
+              <span class="dash-module-badge">Gestión Académica</span>
+            </div>
+            <div class="dash-module-body">
+              <h3 class="dash-module-title">Cursos</h3>
+              <p class="dash-module-desc">Gestionar aulas, niveles y paralelos</p>
+            </div>
+            <div class="dash-module-footer">
+              <span class="dash-module-link" style="color: #0d9488;">
+                Ver listado
+                <svg class="dash-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </span>
             </div>
           </router-link>
 
-          <router-link v-if="isAdmin" to="/subjects" class="app-card p-1 group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div class="px-5 py-6 relative overflow-hidden rounded-2xl">
-              <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-emerald-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-              <div class="relative flex items-center">
-                <div class="flex-shrink-0 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-3.5 shadow-lg shadow-emerald-500/20">
-                  <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dt class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Catálogo</dt>
-                  <dd class="mt-1"><div class="text-2xl font-bold text-slate-900 dark:text-white">Asignaturas</div></dd>
-                </div>
+          <!-- Asignaturas -->
+          <router-link 
+            v-if="isAdmin" 
+            to="/subjects" 
+            class="dash-module-card group"
+            style="--accent-color: #10b981; --accent-glow: rgba(16,185,129,0.12);"
+          >
+            <div class="dash-module-top">
+              <div class="dash-module-icon" style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 12px rgba(16,185,129,0.25);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                  <line x1="9" y1="7" x2="17" y2="7"/>
+                  <line x1="9" y1="11" x2="14" y2="11"/>
+                </svg>
               </div>
-              <div class="relative mt-4"><span class="text-sm font-semibold text-emerald-600 group-hover:text-emerald-500 transition-colors">Administrar &rarr;</span></div>
+              <span class="dash-module-badge">Catálogo</span>
+            </div>
+            <div class="dash-module-body">
+              <h3 class="dash-module-title">Asignaturas</h3>
+              <p class="dash-module-desc">Materias y contenidos curriculares</p>
+            </div>
+            <div class="dash-module-footer">
+              <span class="dash-module-link" style="color: #059669;">
+                Administrar
+                <svg class="dash-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </span>
             </div>
           </router-link>
 
-          <router-link v-if="can('students.read')" to="/students" class="app-card p-1 group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div class="px-5 py-6 relative overflow-hidden rounded-2xl">
-              <div class="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-amber-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-              <div class="relative flex items-center">
-                <div class="flex-shrink-0 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-3.5 shadow-lg shadow-amber-500/20">
-                  <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dt class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Registro</dt>
-                  <dd class="mt-1"><div class="text-2xl font-bold text-slate-900 dark:text-white">Estudiantes</div></dd>
-                </div>
+          <!-- Estudiantes -->
+          <router-link 
+            v-if="can('students.read')" 
+            to="/students" 
+            class="dash-module-card group"
+            style="--accent-color: #f59e0b; --accent-glow: rgba(245,158,11,0.12);"
+          >
+            <div class="dash-module-top">
+              <div class="dash-module-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 12px rgba(245,158,11,0.25);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                  <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
+                </svg>
               </div>
-              <div class="relative mt-4"><span class="text-sm font-semibold text-amber-600 group-hover:text-amber-500 transition-colors">Inscribir estudiantes &rarr;</span></div>
+              <span class="dash-module-badge">Registro</span>
+            </div>
+            <div class="dash-module-body">
+              <h3 class="dash-module-title">Estudiantes</h3>
+              <p class="dash-module-desc">Inscripción y fichas estudiantiles</p>
+            </div>
+            <div class="dash-module-footer">
+              <span class="dash-module-link" style="color: #d97706;">
+                Inscribir estudiantes
+                <svg class="dash-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </span>
             </div>
           </router-link>
 
-          <router-link v-if="can('grades.read')" to="/grades" class="app-card p-1 group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div class="px-5 py-6 relative overflow-hidden rounded-2xl">
-              <div class="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-rose-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-              <div class="relative flex items-center">
-                <div class="flex-shrink-0 bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-3.5 shadow-lg shadow-rose-500/20">
-                  <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dt class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Docentes</dt>
-                  <dd class="mt-1"><div class="text-2xl font-bold text-slate-900 dark:text-white">Notas y Actas</div></dd>
-                </div>
+          <!-- Notas y Actas -->
+          <router-link 
+            v-if="can('grades.read')" 
+            to="/grades" 
+            class="dash-module-card group"
+            style="--accent-color: #ef4444; --accent-glow: rgba(239,68,68,0.12);"
+          >
+            <div class="dash-module-top">
+              <div class="dash-module-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 12px rgba(239,68,68,0.25);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="8" y1="13" x2="16" y2="13"/>
+                  <line x1="8" y1="17" x2="13" y2="17"/>
+                  <path d="M10 9l1.5 1.5L15 7" stroke-width="1.8"/>
+                </svg>
               </div>
-              <div class="relative mt-4"><span class="text-sm font-semibold text-rose-600 group-hover:text-rose-500 transition-colors">Ingresar calificaciones &rarr;</span></div>
+              <span class="dash-module-badge">Docentes</span>
+            </div>
+            <div class="dash-module-body">
+              <h3 class="dash-module-title">Notas y Actas</h3>
+              <p class="dash-module-desc">Calificaciones, juntas y evaluaciones</p>
+            </div>
+            <div class="dash-module-footer">
+              <span class="dash-module-link" style="color: #dc2626;">
+                Ingresar calificaciones
+                <svg class="dash-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </span>
             </div>
           </router-link>
         </div>
@@ -1547,3 +1594,166 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* ═══════════════════════════════════════════════════════════════════ */
+/* DASHBOARD MODULE CARDS — Ultra-Responsive System                   */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+/* Grid auto-fit: se adapta inteligentemente al ancho disponible */
+.dash-modules-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 580px) {
+  .dash-modules-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+@media (min-width: 1300px) {
+  .dash-modules-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+/* Card Container */
+.dash-module-card {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  border-radius: 1.25rem;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  padding: 1.25rem;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.02);
+  position: relative;
+  overflow: hidden;
+}
+
+:root.dark .dash-module-card,
+.dark .dash-module-card {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(51, 65, 85, 0.6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.dash-module-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent-color);
+  box-shadow: 0 12px 28px -4px var(--accent-glow), 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Top Section: Icon + Category Badge */
+.dash-module-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.875rem;
+}
+
+.dash-module-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  border-radius: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.dash-module-card:hover .dash-module-icon {
+  transform: scale(1.08);
+}
+
+.dash-module-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  background: rgba(241, 245, 249, 0.9);
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+:root.dark .dash-module-badge,
+.dark .dash-module-badge {
+  color: #94a3b8;
+  background: rgba(51, 65, 85, 0.5);
+}
+
+/* Body Section: Title + Description */
+.dash-module-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 1rem;
+}
+
+.dash-module-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+:root.dark .dash-module-title,
+.dark .dash-module-title {
+  color: #f8fafc;
+}
+
+.dash-module-desc {
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.4;
+  margin: 0;
+}
+
+:root.dark .dash-module-desc,
+.dark .dash-module-desc {
+  color: #94a3b8;
+}
+
+/* Footer Section: CTA Link with Animated Arrow */
+.dash-module-footer {
+  margin-top: auto;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(241, 245, 249, 0.8);
+}
+
+:root.dark .dash-module-footer,
+.dark .dash-module-footer {
+  border-top-color: rgba(51, 65, 85, 0.4);
+}
+
+.dash-module-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  transition: gap 0.2s ease;
+}
+
+.dash-arrow {
+  transition: transform 0.2s ease;
+}
+
+.dash-module-card:hover .dash-arrow {
+  transform: translateX(4px);
+}
+</style>

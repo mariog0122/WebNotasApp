@@ -9,6 +9,7 @@ import { useAuthStore } from '../stores/auth'
 import { useAcademicYearStore } from '../stores/academicYear'
 import { isInstitutionAdmin } from '../lib/permissions'
 import AcademicYearBanner from '../components/ui/AcademicYearBanner.vue'
+import StudentRecoveryModal from '../components/grades/StudentRecoveryModal.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -88,6 +89,16 @@ const showWhatsappPreview = ref(false)
 const whatsappPreviewText = ref('')
 const whatsappPreviewStudent = ref('')
 
+const showRecoveryModal = ref(false)
+const selectedStudentForRecovery = ref(null)
+const selectedScoreForRecovery = ref(0)
+
+const openStudentRecovery = (row) => {
+  selectedStudentForRecovery.value = row.student
+  selectedScoreForRecovery.value = row.average || 0
+  showRecoveryModal.value = true
+}
+
 const isQualitativeCourse = computed(() => {
   const level = courses.value.find(c => c.id === selectedCourse.value)?.level || ''
   return ['INICIAL', 'PREPARATORIA', 'ELEMENTAL'].includes(level)
@@ -105,7 +116,7 @@ const fetchCourseData = async () => {
 
     let stusQuery = supabase
       .from('students')
-      .select('id, full_name, representative_name, representative_phone')
+      .select('id, full_name, representative_name, representative_phone, has_adaptation, adaptation_grade, adaptation_details, school_id')
       .eq('course_id', courseId)
       .order('full_name')
     if (sId) {
@@ -873,6 +884,14 @@ watch([selectedStudentId, reportMode], async () => {
                   <td class="text-right">
                     <div class="report-inline-actions" style="justify-content:flex-end;">
                       <button
+                        @click="openStudentRecovery(row)"
+                        class="report-btn"
+                        style="background: linear-gradient(135deg, #4f46e5, #4338ca); color: #fff; border: 0;"
+                        title="Generar tarea individualizada o plan de recuperación con IA"
+                      >
+                        ✨ Recuperación IA
+                      </button>
+                      <button
                         @click="previewWhatsappMessage(row)"
                         class="report-btn report-btn-ghost"
                       >
@@ -1187,6 +1206,16 @@ watch([selectedStudentId, reportMode], async () => {
           </div>
         </div>
     </div>
+
+    <!-- Modal de Recuperación Pedagógica con IA -->
+    <StudentRecoveryModal
+      v-if="showRecoveryModal && selectedStudentForRecovery"
+      :student="selectedStudentForRecovery"
+      subject-name="Rendimiento General"
+      :score="selectedScoreForRecovery"
+      :course-name="courses.find(c => c.id === selectedCourse)?.name || ''"
+      :on-close="() => { showRecoveryModal = false }"
+    />
   </div>
 </template>
 

@@ -71,6 +71,12 @@ const router = createRouter({
             meta: { requiresAuth: true, permission: 'grades.read' }
         },
         {
+            path: '/planificacion-ia',
+            name: 'planificacion-ia',
+            component: () => import('../views/AIPlanning.vue'),
+            meta: { requiresAuth: true, permission: 'grades.read' }
+        },
+        {
             path: '/families',
             name: 'families',
             component: () => import('../views/Families.vue'),

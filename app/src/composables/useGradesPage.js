@@ -8,6 +8,11 @@ import { normalizeStoragePath, resolvePrivateImageUrl } from '../lib/storageUtil
 import { useAuthStore } from '../stores/auth'
 import { useAcademicYearStore } from '../stores/academicYear'
 import { isInstitutionAdmin } from '../lib/permissions'
+import {
+  createCourseStudentsLoader,
+  createLatestRequestGuard,
+  loadGradeSheetPrerequisites,
+} from '../lib/gradeSheetLoading'
 
 /** Inyeccion para subvistas del modulo de calificaciones */
 export const gradesPageInjectionKey = Symbol('gradesPage')
@@ -46,6 +51,7 @@ const gradeDefinitions = ref([])
 const students = ref([])
 const grades = ref({}) // Map: student_id -> { definition_id: score }
 const existingGradeKeys = ref(new Set())
+const loadingStudents = ref(false)
 const loadingGrades = ref(false)
 const saving = ref(false)
 const message = ref('')
@@ -208,28 +214,39 @@ const fetchInstitutionConfig = async () => {
   academicPeriods.value = map.academic_periods || 'TRIMESTRE'
 }
 
+const fetchStudentsForCourse = async ({ courseId, schoolId }) => {
+  let query = supabase
+    .from('students')
+    .select('id, full_name, representative_name, representative_cedula, representative_phone, student_address')
+    .eq('course_id', courseId)
+    .order('full_name')
+  if (schoolId) {
+    query = query.or(`school_id.eq.${schoolId},school_id.is.null`)
+  }
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
+}
+
+const courseStudentsLoader = createCourseStudentsLoader(fetchStudentsForCourse)
+const gradeSheetRequestGuard = createLatestRequestGuard()
+
 const fetchCourseStudents = async (courseId) => {
   if (!courseId) {
     projectStudents.value = []
-    return
+    return []
   }
   const sId = authStore.activeSchoolId || authStore.profile?.school_id
-  let query = supabase
-    .from('students')
-    .select('id, full_name')
-    .eq('course_id', courseId)
-    .order('full_name')
-  if (sId) {
-    query = query.or(`school_id.eq.${sId},school_id.is.null`)
-  }
-  const { data, error } = await query
-  if (error) {
+  try {
+    const data = await courseStudentsLoader.load({ courseId, schoolId: sId })
+    projectStudents.value = data
+    seedProjectGradeRows()
+    return data
+  } catch (error) {
     toast.error('Error cargando estudiantes', { description: translateError(error) })
     projectStudents.value = []
-    return
+    return []
   }
-  projectStudents.value = data || []
-  seedProjectGradeRows()
 }
 
 /** Evita lecturas `projectSubjectGrades[studentId][...]` undefined entre awaits (render del modal de proyecto). */
@@ -273,9 +290,13 @@ const fetchQuarters = async () => {
 
 // When Course changes, load Subjects cleanly without blocking select UI (INP < 10ms)
 watch(selectedCourse, (newVal) => {
+  gradeSheetRequestGuard.invalidate()
   activeSubjectId.value = null
   activeSubject.value = null
   subjectsError.value = ''
+  loadingStudents.value = false
+  loadingGrades.value = false
+  students.value = []
   
   if (!newVal) {
     subjects.value = []
@@ -283,21 +304,14 @@ watch(selectedCourse, (newVal) => {
     return
   }
 
+  const sId = authStore.activeSchoolId || authStore.profile?.school_id
+  courseStudentsLoader.invalidate({ courseId: newVal, schoolId: sId })
+
   // Defer heavy network queries after main thread paints the select change
   setTimeout(async () => {
     await fetchSubjectsForCourse(newVal)
-    const sId = authStore.activeSchoolId || authStore.profile?.school_id
-    let countQuery = supabase
-      .from('students')
-      .select('id', { count: 'exact', head: true })
-      .eq('course_id', newVal)
-    if (sId) {
-      countQuery = countQuery.or(`school_id.eq.${sId},school_id.is.null`)
-    }
-    const { count } = await countQuery
-    studentsCount.value = count || 0
-
-    await fetchCourseStudents(newVal)
+    const courseStudents = await fetchCourseStudents(newVal)
+    studentsCount.value = courseStudents.length
     await fetchProjectSettings()
     await fetchProjectGrades()
     ensureProjectGrid()
@@ -596,8 +610,11 @@ const handlePrint = () => {
 const openGradeSheet = async (subject) => {
   if (activeSubjectId.value === subject.course_subject_id) {
     // Toggle close
+    gradeSheetRequestGuard.invalidate()
     activeSubjectId.value = null
     activeSubject.value = null
+    loadingStudents.value = false
+    loadingGrades.value = false
     return
   }
   
@@ -611,13 +628,14 @@ const openGradeSheet = async (subject) => {
 
   activeSubjectId.value = subject.course_subject_id
   activeSubject.value = subject
-  await loadGradeData(subject.course_subject_id)
+  const requestId = gradeSheetRequestGuard.next()
+  await loadGradeData(subject.course_subject_id, requestId)
 }
 
 // Cache en memoria para evitar parpadeos y CLS al abrir asignaturas repetidas
 const gradesCacheMap = new Map()
 
-const loadGradeData = async (courseSubjectId) => {
+const loadGradeData = async (courseSubjectId, requestId) => {
   const cacheKey = `${selectedCourse.value}_${selectedQuarter.value}_${courseSubjectId}`
   message.value = ''
   
@@ -629,8 +647,10 @@ const loadGradeData = async (courseSubjectId) => {
     qualitativeScores.value = cached.qualitativeScores
     existingGradeKeys.value = new Set(cached.existingGradeKeys)
     qualitativeExistingKeys.value = new Set(cached.qualitativeExistingKeys)
+    loadingStudents.value = false
     loadingGrades.value = false
   } else {
+    loadingStudents.value = true
     loadingGrades.value = true
     students.value = []
     gradesPage.value = 1
@@ -643,31 +663,30 @@ const loadGradeData = async (courseSubjectId) => {
   try {
     const sId = authStore.activeSchoolId || authStore.profile?.school_id
 
-    // 1. Fetch Students for the Course FIRST (Decoupled & Non-blocking)
-    let stuQuery = supabase
-      .from('students')
-      .select('id, full_name, representative_name, representative_cedula, representative_phone, student_address')
-      .eq('course_id', selectedCourse.value)
-      .order('full_name')
-    if (sId) {
-      stuQuery = stuQuery.or(`school_id.eq.${sId},school_id.is.null`)
-    }
-    const { data: stus, error: studentsError } = await stuQuery
-    if (studentsError) {
-      console.error('Error cargando estudiantes:', studentsError)
-      toast.error('Error cargando estudiantes', { description: studentsError.message })
-    }
-    students.value = stus || []
-
-    const stusArray = students.value || []
-    stusArray.forEach(st => {
-      if (!grades.value[st.id]) {
-        grades.value[st.id] = {}
-      }
-      if (qualitativeScores.value[st.id] === undefined) {
-        qualitativeScores.value[st.id] = ''
-      }
+    // Students are shared by every subject in the course. Load them once while
+    // grade definitions are prepared in parallel, and publish them immediately.
+    const { students: loadedStudents } = await loadGradeSheetPrerequisites({
+      loadStudents: () => courseStudentsLoader.load({
+        courseId: selectedCourse.value,
+        schoolId: sId,
+      }),
+      ensureDefinitions: () => isQualitativeCourse.value
+        ? Promise.resolve(true)
+        : ensureDefinitions(courseSubjectId),
+      onStudents: (stus) => {
+        if (!gradeSheetRequestGuard.isCurrent(requestId)) return
+        students.value = stus
+        loadingStudents.value = false
+        stus.forEach(st => {
+          if (!grades.value[st.id]) grades.value[st.id] = {}
+          if (qualitativeScores.value[st.id] === undefined) qualitativeScores.value[st.id] = ''
+        })
+      },
     })
+
+    if (!gradeSheetRequestGuard.isCurrent(requestId)) return
+    students.value = loadedStudents
+    loadingStudents.value = false
 
     if (isQualitativeCourse.value) {
       const { data: qGrades, error: qError } = await supabase
@@ -675,6 +694,7 @@ const loadGradeData = async (courseSubjectId) => {
         .select('student_id, score_text')
         .eq('course_subject_id', courseSubjectId)
         .eq('quarter_id', selectedQuarter.value)
+      if (!gradeSheetRequestGuard.isCurrent(requestId)) return
       if (qError) {
         toast.error('Error cargando calificaciones', { description: qError.message })
         return
@@ -695,10 +715,7 @@ const loadGradeData = async (courseSubjectId) => {
       return
     }
 
-    // 2. Ensure Definitions (Atomic RPC / safe fallback)
-    await ensureDefinitions(courseSubjectId)
-
-    // 3. Fetch Definitions
+    // Definitions are fetched after their atomic initialization completes.
     let defsQuery = supabase
       .from('grade_definitions')
       .select('*')
@@ -709,6 +726,7 @@ const loadGradeData = async (courseSubjectId) => {
       defsQuery = defsQuery.or(`school_id.eq.${sId},school_id.is.null`)
     }
     const { data: defs, error: defsError } = await defsQuery
+    if (!gradeSheetRequestGuard.isCurrent(requestId)) return
     if (defsError) {
       console.warn('Error cargando columnas:', defsError.message)
     }
@@ -753,6 +771,7 @@ const loadGradeData = async (courseSubjectId) => {
         .from('grades')
         .select('student_id, score, grade_definition_id')
         .in('grade_definition_id', realDefIds)
+      if (!gradeSheetRequestGuard.isCurrent(requestId)) return
       if (gradesError) {
         toast.error('Error cargando calificaciones', { description: gradesError.message })
       } else {
@@ -778,10 +797,14 @@ const loadGradeData = async (courseSubjectId) => {
     })
 
   } catch (e) {
+    if (!gradeSheetRequestGuard.isCurrent(requestId)) return
     console.error(e)
     toast.error('Error cargando datos', { description: e.message })
   } finally {
-    loadingGrades.value = false
+    if (gradeSheetRequestGuard.isCurrent(requestId)) {
+      loadingStudents.value = false
+      loadingGrades.value = false
+    }
   }
 }
 
@@ -1251,6 +1274,7 @@ const saveHeader = async () => {
     institutionRectorName,
     institutionTutorName,
     isQualitativeCourse,
+    loadingStudents,
     loadingGrades,
     message,
     onGradeInput,

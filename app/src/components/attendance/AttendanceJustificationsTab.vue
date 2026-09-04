@@ -59,17 +59,17 @@ const clearSelectedDates = () => {
 </script>
 
 <template>
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 w-full min-w-0">
     
     <!-- Columna 1: Búsqueda y Selección de Estudiante -->
-    <div class="lg:col-span-1 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm flex flex-col space-y-4">
-      <div class="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-        <div class="p-2 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
+    <div class="lg:col-span-1 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-sm flex flex-col space-y-4 min-w-0">
+      <div class="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="p-2 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 shrink-0">
           <User class="w-5 h-5" />
         </div>
-        <div>
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">Buscar Estudiante</h3>
-          <p class="text-[11px] text-slate-500">Selecciona el alumno para justificar faltas</p>
+        <div class="min-w-0">
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white truncate">Buscar Estudiante</h3>
+          <p class="text-[11px] text-slate-500 truncate">Selecciona el alumno para justificar faltas</p>
         </div>
       </div>
 
@@ -80,7 +80,8 @@ const clearSelectedDates = () => {
           v-model="studentSearch"
           type="text"
           placeholder="Nombre o cédula del estudiante..."
-          class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none placeholder-slate-400"
+          class="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none placeholder-slate-400"
+          aria-label="Buscar estudiante por nombre o cédula"
         />
       </div>
 
@@ -92,14 +93,14 @@ const clearSelectedDates = () => {
           type="button"
           @click="onSelectStudent(st)"
           :class="[
-            'w-full p-2.5 rounded-xl text-left transition-all flex items-center justify-between border cursor-pointer',
+            'w-full p-3 rounded-xl text-left transition-all flex items-center justify-between border cursor-pointer min-h-[44px]',
             selectedStudent?.id === st.id
               ? 'border-teal-500 bg-teal-500/10 dark:bg-teal-500/15 ring-1 ring-teal-500/40 text-teal-900 dark:text-teal-200'
               : 'border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-950 hover:border-slate-200 dark:hover:border-slate-700'
           ]"
         >
-          <div>
-            <strong class="text-xs text-slate-900 dark:text-white font-bold block">{{ st.full_name }}</strong>
+          <div class="min-w-0 pr-2">
+            <strong class="text-xs text-slate-900 dark:text-white font-bold block truncate">{{ st.full_name }}</strong>
             <span class="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
               C.I. {{ st.student_cedula || 'N/A' }}
             </span>
@@ -114,25 +115,25 @@ const clearSelectedDates = () => {
     </div>
 
     <!-- Columna 2: Faltas Pendientes y Formulario de Justificación -->
-    <div class="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-5">
+    <div class="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-sm space-y-5 min-w-0">
       
-      <div v-if="selectedStudent" class="space-y-5">
+      <div v-if="selectedStudent" class="space-y-5 min-w-0">
         
         <!-- Header del Estudiante Seleccionado -->
-        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-3">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-teal-600 text-white font-bold flex items-center justify-center text-sm shadow-md">
+        <div class="p-3.5 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-xl bg-teal-600 text-white font-bold flex items-center justify-center text-sm shadow-md shrink-0">
               {{ selectedStudent.full_name?.charAt(0) || 'E' }}
             </div>
-            <div>
-              <h4 class="font-bold text-sm text-slate-900 dark:text-white">{{ selectedStudent.full_name }}</h4>
-              <p class="text-xs text-slate-500">
+            <div class="min-w-0">
+              <h4 class="font-bold text-sm text-slate-900 dark:text-white truncate">{{ selectedStudent.full_name }}</h4>
+              <p class="text-xs text-slate-500 truncate">
                 C.I. {{ selectedStudent.student_cedula }} • Representante: {{ selectedStudent.representative_name || 'N/A' }}
               </p>
             </div>
           </div>
 
-          <div class="text-right">
+          <div class="text-right shrink-0">
             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">
               {{ unexcusedAbsences.length }} Faltas / Atrasos Pendientes
             </span>
@@ -140,8 +141,8 @@ const clearSelectedDates = () => {
         </div>
 
         <!-- Lista de Inasistencias con Checkbox -->
-        <div class="space-y-2.5">
-          <div class="flex items-center justify-between">
+        <div class="space-y-2.5 min-w-0">
+          <div class="flex items-center justify-between flex-wrap gap-2">
             <label class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
               1. Selecciona las fechas a justificar:
             </label>
@@ -169,7 +170,7 @@ const clearSelectedDates = () => {
               v-for="abs in unexcusedAbsences"
               :key="abs.id"
               :class="[
-                'p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all',
+                'p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all min-h-[48px]',
                 selectedDates.includes(abs.attendance_date)
                   ? 'border-teal-500 bg-teal-500/10 dark:bg-teal-500/15 ring-1 ring-teal-500/40'
                   : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:border-slate-300'
@@ -179,19 +180,19 @@ const clearSelectedDates = () => {
                 type="checkbox"
                 :checked="selectedDates.includes(abs.attendance_date)"
                 @change="toggleDate(abs.attendance_date)"
-                class="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-slate-300"
+                class="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-slate-300 shrink-0"
               />
-              <div class="flex-1 text-xs">
-                <div class="flex items-center justify-between">
-                  <strong class="text-slate-900 dark:text-white font-bold">📅 {{ abs.attendance_date }}</strong>
+              <div class="flex-1 text-xs min-w-0">
+                <div class="flex items-center justify-between gap-1">
+                  <strong class="text-slate-900 dark:text-white font-bold truncate">📅 {{ abs.attendance_date }}</strong>
                   <span :class="[
-                    'px-2 py-0.5 rounded text-[10px] font-bold uppercase',
+                    'px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0',
                     abs.status === 'atraso' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
                   ]">
                     {{ abs.status === 'atraso' ? 'Atraso' : 'Falta Injustificada' }}
                   </span>
                 </div>
-                <p class="text-[11px] text-slate-500 mt-0.5">
+                <p class="text-[11px] text-slate-500 mt-0.5 truncate">
                   {{ abs.subjects?.name || 'Jornada general' }} {{ abs.observations ? `(${abs.observations})` : '' }}
                 </p>
               </div>
@@ -205,7 +206,7 @@ const clearSelectedDates = () => {
         </div>
 
         <!-- Formulario de Motivo de Justificación -->
-        <div v-if="unexcusedAbsences.length > 0" class="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+        <div v-if="unexcusedAbsences.length > 0" class="space-y-4 pt-3 border-t border-slate-100 dark:border-slate-800">
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
               2. Motivo y Justificativo Institucional (Certificado Médico / Calamidad): *
@@ -225,10 +226,10 @@ const clearSelectedDates = () => {
               type="button"
               :disabled="loading || selectedDates.length === 0 || !reason.trim()"
               @click="onSubmitJustification"
-              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white text-xs font-bold shadow-lg shadow-teal-900/20 transition-all disabled:opacity-50 cursor-pointer"
+              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white text-xs font-bold shadow-lg shadow-teal-900/20 transition-all disabled:opacity-50 cursor-pointer min-h-[42px]"
             >
               <ShieldCheck class="w-4 h-4" />
-              {{ loading ? 'Procesando...' : `Justificar ${selectedDates.length} Faltas Seleccionadas` }}
+              <span>{{ loading ? 'Procesando...' : `Justificar ${selectedDates.length} Faltas Seleccionadas` }}</span>
             </button>
           </div>
         </div>

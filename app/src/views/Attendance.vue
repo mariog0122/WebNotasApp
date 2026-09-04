@@ -50,89 +50,150 @@ const {
 </script>
 
 <template>
-  <div class="h-full flex flex-col space-y-6">
+  <div class="w-full max-w-[1600px] mx-auto min-w-0 flex flex-col space-y-6">
     
     <!-- Academic Year Banner -->
     <AcademicYearBanner module-name="Asistencia" class="no-print" />
 
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print">
-      <div class="flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
-          <CalendarCheck class="w-6 h-6" />
+    <!-- Header Principal -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
+      <div class="flex items-start sm:items-center gap-3.5 min-w-0">
+        <div class="p-2.5 sm:p-3 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 shadow-sm shrink-0">
+          <CalendarCheck class="w-6 h-6 sm:w-7 sm:h-7" />
         </div>
-        <div>
-          <h1 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Control de Asistencia</h1>
-          <p class="text-sm text-slate-500 dark:text-slate-400">
+        <div class="min-w-0">
+          <h1 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+            Control de Asistencia
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
             Toma rápida para docentes, sábana mensual y gestión de justificaciones para Inspección General
           </p>
         </div>
       </div>
     </div>
 
-    <!-- Navigation Tabs -->
-    <div class="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shrink-0 overflow-x-auto custom-scrollbar no-print">
-      
-      <!-- Tab 1: Toma de Asistencia -->
-      <button
-        type="button"
-        @click="activeTab = 'roll_call'"
-        :class="[
-          'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer',
-          activeTab === 'roll_call'
-            ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-sm'
-            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-        ]"
-      >
-        <UserCheck class="w-4 h-4" />
-        1. Toma Rápida de Asistencia
-      </button>
+    <!-- Navigation Tabs (Ultra-Responsive) -->
+    <div class="no-print w-full min-w-0">
+      <!-- Desktop & Tablet Grid (>= 640px) -->
+      <div class="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+        <!-- Tab 1: Toma de Asistencia -->
+        <button
+          type="button"
+          @click="activeTab = 'roll_call'"
+          :class="[
+            'px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer text-center min-h-[42px]',
+            activeTab === 'roll_call'
+              ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+          ]"
+        >
+          <UserCheck class="w-4 h-4 shrink-0" />
+          <span class="truncate">1. Toma de Asistencia</span>
+        </button>
 
-      <!-- Tab 2: Justificaciones -->
-      <button
-        type="button"
-        @click="activeTab = 'justifications'"
-        :class="[
-          'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer',
-          activeTab === 'justifications'
-            ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-sm'
-            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-        ]"
-      >
-        <ShieldCheck class="w-4 h-4" />
-        2. Justificaciones de Inspección
-      </button>
+        <!-- Tab 2: Justificaciones -->
+        <button
+          type="button"
+          @click="activeTab = 'justifications'"
+          :class="[
+            'px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer text-center min-h-[42px]',
+            activeTab === 'justifications'
+              ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+          ]"
+        >
+          <ShieldCheck class="w-4 h-4 shrink-0" />
+          <span class="truncate">2. Justificaciones</span>
+        </button>
 
-      <!-- Tab 3: Sábana Mensual -->
-      <button
-        type="button"
-        @click="activeTab = 'monthly_grid'"
-        :class="[
-          'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer',
-          activeTab === 'monthly_grid'
-            ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-sm'
-            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-        ]"
-      >
-        <Calendar class="w-4 h-4" />
-        3. Sábana Mensual & % Asistencia
-      </button>
+        <!-- Tab 3: Sábana Mensual -->
+        <button
+          type="button"
+          @click="activeTab = 'monthly_grid'"
+          :class="[
+            'px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer text-center min-h-[42px]',
+            activeTab === 'monthly_grid'
+              ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+          ]"
+        >
+          <Calendar class="w-4 h-4 shrink-0" />
+          <span class="truncate">3. Sábana Mensual</span>
+        </button>
 
-      <!-- Tab 4: Alertas & WhatsApp -->
-      <button
-        type="button"
-        @click="activeTab = 'alerts'"
-        :class="[
-          'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer',
-          activeTab === 'alerts'
-            ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-sm'
-            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-        ]"
-      >
-        <ShieldAlert class="w-4 h-4" />
-        4. Alertas de Inasistencia
-      </button>
+        <!-- Tab 4: Alertas -->
+        <button
+          type="button"
+          @click="activeTab = 'alerts'"
+          :class="[
+            'px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer text-center min-h-[42px]',
+            activeTab === 'alerts'
+              ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+          ]"
+        >
+          <ShieldAlert class="w-4 h-4 shrink-0" />
+          <span class="truncate">4. Alertas de Inasistencia</span>
+        </button>
+      </div>
 
+      <!-- Mobile Horizontal Scroll Tabs (< 640px) -->
+      <div class="sm:hidden overflow-x-auto custom-scrollbar-tabs pb-1">
+        <div class="inline-flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 min-w-full">
+          <button
+            type="button"
+            @click="activeTab = 'roll_call'"
+            :class="[
+              'px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer min-h-[40px]',
+              activeTab === 'roll_call'
+                ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400'
+            ]"
+          >
+            <UserCheck class="w-3.5 h-3.5 shrink-0" />
+            1. Toma Rápida
+          </button>
+          <button
+            type="button"
+            @click="activeTab = 'justifications'"
+            :class="[
+              'px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer min-h-[40px]',
+              activeTab === 'justifications'
+                ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400'
+            ]"
+          >
+            <ShieldCheck class="w-3.5 h-3.5 shrink-0" />
+            2. Justificaciones
+          </button>
+          <button
+            type="button"
+            @click="activeTab = 'monthly_grid'"
+            :class="[
+              'px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer min-h-[40px]',
+              activeTab === 'monthly_grid'
+                ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400'
+            ]"
+          >
+            <Calendar class="w-3.5 h-3.5 shrink-0" />
+            3. Sábana
+          </button>
+          <button
+            type="button"
+            @click="activeTab = 'alerts'"
+            :class="[
+              'px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer min-h-[40px]',
+              activeTab === 'alerts'
+                ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400'
+            ]"
+          >
+            <ShieldAlert class="w-3.5 h-3.5 shrink-0" />
+            4. Alertas
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Active Tab Content -->

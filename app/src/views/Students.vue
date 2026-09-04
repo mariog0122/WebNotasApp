@@ -258,7 +258,10 @@ const form = ref({
   representative_phone: '',
   representative_alt_phone: '',
   student_photo_url: '',
-  representative_photo_url: ''
+  representative_photo_url: '',
+  has_adaptation: false,
+  adaptation_grade: '1',
+  adaptation_details: ''
 })
 
 const toggleStudentSelection = (id) => {
@@ -394,7 +397,10 @@ const openModal = (student = null) => {
       representative_phone: student.representative_phone || '',
       representative_alt_phone: student.representative_alt_phone || '',
       student_photo_url: student.student_photo_storage_path || '',
-      representative_photo_url: student.representative_photo_storage_path || ''
+      representative_photo_url: student.representative_photo_storage_path || '',
+      has_adaptation: !!student.has_adaptation,
+      adaptation_grade: student.adaptation_grade || '1',
+      adaptation_details: student.adaptation_details || ''
     }
     studentPhotoPreview.value = student.student_photo_url || ''
     representativePhotoPreview.value = student.representative_photo_url || ''
@@ -411,7 +417,10 @@ const openModal = (student = null) => {
       representative_phone: '',
       representative_alt_phone: '',
       student_photo_url: '',
-      representative_photo_url: ''
+      representative_photo_url: '',
+      has_adaptation: false,
+      adaptation_grade: '1',
+      adaptation_details: ''
     }
     studentPhotoPreview.value = ''
     representativePhotoPreview.value = ''
@@ -485,6 +494,9 @@ const saveStudent = async () => {
       representative_alt_phone: form.value.representative_alt_phone,
       student_photo_url: form.value.student_photo_url,
       representative_photo_url: form.value.representative_photo_url,
+      has_adaptation: !!form.value.has_adaptation,
+      adaptation_grade: form.value.has_adaptation ? form.value.adaptation_grade : '1',
+      adaptation_details: form.value.has_adaptation ? form.value.adaptation_details : '',
       school_id: authStore.activeSchoolId,
     }
 
@@ -927,7 +939,12 @@ onMounted(async () => {
                   @change="toggleStudentSelection(student.id)"
                   class="w-4 h-4 rounded text-teal-600 accent-teal-600" 
                 />
-                <span>{{ student.full_name }}</span>
+                <div class="flex items-center gap-2">
+                  <span>{{ student.full_name }}</span>
+                  <span v-if="student.has_adaptation" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                    Adaptación G{{ student.adaptation_grade || '1' }}
+                  </span>
+                </div>
               </label>
               <span v-if="isStudentComplete(student)" class="app-badge app-badge-ok text-xs">Completo</span>
               <span v-else class="app-badge app-badge-warn text-xs">Pendiente</span>
@@ -993,7 +1010,14 @@ onMounted(async () => {
                   <td v-if="canDeleteStudents">
                     <input type="checkbox" :checked="selectedStudentIds.has(student.id)" @change="toggleStudentSelection(student.id)" class="accent-teal-600" />
                   </td>
-                  <td class="text-sm font-semibold text-slate-900 dark:text-white">{{ student.full_name }}</td>
+                  <td class="text-sm font-semibold text-slate-900 dark:text-white">
+                    <div class="flex items-center gap-2">
+                      <span>{{ student.full_name }}</span>
+                      <span v-if="student.has_adaptation" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                        Adaptación G{{ student.adaptation_grade || '1' }}
+                      </span>
+                    </div>
+                  </td>
                   <td class="whitespace-nowrap text-sm">
                     <span v-if="isStudentComplete(student)" class="app-badge app-badge-ok">Completo</span>
                     <span v-else class="app-badge app-badge-warn">Pendiente</span>
@@ -1103,6 +1127,36 @@ onMounted(async () => {
                     <div v-if="representativePhotoPreview" class="mt-2">
                       <img :src="representativePhotoPreview" alt="Foto del representante" class="h-20 w-20 rounded-xl object-cover border border-slate-200 dark:border-slate-700" />
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Adaptación Curricular (NEE / DUA) -->
+              <div class="border-t border-slate-200 dark:border-slate-800 pt-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200">Adaptación Curricular (Inclusión / NEE / DUA)</h4>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Habilita y selecciona el grado de adaptación para incluir automáticamente al estudiante en las planificaciones didácticas del curso.</p>
+                  </div>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" v-model="form.has_adaptation" class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4">
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Activa</span>
+                  </label>
+                </div>
+
+                <div v-if="form.has_adaptation" class="mt-3 space-y-3 p-3.5 rounded-2xl bg-teal-50/60 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60">
+                  <div>
+                    <label class="modal-label font-bold text-teal-900 dark:text-teal-200">Grado de Adaptación Curricular (Normativa MINEDEC)</label>
+                    <select v-model="form.adaptation_grade" class="app-input mt-1 bg-white dark:bg-slate-900 border-teal-300 dark:border-teal-700">
+                      <option value="1">Grado 1 (De Acceso) — Modificación de espacios físicos, recursos, materiales e iluminación</option>
+                      <option value="2">Grado 2 (No Significativa) — Modificación metodológica, tiempos adicionales y dinámicas de evaluación</option>
+                      <option value="3">Grado 3 (Significativa) — Modificación de Destrezas con Criterio de Desempeño (DCD) y Objetivos</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label class="modal-label font-bold text-teal-900 dark:text-teal-200">Especificaciones Pedagógicas y Necesidad Educativa</label>
+                    <textarea v-model="form.adaptation_details" rows="2" placeholder="Ej: TDAH con ritmo de aprendizaje pausado, requiere instrucciones fraccionadas y apoyo visual en evaluaciones..." class="app-input mt-1 bg-white dark:bg-slate-900 border-teal-300 dark:border-teal-700"></textarea>
                   </div>
                 </div>
               </div>
@@ -1331,6 +1385,19 @@ onMounted(async () => {
                         </div>
                      </div>
                  </div>
+
+                  <!-- Adaptación Curricular en Ficha -->
+                  <div v-if="cardStudent?.has_adaptation" class="bg-teal-50/80 p-4 rounded-lg border border-teal-200 text-left space-y-1.5">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-xs font-bold text-teal-900 uppercase tracking-wider">Adaptación Curricular (MINEDEC)</h4>
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-600 text-white">
+                        Grado {{ cardStudent.adaptation_grade || '1' }}
+                      </span>
+                    </div>
+                    <p class="text-xs text-teal-950 leading-relaxed font-medium">
+                      {{ cardStudent.adaptation_details || 'Adaptación curricular activa según informe psicopedagógico.' }}
+                    </p>
+                  </div>
               </div>
 
               <!-- Footer -->

@@ -1,12 +1,23 @@
 <script setup>
 import { inject, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Sparkles } from 'lucide-vue-next'
 import { gradesPageInjectionKey } from '../../composables/useGradesPage'
 import SkeletonTable from '../ui/SkeletonTable.vue'
+import StudentRecoveryModal from './StudentRecoveryModal.vue'
 
 const router = useRouter()
 const gp = inject(gradesPageInjectionKey)
 if (!gp) throw new Error('gradesPageInjectionKey no provisto')
+
+// Recovery modal state
+const showRecoveryModal = ref(false)
+const selectedStudentForRecovery = ref(null)
+
+const openRecoveryModal = (student) => {
+  selectedStudentForRecovery.value = student
+  showRecoveryModal.value = true
+}
 
 // Paste from Excel modal state
 const showPasteModal = ref(false)
@@ -79,7 +90,7 @@ const gradeBgClass = (val) => {
           v-if="gp.activeSubjectId === subject.course_subject_id"
           class="border-t border-slate-700 p-4 overflow-x-auto bg-slate-950/80 animate-fade-in-down print-page"
         >
-          <div v-if="gp.loadingGrades" class="py-4">
+          <div v-if="gp.loadingStudents" class="py-4">
             <SkeletonTable :rows="8" :columns="8" class="border-0" />
           </div>
 
@@ -114,7 +125,7 @@ const gradeBgClass = (val) => {
                 <button
                   type="button"
                   class="rounded-lg border border-teal-500/30 bg-teal-950/60 px-3 py-2 text-xs font-semibold text-teal-300 hover:bg-teal-900/60 transition-colors flex items-center gap-1.5"
-                  :disabled="gp.activeQuarterIsLocked"
+                  :disabled="gp.loadingGrades || gp.activeQuarterIsLocked"
                   @click="openPasteExcelModal"
                   title="Pegar una o varias columnas de notas copiadas directamente desde Excel"
                 >
@@ -130,7 +141,7 @@ const gradeBgClass = (val) => {
                 <button
                   type="button"
                   class="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
-                  :disabled="gp.saving || gp.activeQuarterIsLocked"
+                  :disabled="gp.loadingGrades || gp.saving || gp.activeQuarterIsLocked"
                   @click="gp.saveCurrentGrades"
                 >
                   <span v-if="gp.saving" class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true" />
@@ -163,6 +174,33 @@ const gradeBgClass = (val) => {
 
             <div v-if="gp.students.length === 0" class="text-center py-6 text-slate-400 bg-slate-900 rounded-lg border border-slate-700">
               No hay estudiantes en este curso. Agrega estudiantes para generar el acta.
+            </div>
+
+            <div
+              v-else-if="gp.loadingGrades"
+              class="overflow-hidden rounded-lg border border-slate-700 bg-slate-900"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <div class="flex items-center justify-between border-b border-slate-700 bg-slate-800 px-4 py-3">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-300">Estudiantes listos</span>
+                <span class="inline-flex items-center gap-2 text-xs text-teal-300">
+                  <span class="h-3 w-3 animate-spin rounded-full border-2 border-teal-300 border-t-transparent" aria-hidden="true" />
+                  Cargando columnas y notas
+                </span>
+              </div>
+              <div
+                v-for="(student, index) in gp.students.slice(0, 8)"
+                :key="student.id"
+                class="flex h-11 items-center gap-3 border-b border-slate-800 px-4 last:border-b-0"
+              >
+                <span class="w-8 text-xs tabular-nums text-slate-500">{{ index + 1 }}</span>
+                <span class="min-w-0 flex-1 truncate text-sm text-white">{{ student.full_name }}</span>
+                <span class="h-2.5 w-40 max-w-[35%] animate-pulse rounded-full bg-slate-700" aria-hidden="true" />
+              </div>
+              <div v-if="gp.students.length > 8" class="border-t border-slate-800 px-4 py-2 text-xs text-slate-400">
+                + {{ gp.students.length - 8 }} estudiantes cargados
+              </div>
             </div>
 
             <div
@@ -327,10 +365,20 @@ const gradeBgClass = (val) => {
                         type="button"
                         class="text-emerald-500 hover:text-emerald-400 p-1 rounded-full hover:bg-emerald-500/10 transition-colors"
                         @click="gp.sendStudentWhatsapp(student)"
+                        title="Enviar alerta por WhatsApp"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 448 512">
                           <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.7 17.8 69.7 27.2 106.2 27.2h.1c122.3 0 222-99.6 222-222 0-59.3-23-115.1-65.1-157.1zM223.9 445.8c-33.1 0-65.7-8.9-94.1-25.7l-6.7-4-69.8 18.3L72 365.9l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-82.7 184.6-184.5 184.7zm100.6-137.5c-5.5-2.7-32.6-16.1-37.7-17.9-5.1-1.8-8.8-2.7-12.5 2.7-3.7 5.5-14.3 17.9-17.6 21.6-3.2 3.7-6.5 4.1-12 1.4-5.5-2.7-23.2-8.5-44.2-27.2-16.4-14.6-27.4-32.7-30.6-38.2-3.2-5.5-.3-8.5 2.4-11.2 2.5-2.6 5.5-6.5 8.2-9.7 2.7-3.2 3.7-5.5 5.5-9.2 1.8-3.7 .9-6.9-.5-9.7-1.4-2.7-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 13.2 5.7 23.5 9.2 31.6 11.8 13.3 4.2 25.4 3.6 35 2.2 10.7-1.6 32.6-13.3 37.2-26.2 4.6-12.9 4.6-24 3.2-26.2-1.4-2.2-5.1-3.6-10.6-6.3z"/>
                         </svg>
+                      </button>
+                      <button
+                        v-if="((gp.studentAveragesMap[student.id]?.total ?? null) !== null ? gp.studentAveragesMap[student.id].total < 7 : (gp.studentAveragesMap[student.id]?.formative ?? null) !== null ? gp.studentAveragesMap[student.id].formative < 7 : false)"
+                        type="button"
+                        class="text-indigo-400 hover:text-indigo-300 p-1 rounded-full hover:bg-indigo-400/10 transition-colors"
+                        title="Generar recuperación pedagógica / tarea individualizada con IA"
+                        @click="openRecoveryModal(student)"
+                      >
+                        <Sparkles class="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -585,6 +633,16 @@ const gradeBgClass = (val) => {
         </div>
       </div>
     </div>
+
+    <!-- Modal de Recuperación Pedagógica con IA -->
+    <StudentRecoveryModal
+      v-if="showRecoveryModal && selectedStudentForRecovery"
+      :student="selectedStudentForRecovery"
+      :subject-name="gp.activeSubject?.subjects?.name || gp.activeSubject?.name || 'Asignatura'"
+      :score="(gp.studentAveragesMap[selectedStudentForRecovery.id]?.total ?? gp.studentAveragesMap[selectedStudentForRecovery.id]?.formative ?? 0)"
+      :course-name="gp.courses?.find(c => c.id === gp.selectedCourse)?.name || ''"
+      :on-close="() => { showRecoveryModal = false }"
+    />
   </div>
 </template>
 

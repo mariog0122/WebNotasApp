@@ -133,6 +133,7 @@ onUnmounted(() => {
           <p class="brand-promise">Donde cada institución logra su excelencia académica.</p>
 
           <ul class="brand-benefits" aria-label="Beneficios principales">
+            <li><span><Check aria-hidden="true" /></span>Planificación didáctica con IA (Normativa MINEDEC)</li>
             <li><span><Check aria-hidden="true" /></span>Control académico en tiempo real</li>
             <li><span><Check aria-hidden="true" /></span>Trazabilidad lista para auditoría</li>
             <li><span><Check aria-hidden="true" /></span>Reportes claros para decidir mejor</li>

@@ -15,7 +15,7 @@ const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storage: window.localStorage,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     storageKey: 'webnotas-auth-token',
     flowType: 'pkce',
     lock: async (name, acquireTimeout, fn) => {

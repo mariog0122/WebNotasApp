@@ -84,7 +84,7 @@ onMounted(() => {
             </h1>
 
             <p class="text-slate-300 text-base sm:text-lg leading-relaxed font-normal">
-              Administra estudiantes, docentes, cursos, asignaturas, calificaciones, reportes, familias y alertas DECE desde una sola plataforma segura, moderna y fácil de usar.
+              Administra estudiantes, docentes, cursos, asignaturas, calificaciones, planificaciones didácticas con IA (Normativa MINEDEC), reportes, familias y alertas DECE desde una sola plataforma segura, moderna y fácil de usar.
             </p>
 
             <div class="pt-2 flex flex-col sm:flex-row items-center gap-4">
