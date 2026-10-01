@@ -757,26 +757,106 @@ onUnmounted(() => {
 .password-toggle:hover { color: #087c93; background: #ecfeff; }
 .password-toggle svg { width: 1.05rem; height: 1.05rem; }
 
+/* Botón principal: círculo que se expande + flechas que se deslizan (colores LOGREVA) */
 .login-primary-button {
+  --flow-ease: cubic-bezier(0.19, 1, 0.22, 1);
+  --flow-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  isolation: isolate;
   display: flex;
   min-height: 3.35rem;
   margin-top: 0.15rem;
-  padding: 0 1.2rem;
+  padding: 0 2.9rem;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  border-radius: 0.82rem;
+  overflow: hidden;
+  border-radius: 999px;
   color: white;
   background: linear-gradient(100deg, #087c78 0%, #079ab7 56%, #06b6d4 100%);
   box-shadow: 0 16px 30px -18px rgba(7, 154, 183, 0.95), inset 0 1px rgba(255, 255, 255, 0.22);
   font-size: 0.9rem;
   font-weight: 850;
-  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+  cursor: pointer;
+  transition: border-radius 600ms var(--flow-ease), box-shadow 300ms ease, transform 200ms ease;
 }
 
-.login-primary-button:hover:not(:disabled) { transform: translateY(-1px); filter: saturate(1.08); box-shadow: 0 20px 34px -18px rgba(7, 154, 183, 1); }
+.login-primary-button > span {
+  position: relative;
+  z-index: 1;
+  transform: translateX(-0.45rem);
+  transition: transform 800ms ease-out;
+}
+
+/* Círculo azul marino de marca que crece desde el centro */
+.login-primary-button::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: 50%;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: #0b1f3a;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: width 800ms var(--flow-ease), height 800ms var(--flow-ease), opacity 800ms var(--flow-ease);
+}
+
+/* Flecha izquierda: entra al pasar el cursor */
+.login-primary-button::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: -25%;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: -0.525rem;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2367e8f9' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3Cpath d='m12 5 7 7-7 7'/%3E%3C/svg%3E") center / contain no-repeat;
+  transition: left 800ms var(--flow-spring);
+}
+
+/* Flecha derecha: sale al pasar el cursor */
+.login-primary-button svg {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: 1.15rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: -0.525rem;
+  transition: right 800ms var(--flow-spring), color 400ms ease;
+}
+
+.login-primary-button:hover:not(:disabled),
+.login-primary-button:focus-visible:not(:disabled) {
+  border-radius: 0.82rem;
+  box-shadow: 0 20px 34px -18px rgba(11, 31, 58, 0.85);
+}
+
+.login-primary-button:hover:not(:disabled) > span,
+.login-primary-button:focus-visible:not(:disabled) > span { transform: translateX(0.9rem); }
+
+.login-primary-button:hover:not(:disabled)::before,
+.login-primary-button:focus-visible:not(:disabled)::before {
+  width: 40rem;
+  height: 40rem;
+  opacity: 1;
+}
+
+.login-primary-button:hover:not(:disabled)::after,
+.login-primary-button:focus-visible:not(:disabled)::after { left: 1.15rem; }
+
+.login-primary-button:hover:not(:disabled) svg,
+.login-primary-button:focus-visible:not(:disabled) svg { right: -25%; }
+
+.login-primary-button:active:not(:disabled) { transform: scale(0.97); }
+.login-primary-button:focus-visible { outline: 2px solid #67e8f9; outline-offset: 3px; }
 .login-primary-button:disabled { cursor: wait; opacity: 0.62; }
-.login-primary-button svg { width: 1.05rem; height: 1.05rem; }
+
+/* Sin flecha (estado de carga): el texto queda centrado */
+.login-primary-button:disabled > span { transform: none; }
 
 .forgot-password, .login-secondary-action { justify-self: center; color: #087c93; font-size: 0.78rem; font-weight: 750; }
 .forgot-password:hover, .login-secondary-action:hover { color: #075f72; text-decoration: underline; text-underline-offset: 3px; }
@@ -880,6 +960,7 @@ onUnmounted(() => {
 
 @media (prefers-reduced-motion: reduce) {
   .login-primary-button, .login-control, .plans-link, .password-toggle { transition: none; }
+  .login-primary-button::before, .login-primary-button::after, .login-primary-button svg, .login-primary-button > span { transition: none; }
   .login-card:hover::before, .login-card:focus-within::before { animation: none; --beam-angle: 300deg; }
 }
 </style>
