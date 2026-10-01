@@ -507,10 +507,10 @@ const stepTitles = [
                   @click="formData.modality = m.id"
                   type="button"
                   :class="[
-                    'py-2 px-3 rounded-xl border text-center text-xs font-bold transition-all',
+                    'py-2 px-3 rounded-xl border text-center text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60',
                     formData.modality === m.id
-                      ? 'border-indigo-500 bg-indigo-600 text-white'
-                      : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
+                      ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-900/30'
+                      : 'border-slate-300 bg-white text-slate-700 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200'
                   ]"
                 >
                   {{ m.label }}
@@ -527,10 +527,10 @@ const stepTitles = [
                   @click="formData.group_organization = org.id"
                   type="button"
                   :class="[
-                    'py-2 px-3 rounded-xl border text-center text-xs font-semibold transition-all',
+                    'py-2 px-3 rounded-xl border text-center text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60',
                     formData.group_organization === org.id
-                      ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
+                      ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-900/30'
+                      : 'border-slate-300 bg-white text-slate-700 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200'
                   ]"
                 >
                   {{ org.label }}
@@ -549,10 +549,10 @@ const stepTitles = [
                 @click="toggleResource(res)"
                 type="button"
                 :class="[
-                  'px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5',
+                  'px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/60',
                   formData.available_resources.includes(res)
                     ? 'border-teal-500 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300'
-                    : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-teal-400/60 dark:hover:bg-teal-500/10 dark:hover:text-teal-200'
                 ]"
               >
                 <Check v-if="formData.available_resources.includes(res)" class="w-3.5 h-3.5 text-teal-600" />

@@ -117,10 +117,10 @@ const handleCreate = () => {
               @click="difficulty = dif.id"
               type="button"
               :class="[
-                'py-2 px-3 rounded-xl border text-center text-xs font-bold transition-all',
+                'py-2 px-3 rounded-xl border text-center text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/60',
                 difficulty === dif.id
-                  ? 'border-teal-500 bg-teal-500 text-white shadow-md'
-                  : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
+                  ? 'border-teal-500 bg-teal-500 text-white shadow-sm shadow-teal-900/30'
+                  : 'border-slate-300 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-teal-400/60 dark:hover:bg-teal-500/10 dark:hover:text-teal-200'
               ]"
             >
               {{ dif.label }}

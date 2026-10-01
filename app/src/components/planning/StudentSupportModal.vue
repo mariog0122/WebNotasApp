@@ -129,10 +129,10 @@ const handleSave = () => {
                 @click="form.intensity = intVal.id"
                 type="button"
                 :class="[
-                  'py-2 rounded-xl border text-center text-xs font-bold transition-all',
+                  'py-2 rounded-xl border text-center text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60',
                   form.intensity === intVal.id
-                    ? 'border-indigo-500 bg-indigo-600 text-white'
-                    : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
+                    ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-900/30'
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200'
                 ]"
               >
                 {{ intVal.label }}
