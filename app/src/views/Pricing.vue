@@ -8,8 +8,44 @@ import {
   HelpCircle, CreditCard, Lock, Sparkles, RefreshCw, FileText, 
   PhoneCall, Mail, MessageSquare, ChevronRight, Award, CheckCircle2, X,
   Shield, Users, BarChart3, Bell, CheckCircle, LayoutDashboard, BookOpen,
-  GraduationCap, User, Settings, ShieldAlert, Brain, TrendingUp, Layers
+  GraduationCap, User, Settings, ShieldAlert, Brain, TrendingUp, Layers,
+  Network, UsersRound, MessagesSquare, BookUser
 } from 'lucide-vue-next'
+
+const DIFFERENTIATORS = [
+  {
+    icon: Network,
+    tile: 'bg-indigo-500/10 text-indigo-400',
+    kickerColor: 'text-indigo-300',
+    kicker: 'Diagnóstico Causal',
+    title: 'Grafo Competencial',
+    text: 'Identifica el prerrequisito básico no superado (ej. mínimo común múltiplo) que causa el fallo en temas avanzados, no solo el promedio numérico.',
+  },
+  {
+    icon: UsersRound,
+    tile: 'bg-cyan-500/10 text-cyan-400',
+    kickerColor: 'text-cyan-300',
+    kicker: 'Acción Viable en Aula',
+    title: 'Teacher Cockpit (15 min)',
+    text: 'En vez de saturar al docente con 30 planes individuales, agrupa a los estudiantes en 3 a 5 equipos por dificultad común con microestrategias listas.',
+  },
+  {
+    icon: MessagesSquare,
+    tile: 'bg-purple-500/10 text-purple-400',
+    kickerColor: 'text-purple-300',
+    kicker: 'Andamiaje Sin Trampas',
+    title: 'Tutor Socrático RAG',
+    text: 'Nunca entrega la respuesta directa. Guía el razonamiento con pistas progresivas y sanitización estricta de datos personales de menores.',
+  },
+  {
+    icon: BookUser,
+    tile: 'bg-emerald-500/10 text-emerald-400',
+    kickerColor: 'text-emerald-300',
+    kicker: 'Alianza con el Hogar',
+    title: 'Pasaporte Familiar',
+    text: 'Sustituye la libreta fría por un reporte claro: qué domina el estudiante, en qué avanza en clase y cómo apoyarlo con actividades sencillas en casa.',
+  },
+]
 
 const isAnnual = ref(true)
 const [plan500, plan1000, plan2000] = COMMERCIAL_PLANS
@@ -73,34 +109,36 @@ onMounted(() => {
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           
           <!-- COLUMNA IZQUIERDA: CONTENIDO PUBLICITARIO -->
-          <div class="lg:col-span-5 space-y-6 text-left">
-            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-950/80 border border-indigo-800/60 text-xs font-bold text-indigo-300 tracking-wider shadow-sm">
-              <Sparkles class="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-              GESTIÓN ACADÉMICA + INTELIGENCIA DEL APRENDIZAJE 2026
+          <div class="lg:col-span-5 space-y-7 text-left">
+            <div class="inline-flex items-stretch gap-3 rounded-xl border border-slate-700/50 bg-slate-900/50 py-2.5 pl-3 pr-4 backdrop-blur">
+              <span class="w-[3px] shrink-0 rounded-full bg-gradient-to-b from-cyan-400 to-blue-500" aria-hidden="true"></span>
+              <p class="flex flex-wrap items-center gap-x-2 text-[10.5px] font-semibold uppercase leading-snug tracking-[0.1em] text-slate-300">
+                Gestión académica + inteligencia del aprendizaje
+                <span class="whitespace-nowrap border-l border-slate-600/70 pl-2 font-bold tabular-nums text-cyan-300">2026</span>
+              </p>
             </div>
 
-            <h1 class="text-4xl sm:text-5xl lg:text-[3.1rem] font-black text-white tracking-tight leading-[1.12]">
-              La primera plataforma escolar que une gestión oficial con <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-sky-400 to-cyan-300">Inteligencia del Aprendizaje.</span>
+            <h1 class="text-[2.15rem] sm:text-5xl lg:text-[2.9rem] font-bold text-white tracking-[-0.025em] leading-[1.12]">
+              La primera plataforma escolar que une gestión oficial con <span class="text-cyan-300">Inteligencia del Aprendizaje.</span>
             </h1>
 
-            <p class="text-slate-300 text-base sm:text-lg leading-relaxed font-normal">
+            <p class="max-w-xl text-[15px] sm:text-base leading-7 font-normal text-slate-400">
               Mucho más que notas y asistencia: LOGREVA diagnostica la causa raíz de las brechas pedagógicas con grafos competenciales, organiza al docente en 3 a 5 grupos viables de 15 minutos (Teacher Cockpit), guía a los estudiantes con un Tutor Socrático Anti-Cheat y entrega a las familias un Pasaporte de Aprendizaje claro.
             </p>
 
-            <div class="pt-2 flex flex-col sm:flex-row items-center gap-4">
-              <a :href="DEMO_REQUEST_URL" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-500 text-white px-7 py-3.5 rounded-xl font-bold text-base shadow-xl shadow-cyan-700/30 transition-all flex items-center justify-center gap-2.5">
-                Solicitar prueba de 15 días <ArrowRight class="w-5 h-5" />
+            <div class="flex flex-col gap-3 pt-1 sm:flex-row lg:flex-col xl:flex-row">
+              <a :href="DEMO_REQUEST_URL" target="_blank" rel="noopener noreferrer" class="inline-flex w-full items-center justify-center gap-2.5 whitespace-nowrap rounded-xl bg-cyan-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-cyan-900/30 ring-1 ring-inset ring-white/10 transition-all hover:-translate-y-px hover:bg-cyan-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 sm:w-auto lg:w-full xl:w-auto">
+                Solicitar prueba de 15 días <ArrowRight class="h-4 w-4" />
               </a>
-              <a href="#planes" class="w-full sm:w-auto bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-slate-200 px-7 py-3.5 rounded-xl font-bold text-base transition-all flex items-center justify-center">
+              <a href="#planes" class="inline-flex w-full items-center justify-center whitespace-nowrap rounded-xl border border-slate-600/70 px-6 py-3.5 text-sm font-semibold text-slate-200 transition-all hover:border-slate-400 hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 sm:w-auto lg:w-full xl:w-auto">
                 Ver planes institucionales
               </a>
             </div>
 
-            <div class="flex items-center gap-4 text-xs font-medium text-slate-400 pt-1">
-              <span class="flex items-center gap-1.5"><ShieldCheck class="w-4 h-4 text-indigo-400" /> Sin tarjeta de crédito</span>
-              <span>•</span>
-              <span class="flex items-center gap-1.5"><CheckCircle2 class="w-4 h-4 text-emerald-400" /> Configuración en minutos</span>
-            </div>
+            <ul class="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1 text-xs font-medium text-slate-400">
+              <li class="flex items-center gap-2"><ShieldCheck class="h-4 w-4 text-slate-500" /> Sin tarjeta de crédito</li>
+              <li class="flex items-center gap-2"><CheckCircle2 class="h-4 w-4 text-slate-500" /> Configuración en minutos</li>
+            </ul>
           </div>
 
           <!-- COLUMNA DERECHA: MAQUETA DEL PRODUCTO LOGREVA -->
@@ -508,12 +546,9 @@ onMounted(() => {
 
         <!-- Showcase de Diferenciación Única en el Mercado: Inteligencia del Aprendizaje -->
         <div class="mt-16 pt-12 border-t border-slate-900/80 space-y-8">
-          <div class="text-center max-w-3xl mx-auto space-y-2">
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/40 text-[11px] font-bold text-cyan-300">
-              <Sparkles class="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-              EL FACTOR DIFERENCIAL LOGREVA 2026
-            </div>
-            <h3 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          <div class="text-center max-w-3xl mx-auto space-y-3">
+            <h2 class="text-xs font-mono font-bold uppercase tracking-widest text-indigo-400">El Factor Diferencial LOGREVA 2026</h2>
+            <h3 class="text-3xl font-extrabold text-white tracking-tight">
               ¿Por qué LOGREVA supera a cualquier software escolar tradicional?
             </h3>
             <p class="text-slate-400 text-sm">
@@ -521,53 +556,18 @@ onMounted(() => {
             </p>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            <!-- 1. Grafo Causal -->
-            <div class="bg-gradient-to-b from-indigo-950/40 to-slate-900/60 border border-indigo-900/50 p-6 rounded-2xl space-y-3 relative overflow-hidden">
-              <div class="w-11 h-11 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
-                <Brain class="w-6 h-6" />
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div
+              v-for="item in DIFFERENTIATORS"
+              :key="item.title"
+              class="bg-slate-900/60 border border-slate-800/80 p-6 rounded-2xl space-y-3 hover:border-slate-700 transition-all"
+            >
+              <div :class="['p-3 rounded-xl w-fit', item.tile]">
+                <component :is="item.icon" class="w-6 h-6" aria-hidden="true" />
               </div>
-              <span class="text-[10px] font-extrabold uppercase tracking-wider text-indigo-300 block">Diagnóstico Causal</span>
-              <h4 class="font-bold text-base text-white">Grafo Competencial</h4>
-              <p class="text-xs text-slate-400 leading-relaxed">
-                Identifica el prerrequisito básico no superado (ej. mínimo común múltiplo) que causa el fallo en temas avanzados, no solo el promedio numérico.
-              </p>
-            </div>
-
-            <!-- 2. Teacher Cockpit -->
-            <div class="bg-gradient-to-b from-cyan-950/40 to-slate-900/60 border border-cyan-900/50 p-6 rounded-2xl space-y-3 relative overflow-hidden">
-              <div class="w-11 h-11 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
-                <Sparkles class="w-6 h-6" />
-              </div>
-              <span class="text-[10px] font-extrabold uppercase tracking-wider text-cyan-300 block">Acción Viable en Aula</span>
-              <h4 class="font-bold text-base text-white">Teacher Cockpit (15 min)</h4>
-              <p class="text-xs text-slate-400 leading-relaxed">
-                En vez de saturar al docente con 30 planes individuales, agrupa a los estudiantes en 3 a 5 equipos por dificultad común con microestrategias listas.
-              </p>
-            </div>
-
-            <!-- 3. Tutor Socrático Anti-Cheat -->
-            <div class="bg-gradient-to-b from-purple-950/40 to-slate-900/60 border border-purple-900/50 p-6 rounded-2xl space-y-3 relative overflow-hidden">
-              <div class="w-11 h-11 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">
-                <ShieldCheck class="w-6 h-6" />
-              </div>
-              <span class="text-[10px] font-extrabold uppercase tracking-wider text-purple-300 block">Andamiaje Sin Trampas</span>
-              <h4 class="font-bold text-base text-white">Tutor Socrático RAG</h4>
-              <p class="text-xs text-slate-400 leading-relaxed">
-                Nunca entrega la respuesta directa. Guía el razonamiento con pistas progresivas y sanitización estricta de datos personales de menores.
-              </p>
-            </div>
-
-            <!-- 4. Pasaporte Familiar -->
-            <div class="bg-gradient-to-b from-emerald-950/40 to-slate-900/60 border border-emerald-900/50 p-6 rounded-2xl space-y-3 relative overflow-hidden">
-              <div class="w-11 h-11 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-                <Award class="w-6 h-6" />
-              </div>
-              <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-300 block">Alianza con el Hogar</span>
-              <h4 class="font-bold text-base text-white">Pasaporte Familiar</h4>
-              <p class="text-xs text-slate-400 leading-relaxed">
-                Sustituye la libreta fría por un reporte claro: qué domina el estudiante, en qué avanza en clase y cómo apoyarlo con actividades sencillas en casa.
-              </p>
+              <span :class="['text-[10px] font-extrabold uppercase tracking-wider block', item.kickerColor]">{{ item.kicker }}</span>
+              <h4 class="font-bold text-lg text-white">{{ item.title }}</h4>
+              <p class="text-slate-400 text-sm leading-relaxed">{{ item.text }}</p>
             </div>
           </div>
         </div>
@@ -634,7 +634,8 @@ onMounted(() => {
 
           <!-- PLAN 1000 (DESTACADO) -->
           <div class="bg-slate-900 border-2 border-indigo-500 rounded-3xl p-8 space-y-6 flex flex-col justify-between shadow-2xl shadow-indigo-600/20 relative">
-            <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-extrabold px-4 py-1 rounded-full uppercase tracking-wider shadow-md">
+            <div class="absolute -top-[15px] left-1/2 -translate-x-1/2 inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-indigo-600 px-5 py-1.5 text-[11px] font-bold uppercase leading-none tracking-[0.14em] text-white shadow-lg shadow-indigo-900/40 ring-4 ring-slate-950">
+              <span class="h-1.5 w-1.5 rounded-full bg-cyan-300" aria-hidden="true"></span>
               Más elegido por Rectores
             </div>
 
@@ -1147,22 +1148,39 @@ onMounted(() => {
     </section>
 
     <!-- SECCIÓN 12: CTA FINAL -->
-    <section class="py-20 bg-gradient-to-b from-slate-950 via-indigo-950/40 to-slate-950">
-      <div class="max-w-4xl mx-auto px-4 text-center space-y-6">
-        <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-          Moderniza la gestión de tu institución educativa
-        </h2>
-        <p class="text-slate-300 text-base max-w-xl mx-auto">
-          Comienza hoy tu prueba de 15 días o contáctanos para asesorar a tu directiva.
-        </p>
+    <section class="relative overflow-hidden py-20 bg-gradient-to-b from-slate-950 via-indigo-950/40 to-slate-950">
+      <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 items-center gap-10 lg:gap-6">
+        <div class="space-y-6 text-center lg:order-2 lg:pl-8 lg:text-left">
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+            Moderniza la gestión de tu institución educativa
+          </h2>
+          <p class="text-slate-300 text-base max-w-xl mx-auto lg:mx-0">
+            Comienza hoy tu prueba de 15 días o contáctanos para asesorar a tu directiva.
+          </p>
 
-        <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <a :href="DEMO_REQUEST_URL" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-extrabold text-base shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-3">
-            Solicitar prueba de 15 días <ArrowRight class="w-5 h-5" />
-          </a>
-          <a href="https://wa.me/593989121871" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 px-8 py-4 rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-2">
-            <MessageSquare class="w-5 h-5 text-emerald-400" /> Hablar por WhatsApp (+593 98 912 1871)
-          </a>
+          <div class="pt-2 flex flex-col sm:flex-row lg:flex-col items-center lg:items-stretch justify-center lg:justify-start gap-4 lg:max-w-md">
+            <a :href="DEMO_REQUEST_URL" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto lg:w-full bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-extrabold text-base shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-3">
+              Solicitar prueba de 15 días <ArrowRight class="w-5 h-5" />
+            </a>
+            <a href="https://wa.me/593989121871" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto lg:w-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 px-8 py-4 rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-2">
+              <MessageSquare class="w-5 h-5 text-emerald-400" /> Hablar por WhatsApp (+593 98 912 1871)
+            </a>
+          </div>
+        </div>
+
+        <!-- Asistente LOGREVA (PNG/WebP con transparencia) sobre un halo suave -->
+        <div class="relative flex items-center justify-center lg:order-1" aria-hidden="true">
+          <div class="absolute h-72 w-72 sm:h-96 sm:w-96 rounded-full bg-gradient-to-tr from-indigo-600/30 via-sky-500/20 to-cyan-400/25 blur-3xl"></div>
+          <div class="absolute h-56 w-56 sm:h-72 sm:w-72 rounded-full border border-cyan-400/10"></div>
+          <img
+            src="/assistant/logreva-bot-3d-sin-fondo.webp"
+            alt=""
+            width="801"
+            height="823"
+            loading="lazy"
+            decoding="async"
+            class="cta-bot relative w-56 sm:w-72 lg:w-80 xl:w-96 h-auto drop-shadow-[0_24px_40px_rgba(2,6,23,0.65)]"
+          />
         </div>
       </div>
     </section>
@@ -1187,3 +1205,18 @@ onMounted(() => {
     </footer>
   </div>
 </template>
+
+<style scoped>
+.cta-bot {
+  animation: cta-bot-float 7s ease-in-out infinite;
+}
+
+@keyframes cta-bot-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-bot { animation: none; }
+}
+</style>

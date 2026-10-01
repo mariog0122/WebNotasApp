@@ -10,7 +10,7 @@ import GalaxyBackground from '../components/ui/GalaxyBackground.vue'
 import { DEMO_REQUEST_URL } from '../lib/brand'
 import { APP_URL } from '../lib/appUrl'
 import { getMfaStatus, isAal2Required, challengeAndVerifyLogin } from '../lib/mfa'
-import { ArrowRight, Building2, Check, Eye, EyeOff, KeyRound, LockKeyhole, Mail, ShieldCheck, Sparkles, Brain } from 'lucide-vue-next'
+import { Activity, ArrowRight, BookOpenCheck, Brain, Building2, ChartColumn, ClipboardCheck, Eye, EyeOff, GraduationCap, KeyRound, LockKeyhole, Mail, Network, ShieldCheck } from 'lucide-vue-next'
 
 const email = ref('')
 const password = ref('')
@@ -183,9 +183,12 @@ onUnmounted(() => {
         <BrandLogo variant="horizontal" tone="light" class="brand-lockup" />
 
         <div class="brand-message">
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/40 text-[11px] font-bold text-cyan-300 mb-3 backdrop-blur-md">
-            <Sparkles class="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-            INTELIGENCIA DEL APRENDIZAJE & GESTIÓN 2026
+          <div class="brand-tag">
+            <span class="brand-tag__bar" aria-hidden="true"></span>
+            <p class="brand-tag__text">
+              Inteligencia del aprendizaje y gestión
+              <span class="brand-tag__year">2026</span>
+            </p>
           </div>
           <p class="brand-eyebrow">PLATAFORMA INSTITUCIONAL</p>
           <h1>
@@ -195,12 +198,12 @@ onUnmounted(() => {
           <p class="brand-promise">Donde cada institución logra su excelencia académica.</p>
 
           <ul class="brand-benefits" aria-label="Beneficios principales">
-            <li><span><Check aria-hidden="true" /></span>Planificación didáctica con IA (Normativa MINEDEC)</li>
-            <li><span><Check aria-hidden="true" /></span>Control académico en tiempo real</li>
-            <li><span><Check aria-hidden="true" /></span>Trazabilidad lista para auditoría</li>
-            <li><span><Check aria-hidden="true" /></span>Reportes claros para decidir mejor</li>
-            <li class="text-cyan-200"><span><Sparkles aria-hidden="true" class="text-cyan-300" /></span>Diagnóstico causal de brechas & Grafo competencial</li>
-            <li class="text-indigo-200"><span><Sparkles aria-hidden="true" class="text-indigo-300" /></span>Tutor Socrático con andamiaje y Teacher Cockpit en 15 min</li>
+            <li><span><BookOpenCheck aria-hidden="true" /></span>Planificación didáctica con IA (Normativa MINEDEC)</li>
+            <li><span><Activity aria-hidden="true" /></span>Control académico en tiempo real</li>
+            <li><span><ClipboardCheck aria-hidden="true" /></span>Trazabilidad lista para auditoría</li>
+            <li><span><ChartColumn aria-hidden="true" /></span>Reportes claros para decidir mejor</li>
+            <li class="brand-benefits__advanced"><span><Network aria-hidden="true" /></span>Diagnóstico causal de brechas &amp; Grafo competencial</li>
+            <li class="brand-benefits__advanced"><span><GraduationCap aria-hidden="true" /></span>Tutor Socrático con andamiaje y Teacher Cockpit en 15 min</li>
           </ul>
 
           <!-- Live Pedagogical Intelligence Preview Pill -->
@@ -247,10 +250,7 @@ onUnmounted(() => {
               <ShieldCheck v-if="isMfaChallenged" aria-hidden="true" />
               <LockKeyhole v-else aria-hidden="true" />
             </div>
-            <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/50 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 mb-2">
-              <Sparkles class="w-3 h-3 text-indigo-600" />
-              <span>Entorno Escolar Inteligente</span>
-            </div>
+            <p class="login-card__eyebrow">Acceso institucional</p>
             <h2>
               {{ isUpdatingPassword ? 'Nueva contraseña' : (isRecovering ? 'Recuperar contraseña' : (isMfaChallenged ? 'Verificación 2FA' : 'Bienvenido a Logreva')) }}
             </h2>
@@ -419,6 +419,45 @@ onUnmounted(() => {
   padding-top: 3rem;
 }
 
+.brand-tag {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0.9rem;
+  margin-bottom: 2rem;
+  padding: 0.85rem 1.35rem 0.85rem 1.1rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 0.9rem;
+  background: rgba(15, 23, 42, 0.5);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+}
+
+.brand-tag__bar {
+  width: 3px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #22d3ee, #3b82f6);
+}
+
+.brand-tag__text {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.5;
+}
+
+.brand-tag__year {
+  padding-left: 0.75rem;
+  border-left: 1px solid rgba(148, 163, 184, 0.28);
+  color: #67e8f9;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
 .brand-eyebrow {
   margin-bottom: 1.15rem;
   color: #67e8f9;
@@ -471,20 +510,24 @@ onUnmounted(() => {
 
 .brand-benefits li > span {
   display: grid;
-  width: 1.55rem;
-  height: 1.55rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  flex: 0 0 auto;
   place-items: center;
-  border: 1px solid rgba(34, 211, 238, 0.34);
-  border-radius: 999px;
-  color: #22d3ee;
-  background: rgba(8, 145, 178, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.55rem;
+  color: #67e8f9;
+  background: rgba(15, 23, 42, 0.55);
 }
 
 .brand-benefits svg {
-  width: 0.9rem;
-  height: 0.9rem;
-  stroke-width: 3;
+  width: 1.05rem;
+  height: 1.05rem;
+  stroke-width: 1.7;
 }
+
+.brand-benefits__advanced { color: #c7d2fe; }
+.brand-benefits__advanced > span { color: #a5b4fc; }
 
 .secure-card {
   display: flex;
@@ -540,16 +583,39 @@ onUnmounted(() => {
   justify-content: center;
   overflow: hidden;
   background:
-    radial-gradient(circle at 12% 10%, rgba(34, 211, 238, 0.08), transparent 28%),
-    linear-gradient(145deg, #f8fafc 0%, #ffffff 45%, #f1f5f9 100%);
+    radial-gradient(70rem 34rem at 100% -8%, rgba(7, 154, 183, 0.13), transparent 62%),
+    radial-gradient(52rem 30rem at -8% 108%, rgba(30, 64, 175, 0.08), transparent 58%),
+    linear-gradient(160deg, #f5f8fb 0%, #ecf2f7 52%, #e4edf4 100%);
 }
 
-.access-decoration {
+/* Trama técnica muy tenue que se desvanece hacia los bordes */
+.login-access-panel::before {
+  content: '';
   position: absolute;
-  border: 1px solid rgba(7, 154, 183, 0.13);
-  border-radius: 999px;
+  inset: 0;
   pointer-events: none;
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 20%, transparent 72%);
+  mask-image: radial-gradient(ellipse at center, #000 20%, transparent 72%);
 }
+
+.dark .login-access-panel {
+  background:
+    radial-gradient(70rem 34rem at 100% -8%, rgba(6, 182, 212, 0.14), transparent 62%),
+    radial-gradient(52rem 30rem at -8% 108%, rgba(59, 130, 246, 0.1), transparent 58%),
+    linear-gradient(160deg, #0a1426 0%, #0b1730 52%, #0d1b36 100%);
+}
+
+.dark .login-access-panel::before {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+}
+
+.access-decoration { display: none; }
 
 .access-decoration--top { width: 15rem; height: 15rem; top: -8rem; right: -7rem; box-shadow: 0 0 0 28px rgba(7, 154, 183, 0.025); }
 .access-decoration--bottom { width: 10rem; height: 10rem; bottom: -6rem; left: -5rem; box-shadow: 0 0 0 22px rgba(7, 154, 183, 0.02); }
@@ -566,13 +632,65 @@ onUnmounted(() => {
 .login-card {
   position: relative;
   overflow: hidden;
-  padding: clamp(1.5rem, 5vw, 2.65rem);
-  border: 1px solid rgba(203, 213, 225, 0.72);
+  padding: clamp(1.75rem, 5vw, 3rem);
+  border: 1px solid rgba(203, 213, 225, 0.8);
   border-radius: 1.6rem;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 34px 90px -42px rgba(15, 23, 42, 0.48), 0 12px 30px -20px rgba(15, 23, 42, 0.2), inset 0 1px white;
   backdrop-filter: blur(18px);
 }
+
+@property --beam-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* Rayo de luz que recorre el borde de la tarjeta */
+.login-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1.5px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--beam-angle),
+    transparent 0deg,
+    transparent 250deg,
+    rgba(34, 211, 238, 0.12) 290deg,
+    #22d3ee 335deg,
+    #7dd3fc 352deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: 0;
+  transition: opacity 280ms ease;
+}
+
+.login-card:hover::before,
+.login-card:focus-within::before {
+  opacity: 1;
+  animation: login-beam 9s linear infinite;
+}
+
+@keyframes login-beam {
+  to { --beam-angle: 360deg; }
+}
+
+.login-card__header p.login-card__eyebrow {
+  margin: 0 0 0.75rem;
+  color: #07839c;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.dark .login-card__header p.login-card__eyebrow { color: #67e8f9; }
 
 .login-card__accent {
   position: absolute;
@@ -584,7 +702,7 @@ onUnmounted(() => {
   box-shadow: 0 0 22px rgba(7, 154, 183, 0.55);
 }
 
-.login-card__header { margin-bottom: 2rem; text-align: center; }
+.login-card__header { margin-bottom: 2.1rem; text-align: center; }
 
 .login-card__shield {
   display: grid;
@@ -762,5 +880,6 @@ onUnmounted(() => {
 
 @media (prefers-reduced-motion: reduce) {
   .login-primary-button, .login-control, .plans-link, .password-toggle { transition: none; }
+  .login-card:hover::before, .login-card:focus-within::before { animation: none; --beam-angle: 300deg; }
 }
 </style>
