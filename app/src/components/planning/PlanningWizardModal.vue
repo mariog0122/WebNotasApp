@@ -119,6 +119,19 @@ const toggleCompetency = (compId) => {
   }
 }
 
+const MODALITY_OPTIONS = [
+  { id: 'presencial', label: 'Presencial' },
+  { id: 'virtual', label: 'Virtual' },
+  { id: 'hibrida', label: 'Híbrida' },
+]
+
+const ORGANIZATION_OPTIONS = [
+  { id: 'individual', label: 'Individual', hint: 'Trabajo autónomo' },
+  { id: 'parejas', label: 'En Parejas', hint: 'Colaboración entre dos' },
+  { id: 'equipos', label: 'Equipos (3-5)', hint: 'Roles y metas compartidas' },
+  { id: 'grupo_completo', label: 'Grupo Completo', hint: 'Toda la clase a la vez' },
+]
+
 const toggleMethodologySecondary = (methId) => {
   const idx = props.formData.methodology_secondary.indexOf(methId)
   if (idx > -1) {
@@ -472,25 +485,40 @@ const stepTitles = [
           <!-- Metodología Principal -->
           <div>
             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Metodología Principal</label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup" aria-label="Metodología principal">
               <button
                 v-for="meth in PEDAGOGICAL_METHODOLOGIES"
                 :key="meth.id"
                 @click="formData.methodology_primary = meth.id"
                 type="button"
+                role="radio"
+                :aria-checked="formData.methodology_primary === meth.id"
                 :class="[
-                  'p-3.5 rounded-2xl border text-left transition-all text-xs flex flex-col justify-between',
+                  'group p-3.5 rounded-2xl border text-left transition-all text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60',
                   formData.methodology_primary === meth.id
-                    ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-500/10 text-slate-900 dark:text-white ring-2 ring-indigo-500'
-                    : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300'
+                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-slate-900 dark:text-white ring-1 ring-indigo-500 shadow-sm shadow-indigo-900/20'
+                    : 'border-slate-300 bg-white text-slate-700 hover:-translate-y-px hover:border-indigo-400 hover:bg-indigo-50/60 hover:shadow-sm dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/5'
                 ]"
               >
-                <div>
-                  <div class="flex items-center justify-between">
-                    <strong class="font-bold text-slate-900 dark:text-white">{{ meth.name }}</strong>
-                    <span v-if="meth.id === 'ERCA'" class="px-2 py-0.5 rounded text-[9px] font-bold bg-teal-500/20 text-teal-600 dark:text-teal-400">Recomendada</span>
+                <div class="flex items-start gap-3">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <strong class="font-bold text-slate-900 dark:text-white">{{ meth.name }}</strong>
+                      <span v-if="meth.id === 'ERCA'" class="px-2 py-0.5 rounded text-[9px] font-bold bg-teal-500/20 text-teal-600 dark:text-teal-400">Recomendada</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{{ meth.subtitle }}</p>
                   </div>
-                  <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{{ meth.subtitle }}</p>
+                  <span
+                    :class="[
+                      'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                      formData.methodology_primary === meth.id
+                        ? 'border-indigo-500 bg-indigo-500 text-white'
+                        : 'border-slate-300 dark:border-slate-600 group-hover:border-indigo-400'
+                    ]"
+                    aria-hidden="true"
+                  >
+                    <Check v-if="formData.methodology_primary === meth.id" class="h-3 w-3" :stroke-width="3" />
+                  </span>
                 </div>
               </button>
             </div>
@@ -500,17 +528,28 @@ const stepTitles = [
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Modalidad de Clase</label>
-              <div class="grid grid-cols-3 gap-2">
+              <div
+                class="relative grid grid-cols-3 rounded-xl border border-slate-300 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-900/60"
+                role="radiogroup"
+                aria-label="Modalidad de clase"
+              >
+                <span
+                  class="pointer-events-none absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-lg bg-indigo-600 shadow-sm shadow-indigo-900/30 transition-transform duration-200 ease-out"
+                  :style="{ transform: `translateX(${Math.max(0, MODALITY_OPTIONS.findIndex(o => o.id === formData.modality)) * 100}%)` }"
+                  aria-hidden="true"
+                ></span>
                 <button
-                  v-for="m in [{ id: 'presencial', label: 'Presencial' }, { id: 'virtual', label: 'Virtual' }, { id: 'hibrida', label: 'Híbrida' }]"
+                  v-for="m in MODALITY_OPTIONS"
                   :key="m.id"
                   @click="formData.modality = m.id"
                   type="button"
+                  role="radio"
+                  :aria-checked="formData.modality === m.id"
                   :class="[
-                    'py-2 px-3 rounded-xl border text-center text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60',
+                    'relative z-10 rounded-lg py-2 px-3 text-center text-xs font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60',
                     formData.modality === m.id
-                      ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-900/30'
-                      : 'border-slate-300 bg-white text-slate-700 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200'
+                      ? 'text-white'
+                      : 'text-slate-600 hover:text-indigo-700 dark:text-slate-300 dark:hover:text-indigo-200'
                   ]"
                 >
                   {{ m.label }}
@@ -520,20 +559,26 @@ const stepTitles = [
 
             <div>
               <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Organización de Estudiantes</label>
-              <div class="grid grid-cols-2 gap-2">
+              <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Organización de estudiantes">
                 <button
-                  v-for="org in [{ id: 'individual', label: 'Individual' }, { id: 'parejas', label: 'En Parejas' }, { id: 'equipos', label: 'Equipos (3-5)' }, { id: 'grupo_completo', label: 'Grupo Completo' }]"
+                  v-for="org in ORGANIZATION_OPTIONS"
                   :key="org.id"
                   @click="formData.group_organization = org.id"
                   type="button"
+                  role="radio"
+                  :aria-checked="formData.group_organization === org.id"
                   :class="[
-                    'py-2 px-3 rounded-xl border text-center text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60',
+                    'group rounded-xl border px-3 py-2 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60',
                     formData.group_organization === org.id
-                      ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-900/30'
-                      : 'border-slate-300 bg-white text-slate-700 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200'
+                      ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500 shadow-sm shadow-indigo-900/20 dark:bg-indigo-500/10'
+                      : 'border-slate-300 bg-white hover:-translate-y-px hover:border-indigo-400 hover:bg-indigo-50/60 hover:shadow-sm dark:border-slate-700 dark:bg-slate-900/50 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/5'
                   ]"
                 >
-                  {{ org.label }}
+                  <span class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold text-slate-900 dark:text-white">{{ org.label }}</span>
+                    <Check v-if="formData.group_organization === org.id" class="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-300" :stroke-width="3" aria-hidden="true" />
+                  </span>
+                  <span class="mt-0.5 block text-[10.5px] leading-snug text-slate-500 dark:text-slate-400">{{ org.hint }}</span>
                 </button>
               </div>
             </div>
