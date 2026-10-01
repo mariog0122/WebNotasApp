@@ -69,8 +69,13 @@ describe('P2 accessibility and performance contracts', () => {
 
   it('keeps the optional Excel parser out of the offline precache', () => {
     const viteConfig = read('vite.config.js')
-    expect(viteConfig).toContain("globIgnores: ['**/read-excel-file-*.js']")
+    expect(viteConfig).toContain("globIgnores: ['**/read-excel-file-*.js', '**/assistant/**']")
     expect(viteConfig).toContain("id.includes('read-excel-file')")
+  })
+
+  it('keeps the large assistant images out of the offline precache', () => {
+    const viteConfig = read('vite.config.js')
+    expect(viteConfig).toContain("'**/assistant/**'")
   })
 
   it('gives every Vue image alt text and secures every new-tab link', () => {

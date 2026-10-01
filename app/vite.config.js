@@ -40,7 +40,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        globIgnores: ['**/read-excel-file-*.js'],
+        globIgnores: ['**/read-excel-file-*.js', '**/assistant/**'],
         cleanupOutdatedCaches: true,
       },
       manifest: {
