@@ -1597,19 +1597,23 @@ input:focus {
   }
 
   .signature-grid {
-    gap: 16px !important;
+    gap: 28px !important;
   }
 
   .report-signature-line {
-    border-top: 1px solid #1e293b !important;
+    border-top: 1.5px solid #1e293b !important;
     padding-top: 6px !important;
+    text-align: center !important;
   }
 
   .signature-name {
-    font-size: 10px !important;
+    display: block !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
   }
 
   .signature-role {
+    display: block !important;
     font-size: 8px !important;
   }
 

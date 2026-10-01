@@ -13,8 +13,7 @@ import AcademicYearBanner from '../components/ui/AcademicYearBanner.vue'
 import { 
     validateStudentForm, 
     isStudentComplete, 
-    createPhotoPreview 
-} from '../lib/studentUtils'
+    createPhotoPreview, pruneSelection } from '../lib/studentUtils'
 import { saveStudentRecord } from '../lib/studentPersistence'
 
 const searchTerm = ref('')
@@ -125,6 +124,8 @@ const fetchStudents = async () => {
         }
       }))
       totalCount.value = count || 0
+      // Solo cuentan como seleccionados los alumnos que siguen en la lista (tras eliminar, paginar o buscar).
+      selectedStudentIds.value = pruneSelection(selectedStudentIds.value, students.value)
     }
   } catch (e) {
     console.error('Error fetching students:', e)

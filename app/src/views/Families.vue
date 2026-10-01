@@ -219,6 +219,9 @@ watch(quarters, (newVal) => {
   }
 }, { immediate: true })
 
+// immediate: el watcher de `courses` (arriba) ya pudo autoseleccionar el primer curso durante el
+// setup —p. ej. con los cursos en caché— antes de que este vigilante existiera. Sin `immediate`
+// esa primera selección nunca cargaba a los estudiantes.
 watch(selectedCourse, (newVal) => {
   if (newVal) {
     fetchCourseData()
@@ -227,6 +230,12 @@ watch(selectedCourse, (newVal) => {
     clearCourseData()
     loading.value = false
   }
+}, { immediate: true })
+
+// Las notas de proyecto se piden por trimestre: si los trimestres llegan después que el curso,
+// hay que volver a cargar para no calcular el Cuadro de Honor con datos incompletos.
+watch(() => quarters.value.map(q => q.id).join('|'), (ids, previousIds) => {
+  if (ids !== previousIds && selectedCourse.value) fetchCourseData()
 })
 
 // === Computed Families Array ===
@@ -357,6 +366,11 @@ const sendWhatsApp = (phoneStr, parentName, studentNames) => {
       
       <div v-if="loading" class="text-center py-10">
          <span class="text-teal-600 dark:text-teal-400 font-semibold animate-pulse">Procesando base de datos...</span>
+      </div>
+
+      <div v-else-if="!selectedCourse" class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-900/40">
+        <p class="text-sm font-bold text-slate-800 dark:text-slate-100">Selecciona un curso para ver su directorio de familias</p>
+        <p class="max-w-md text-xs text-slate-500 dark:text-slate-400">Elige el curso en el selector de arriba y aquí aparecerán los representantes y sus estudiantes.</p>
       </div>
 
       <!-- TOP 3 Cuadro de Honor -->

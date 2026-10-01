@@ -18,7 +18,9 @@ export function useAIPlanning() {
   const academicYearStore = useAcademicYearStore()
 
   // Estados de Carga y Acceso
-  const loading = ref(false)
+  // Nace en true: el módulo carga al montarse y no debe mostrar avisos de "desactivado" antes de saber el estado real.
+  const loading = ref(true)
+  const loadError = ref('')
   const generating = ref(false)
   const saving = ref(false)
   const moduleAccess = ref({
@@ -163,6 +165,7 @@ export function useAIPlanning() {
   // Carga de Cursos, Asignaturas, Estudiantes y Planes
   const fetchInitialData = async () => {
     loading.value = true
+    loadError.value = ''
     courses.value = []
     subjects.value = []
     lessonPlans.value = []
@@ -208,7 +211,8 @@ export function useAIPlanning() {
         module_enabled: false,
         ai_status: 'unavailable',
       }
-      toast.error('Error cargando planificaciones: ' + err.message)
+      loadError.value = err?.message || 'No se pudo conectar con el servidor.'
+      toast.error('Error cargando planificaciones: ' + loadError.value)
     } finally {
       loading.value = false
     }
@@ -739,6 +743,7 @@ export function useAIPlanning() {
 
   return {
     loading,
+    loadError,
     generating,
     saving,
     moduleAccess,

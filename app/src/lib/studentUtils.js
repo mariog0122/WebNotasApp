@@ -310,3 +310,16 @@ export const parseStudentCsvText = (text) => {
 
     return { entries, errors }
 }
+
+/**
+ * Deja en la selección solo los estudiantes que siguen presentes en la lista cargada.
+ * Evita contadores fantasma ("Eliminar Seleccionados (1)") tras eliminar, cambiar de página o buscar.
+ * Devuelve el mismo Set si no hay cambios, para no provocar re-renderizados innecesarios.
+ */
+export const pruneSelection = (selectedIds, visibleStudents) => {
+  const selected = selectedIds instanceof Set ? selectedIds : new Set(selectedIds || [])
+  if (selected.size === 0) return selected
+  const visible = new Set((visibleStudents || []).map((student) => student.id))
+  const kept = [...selected].filter((id) => visible.has(id))
+  return kept.length === selected.size ? selected : new Set(kept)
+}

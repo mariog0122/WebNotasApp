@@ -159,3 +159,84 @@ defineProps({
     </section>
   </div>
 </template>
+
+<style>
+/* Firmas de la libreta individual: tres columnas con línea superior, nombre en negrita y cargo debajo.
+   Estilos propios (no dependen de utilidades de otras vistas) para que pantalla, PDF e impresión coincidan. */
+.report-stack .signature-date {
+  margin-bottom: 1.5rem;
+}
+
+.report-stack .signature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2rem;
+  margin-top: 4rem;
+}
+
+.report-stack .report-signature-line {
+  padding-top: 0.6rem;
+  border-top: 1.5px solid #1e293b;
+  text-align: center;
+}
+
+.report-stack .signature-name {
+  display: block;
+  color: #0f172a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.report-stack .signature-role {
+  display: block;
+  margin-top: 0.2rem;
+  color: #64748b;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dark .report-stack .report-signature-line {
+  border-top-color: #64748b;
+}
+
+.dark .report-stack .signature-name {
+  color: #e2e8f0;
+}
+
+.dark .report-stack .signature-role {
+  color: #94a3b8;
+}
+
+@media screen and (max-width: 560px) {
+  .report-stack .signature-grid {
+    grid-template-columns: 1fr;
+    gap: 2.75rem;
+  }
+}
+
+/* Al imprimir siempre sobre papel blanco, con tinta oscura. */
+@media print {
+  .report-stack .signature-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    margin-top: 44px !important;
+  }
+
+  .report-stack .report-signature-line {
+    border-top-color: #1e293b !important;
+  }
+
+  .report-stack .signature-name {
+    color: #0f172a !important;
+  }
+
+  .report-stack .signature-role {
+    color: #64748b !important;
+  }
+}
+</style>
