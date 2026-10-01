@@ -84,6 +84,15 @@ const handleExportCsv = () => {
 <template>
   <div class="space-y-4">
     
+    <!-- Encabezado Oficial MINEDUC para Impresión / PDF -->
+    <div class="print-only hidden text-center pb-3 mb-2 border-b-2 border-slate-900">
+      <h1 class="text-sm font-black uppercase tracking-wider text-slate-950">UNIDAD EDUCATIVA FISCAL</h1>
+      <h2 class="text-xs font-extrabold uppercase tracking-wide text-slate-800">REGISTRO MENSUAL DE ASISTENCIA ESCOLAR (SÁBANA DE ASISTENCIA)</h2>
+      <p class="text-[10px] font-semibold text-slate-600">
+        CURSO: {{ currentCourseName }} · MES: {{ gridMonth }} · CONTROL CONFORME A NORMATIVA MINEDEC
+      </p>
+    </div>
+
     <!-- Header de Control de Sábana Mensual -->
     <div class="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 no-print min-w-0">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-w-0">
@@ -252,5 +261,91 @@ const handleExportCsv = () => {
 
     </div>
 
+    <!-- Firmas de Legalización para Impresión / PDF -->
+    <div class="print-only hidden pt-8 mt-6 border-t border-slate-300 grid grid-cols-2 gap-12 text-center text-[10px] attendance-signatures">
+      <div>
+        <div class="h-10 flex items-end justify-center mb-1">
+          <span class="text-slate-400 font-mono">____________________________</span>
+        </div>
+        <p class="font-bold text-slate-900 uppercase">DOCENTE TUTOR / INSPECCIÓN GENERAL</p>
+        <p class="text-[9px] text-slate-500">Responsable del Registro Diario</p>
+      </div>
+      <div>
+        <div class="h-10 flex items-end justify-center mb-1">
+          <span class="text-slate-400 font-mono">____________________________</span>
+        </div>
+        <p class="font-bold text-slate-900 uppercase">RECTORADO / VICERRECTORADO</p>
+        <p class="text-[9px] text-slate-500">Aprobación y Legalización Institucional</p>
+      </div>
+    </div>
+
   </div>
 </template>
+
+<style>
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm 10mm;
+  }
+
+  body, html {
+    background: white !important;
+    color: black !important;
+  }
+
+  .no-print,
+  nav,
+  header,
+  aside,
+  .app-shell > header,
+  .app-shell > aside {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .sticky {
+    position: static !important;
+    background: white !important;
+  }
+
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 8px !important;
+  }
+
+  th, td {
+    border: 1px solid #94a3b8 !important;
+    padding: 2px 3px !important;
+    color: black !important;
+    background: transparent !important;
+  }
+
+  th {
+    background-color: #f1f5f9 !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .attendance-signatures {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    display: grid !important;
+  }
+}
+</style>

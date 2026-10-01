@@ -9,7 +9,8 @@ import BrandLogo from '../components/ui/BrandLogo.vue'
 import GalaxyBackground from '../components/ui/GalaxyBackground.vue'
 import { DEMO_REQUEST_URL } from '../lib/brand'
 import { APP_URL } from '../lib/appUrl'
-import { ArrowRight, Building2, Check, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-vue-next'
+import { getMfaStatus, isAal2Required, challengeAndVerifyLogin } from '../lib/mfa'
+import { ArrowRight, Building2, Check, Eye, EyeOff, KeyRound, LockKeyhole, Mail, ShieldCheck, Sparkles, Brain } from 'lucide-vue-next'
 
 const email = ref('')
 const password = ref('')
@@ -72,10 +73,24 @@ const handleUpdatePassword = async () => {
   }
 }
 
+const isMfaChallenged = ref(false)
+const mfaCode = ref('')
+const mfaLoading = ref(false)
+const mfaFactorId = ref(null)
+
 const handleLogin = async () => {
   loading.value = true
   try {
     await authStore.signIn(email.value, password.value)
+
+    // Comprobar si la cuenta tiene 2FA activo que requiere verificación
+    if (await isAal2Required()) {
+      const status = await getMfaStatus()
+      mfaFactorId.value = status.verifiedFactors?.[0]?.id || null
+      isMfaChallenged.value = true
+      return
+    }
+
     router.push('/')
   } catch (error) {
     toast.error('Error de Inicio de Sesión', {
@@ -83,6 +98,39 @@ const handleLogin = async () => {
     })
   } finally {
     loading.value = false
+  }
+}
+
+const handleVerifyMfa = async () => {
+  const code = mfaCode.value.trim().replace(/\s+/g, '')
+  if (!code || code.length !== 6) {
+    toast.warning('Código incompleto', { description: 'Ingresa los 6 dígitos numéricos de tu autenticador.' })
+    return
+  }
+
+  mfaLoading.value = true
+  try {
+    await challengeAndVerifyLogin({ factorId: mfaFactorId.value, code })
+    toast.success('Acceso verificado', { description: 'Bienvenido a LOGREVA.' })
+    isMfaChallenged.value = false
+    router.push('/')
+  } catch (error) {
+    toast.error('Código 2FA incorrecto o expirado', {
+      description: translateError(error) || 'Verifica la hora de tu dispositivo e intenta con un código nuevo.'
+    })
+  } finally {
+    mfaLoading.value = false
+  }
+}
+
+const cancelMfa = async () => {
+  isMfaChallenged.value = false
+  mfaCode.value = ''
+  mfaFactorId.value = null
+  try {
+    await authStore.signOut()
+  } catch (err) {
+    console.error('Error al cancelar 2FA:', err)
   }
 }
 
@@ -94,7 +142,7 @@ onMounted(() => {
     }
   })
   authStateSubscription = data.subscription
-  
+
   // Fallback for query param detection
   if (
     window.location.pathname === '/reset-password'
@@ -104,6 +152,16 @@ onMounted(() => {
   ) {
     isUpdatingPassword.value = true
   }
+
+  // Si llega con sesión parcial AAL1 que requiere AAL2
+  isAal2Required().then((required) => {
+    if (required) {
+      getMfaStatus().then((status) => {
+        mfaFactorId.value = status.verifiedFactors?.[0]?.id || null
+        isMfaChallenged.value = true
+      }).catch(() => {})
+    }
+  }).catch(() => {})
 })
 
 onUnmounted(() => {
@@ -125,6 +183,10 @@ onUnmounted(() => {
         <BrandLogo variant="horizontal" tone="light" class="brand-lockup" />
 
         <div class="brand-message">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/40 text-[11px] font-bold text-cyan-300 mb-3 backdrop-blur-md">
+            <Sparkles class="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            INTELIGENCIA DEL APRENDIZAJE & GESTIÓN 2026
+          </div>
           <p class="brand-eyebrow">PLATAFORMA INSTITUCIONAL</p>
           <h1>
             Gestión Académica
@@ -137,7 +199,25 @@ onUnmounted(() => {
             <li><span><Check aria-hidden="true" /></span>Control académico en tiempo real</li>
             <li><span><Check aria-hidden="true" /></span>Trazabilidad lista para auditoría</li>
             <li><span><Check aria-hidden="true" /></span>Reportes claros para decidir mejor</li>
+            <li class="text-cyan-200"><span><Sparkles aria-hidden="true" class="text-cyan-300" /></span>Diagnóstico causal de brechas & Grafo competencial</li>
+            <li class="text-indigo-200"><span><Sparkles aria-hidden="true" class="text-indigo-300" /></span>Tutor Socrático con andamiaje y Teacher Cockpit en 15 min</li>
           </ul>
+
+          <!-- Live Pedagogical Intelligence Preview Pill -->
+          <div class="mt-5 p-3.5 rounded-2xl bg-slate-900/60 border border-slate-700/60 backdrop-blur-md flex items-center justify-between gap-3 text-xs shadow-lg">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-300 shrink-0">
+                <Brain class="w-4 h-4" />
+              </div>
+              <div>
+                <span class="font-bold text-white block">Innovación Educativa Comprobada</span>
+                <span class="text-slate-300 text-[11px]">Recuperación de aprendizajes en aula & Pasaporte Familiar</span>
+              </div>
+            </div>
+            <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] border border-emerald-500/30 shrink-0">
+              ACTIVO
+            </span>
+          </div>
         </div>
 
         <div class="secure-card">
@@ -163,12 +243,19 @@ onUnmounted(() => {
         <div data-testid="login-card" class="login-card">
           <div class="login-card__accent" aria-hidden="true"></div>
           <div class="login-card__header">
-            <div class="login-card__shield"><LockKeyhole aria-hidden="true" /></div>
+            <div class="login-card__shield">
+              <ShieldCheck v-if="isMfaChallenged" aria-hidden="true" />
+              <LockKeyhole v-else aria-hidden="true" />
+            </div>
+            <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/50 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 mb-2">
+              <Sparkles class="w-3 h-3 text-indigo-600" />
+              <span>Entorno Escolar Inteligente</span>
+            </div>
             <h2>
-              {{ isUpdatingPassword ? 'Nueva contraseña' : (isRecovering ? 'Recuperar contraseña' : 'Bienvenido a Logreva') }}
+              {{ isUpdatingPassword ? 'Nueva contraseña' : (isRecovering ? 'Recuperar contraseña' : (isMfaChallenged ? 'Verificación 2FA' : 'Bienvenido a Logreva')) }}
             </h2>
             <p>
-              {{ isUpdatingPassword ? 'Crea una contraseña segura para continuar' : (isRecovering ? 'Te enviaremos un enlace seguro de recuperación' : 'Ingresa tus credenciales institucionales') }}
+              {{ isUpdatingPassword ? 'Crea una contraseña segura para continuar' : (isRecovering ? 'Te enviaremos un enlace seguro de recuperación' : (isMfaChallenged ? 'Ingresa el código de 6 dígitos de tu aplicación autenticadora' : 'Ingresa tus credenciales institucionales')) }}
             </p>
           </div>
 
@@ -199,6 +286,38 @@ onUnmounted(() => {
               <ArrowRight v-if="!recoverLoading" aria-hidden="true" />
             </button>
             <button type="button" @click="cancelRecover" class="login-secondary-action">Volver al inicio de sesión</button>
+          </form>
+
+          <form v-else-if="isMfaChallenged" @submit.prevent="handleVerifyMfa" class="login-form" data-testid="mfa-challenge-form">
+            <div>
+              <label for="mfa-code">Código de Verificación (6 dígitos)</label>
+              <div class="login-control">
+                <ShieldCheck aria-hidden="true" />
+                <input
+                  id="mfa-code"
+                  v-model="mfaCode"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  autocomplete="one-time-code"
+                  maxlength="6"
+                  required
+                  placeholder="000000"
+                  class="tracking-[0.3em] font-mono text-center text-lg font-bold"
+                  autofocus
+                />
+              </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">
+                Abre tu aplicación autenticadora (Google Authenticator, Microsoft Authenticator o Authy) e ingresa el código temporal.
+              </p>
+            </div>
+            <button type="submit" :disabled="mfaLoading || mfaCode.trim().length < 6" class="login-primary-button">
+              <span>{{ mfaLoading ? 'Verificando...' : 'Verificar y Acceder' }}</span>
+              <ArrowRight v-if="!mfaLoading" aria-hidden="true" />
+            </button>
+            <button type="button" @click="cancelMfa" class="login-secondary-action">
+              Cancelar y volver
+            </button>
           </form>
 
           <template v-else>
@@ -369,11 +488,10 @@ onUnmounted(() => {
 
 .secure-card {
   display: flex;
-  position: absolute;
-  right: clamp(2.5rem, 5vw, 5.5rem);
-  bottom: clamp(2.4rem, 5vh, 4.5rem);
-  left: clamp(2.5rem, 5vw, 5.5rem);
+  position: relative;
+  width: 100%;
   max-width: 590px;
+  margin-top: 1.25rem;
   padding: 1.1rem 1.2rem;
   align-items: center;
   gap: 1rem;
@@ -625,11 +743,11 @@ onUnmounted(() => {
 }
 
 @media (max-height: 820px) and (min-width: 1024px) {
-  .brand-content { padding-top: 5.5rem; padding-bottom: 8rem; }
+  .brand-content { padding-top: 5.5rem; padding-bottom: 2.5rem; }
   .brand-message h1 { font-size: clamp(2.8rem, 4vw, 4.2rem); }
   .brand-promise { margin-top: 1.1rem; }
   .brand-benefits { margin-top: 1.25rem; gap: 0.55rem; }
-  .secure-card { bottom: 1.5rem; }
+  .secure-card { margin-top: 0.9rem; }
   .login-card { padding-top: 1.6rem; padding-bottom: 1.6rem; }
   .login-card__header { margin-bottom: 1.25rem; }
   .login-card__shield { width: 3rem; height: 3rem; margin-bottom: 0.75rem; }

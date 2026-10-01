@@ -37,7 +37,7 @@ const {
 
 const onProviderChange = () => {
   if (settings.value.provider === 'openai') {
-    settings.value.model_id = 'gpt-5.6-luna'
+    settings.value.model_id = 'gpt-5-mini'
   } else if (settings.value.provider === 'gemini') {
     settings.value.model_id = 'gemini-2.5-flash'
   } else {
@@ -172,9 +172,9 @@ onMounted(() => {
               <!-- Modelos OpenAI -->
               <template v-else-if="settings.provider === 'openai'">
                 <option value="auto">Automático — recomendado</option>
-                <option value="gpt-5.6-luna">Económico — gpt-5.6-luna</option>
-                <option value="gpt-4o-mini">Equilibrado — gpt-4o-mini</option>
-                <option value="gpt-4o">Alta calidad — gpt-4o</option>
+                <option value="gpt-5-nano">Económico — GPT-5 nano</option>
+                <option value="gpt-5-mini">Equilibrado — GPT-5 mini</option>
+                <option value="gpt-5">Alta calidad — GPT-5</option>
               </template>
 
               <!-- Modelo Demo -->

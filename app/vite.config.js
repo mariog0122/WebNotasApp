@@ -7,6 +7,9 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (id.includes('node_modules/@supabase/')) {
+            return 'supabase-vendor'
+          }
           if (
             id.includes('read-excel-file') ||
             id.includes('fflate') ||

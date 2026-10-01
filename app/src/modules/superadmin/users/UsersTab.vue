@@ -136,7 +136,9 @@ const createUser = async () => {
       try {
         const body = await error.context?.json()
         if (body?.message) msg = body.message
-      } catch {}
+      } catch (parseErr) {
+        console.warn('[UsersTab] Error parseando respuesta JSON de creación de usuario:', parseErr)
+      }
       throw new Error(msg)
     }
     if (!data?.success) throw new Error(data?.message || 'No fue posible crear el usuario.')
@@ -164,7 +166,9 @@ const deleteUser = async () => {
       try {
         const body = await error.context?.json()
         if (body?.message) msg = body.message
-      } catch {}
+      } catch (parseErr) {
+        console.warn('[UsersTab] Error parseando respuesta JSON de eliminación de usuario:', parseErr)
+      }
       throw new Error(msg)
     }
     if (!data?.success) throw new Error(data?.message || 'No fue posible eliminar el usuario.')

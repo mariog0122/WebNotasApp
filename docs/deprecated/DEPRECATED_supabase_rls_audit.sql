@@ -1,5 +1,9 @@
 -- ==============================================================================
--- WEBNOTAS - Supabase Row Level Security (RLS) Audit & Fix Script
+-- [OBSOLETO / DEPRECATED] NO EJECUTAR EN PRODUCCIÓN
+-- ADVERTENCIA DE SEGURIDAD: Este script contiene políticas "USING (true)" pensadas
+-- para prototipos de una sola institución. En el sistema actual multi-tenant,
+-- su ejecución destruiría el aislamiento de datos por colegio (school_id).
+-- Las políticas vigentes seguras se encuentran en: migrations/11_secure_rls_policies.sql
 -- ==============================================================================
 
 -- 1. Habilitar RLS en todas las tablas importantes si no están activadas ya

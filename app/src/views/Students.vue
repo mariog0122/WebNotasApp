@@ -5,7 +5,7 @@ import { useNetwork } from '../composables/useNetwork'
 import { computeProjectAverage, computeSubjectTotal, getQuarterOrder, computeTrimesterObservation } from '../lib/reporting'
 import { loadHtml2Pdf } from '../lib/pdf'
 import { translateError } from '../lib/errorDictionary'
-import { normalizeStoragePath, resolvePrivateImageUrl } from '../lib/storageUtils'
+import { normalizeStoragePath, primeSignedUrls, resolvePrivateImageUrl } from '../lib/storageUtils'
 import { useAuthStore } from '../stores/auth'
 import { useAcademicYearStore } from '../stores/academicYear'
 import { hasAccessPermission, isInstitutionAdmin, canManageAcademicYearLock } from '../lib/permissions'
@@ -13,10 +13,9 @@ import AcademicYearBanner from '../components/ui/AcademicYearBanner.vue'
 import { 
     validateStudentForm, 
     isStudentComplete, 
-    getFileExt, 
-    uploadPhoto, 
     createPhotoPreview 
 } from '../lib/studentUtils'
+import { saveStudentRecord } from '../lib/studentPersistence'
 
 const searchTerm = ref('')
 const searchDebounce = ref(null)
@@ -64,6 +63,11 @@ const fetchStudents = async () => {
     const from = (page.value - 1) * pageSize
     const to = from + pageSize - 1
     const sId = authStore.activeSchoolId || authStore.profile?.school_id
+    if (!sId) {
+      students.value = []
+      totalCount.value = 0
+      return
+    }
     const userIds = [authStore.user?.id, authStore.profile?.id].filter(Boolean)
     const isAdmin = isInstitutionAdmin(authStore.accessContext)
 
@@ -79,15 +83,16 @@ const fetchStudents = async () => {
       .order('full_name', { ascending: true })
       .range(from, to)
 
-    if (sId) {
-      query = query.or(`school_id.eq.${sId},school_id.is.null`)
-    }
+    query = query.eq('school_id', sId)
 
     if (!isAdmin && userIds.length > 0) {
-      const { data: assignedLinks } = await supabase
+      const { data: assignedLinks, error: assignedLinksError } = await supabase
         .from('course_subjects')
         .select('course_id')
+        .eq('school_id', sId)
         .in('teacher_id', userIds)
+
+      if (assignedLinksError) throw assignedLinksError
       
       const teacherCourseIds = Array.from(new Set((assignedLinks || []).map(l => l.course_id)))
       if (teacherCourseIds.length === 0) {
@@ -107,6 +112,7 @@ const fetchStudents = async () => {
     if (error) {
       console.error('Error fetching students:', error.message)
     } else {
+      await primeSignedUrls(supabase, 'student-photos', (data || []).flatMap((student) => [student.student_photo_url, student.representative_photo_url]))
       students.value = await Promise.all((data || []).map(async (student) => {
         const studentPhotoPath = normalizeStoragePath(student.student_photo_url, 'student-photos')
         const representativePhotoPath = normalizeStoragePath(student.representative_photo_url, 'student-photos')
@@ -128,13 +134,15 @@ const fetchStudents = async () => {
 
 const fetchCourses = async () => {
   const sId = authStore.activeSchoolId || authStore.profile?.school_id
+  if (!sId) {
+    courses.value = []
+    return
+  }
   let query = supabase
     .from('courses')
     .select('id, name, academic_year, level, track, created_at')
     .order('name')
-  if (sId) {
-    query = query.or(`school_id.eq.${sId},school_id.is.null`)
-  }
+  query = query.eq('school_id', sId)
   const yearName = academicYearStore.selectedYearName
   if (yearName) {
     query = query.eq('academic_year', yearName)
@@ -148,10 +156,13 @@ const fetchCourses = async () => {
     const isAdmin = isInstitutionAdmin(authStore.accessContext)
 
     if (!isAdmin && userIds.length > 0) {
-      const { data: assignedLinks } = await supabase
+      const { data: assignedLinks, error: assignedLinksError } = await supabase
         .from('course_subjects')
         .select('course_id')
+        .eq('school_id', sId)
         .in('teacher_id', userIds)
+
+      if (assignedLinksError) throw assignedLinksError
 
       const assignedCourseIds = new Set((assignedLinks || []).map(l => l.course_id))
       result = result.filter(c => assignedCourseIds.has(c.id))
@@ -166,13 +177,15 @@ watch(() => academicYearStore.selectedYearName, () => {
 
 const fetchQuarters = async () => {
   const sId = authStore.activeSchoolId || authStore.profile?.school_id
+  if (!sId) {
+    quarters.value = []
+    return
+  }
   let query = supabase
     .from('quarters')
     .select('id, name, is_active')
     .order('name')
-  if (sId) {
-    query = query.or(`school_id.eq.${sId},school_id.is.null`)
-  }
+  query = query.eq('school_id', sId)
   const { data, error } = await query
   if (error) {
     console.error('Error fetching quarters:', error.message)
@@ -318,16 +331,21 @@ const deleteSelectedStudents = async () => {
   confirmModal.value = {
     show: true,
     title: 'Eliminar Seleccionados',
-    message: '¿Eliminar estudiantes seleccionados? Esta accion no se puede deshacer y borrara sus calificaciones.',
+    message: '¿Eliminar estudiantes seleccionados? Esta acción no se puede deshacer y borrará sus calificaciones.',
     processing: false,
     action: async () => {
       const ids = Array.from(selectedStudentIds.value)
       try {
-        const chunkSize = 50
-        for (let i = 0; i < ids.length; i += chunkSize) {
-          const chunk = ids.slice(i, i + chunkSize)
-          const { error } = await supabase.from('students').delete().eq('school_id', authStore.activeSchoolId).in('id', chunk)
-          if (error) throw error
+        const schoolId = authStore.activeSchoolId
+        if (!schoolId) throw new Error('No hay una institución activa.')
+        const { data, error } = await supabase.rpc('delete_students_batch', {
+          p_school_id: schoolId,
+          p_student_ids: ids,
+          p_delete_all: false
+        })
+        if (error) throw error
+        if (!data?.success || Number(data.deleted_count) !== ids.length) {
+          throw new Error('La base de datos no confirmó la eliminación completa de los estudiantes.')
         }
         selectedStudentIds.value = new Set()
         await fetchStudents()
@@ -353,16 +371,21 @@ const deleteAllStudents = async () => {
   confirmModal.value = {
     show: true,
     title: 'Eliminar Todos',
-    message: '¿Eliminar TODOS los estudiantes del sistema? Esta accion no se puede deshacer y borrara por completo las calificaciones.',
+    message: '¿Eliminar TODOS los estudiantes de la institución? Esta acción no se puede deshacer y borrará por completo las calificaciones.',
     processing: false,
     action: async () => {
       try {
-        const { error } = await supabase
-          .from('students')
-          .delete()
-          .eq('school_id', authStore.activeSchoolId)
-          .neq('id', '00000000-0000-0000-0000-000000000000')
+        const schoolId = authStore.activeSchoolId
+        if (!schoolId) throw new Error('No hay una institución activa.')
+        const { data, error } = await supabase.rpc('delete_students_batch', {
+          p_school_id: schoolId,
+          p_student_ids: [],
+          p_delete_all: true
+        })
         if (error) throw error
+        if (!data?.success) {
+          throw new Error('La base de datos no confirmó la eliminación de los estudiantes.')
+        }
         selectedStudentIds.value = new Set()
         await fetchStudents()
       } catch (error) {
@@ -443,10 +466,6 @@ const closeModal = () => {
   validationErrors.value = []
 }
 
-const uploadPhotoToStorage = async (file, path) => {
-  return await uploadPhoto(supabase, file, path)
-}
-
 const validateForm = () => {
   const errors = validateStudentForm(form.value)
   validationErrors.value = errors
@@ -480,7 +499,6 @@ const saveStudent = async () => {
     return
   }
   try {
-    let studentId = editingStudent.value?.id || null
     const basePayload = {
       full_name: form.value.full_name,
       course_id: form.value.course_id,
@@ -497,45 +515,15 @@ const saveStudent = async () => {
       has_adaptation: !!form.value.has_adaptation,
       adaptation_grade: form.value.has_adaptation ? form.value.adaptation_grade : '1',
       adaptation_details: form.value.has_adaptation ? form.value.adaptation_details : '',
-      school_id: authStore.activeSchoolId,
     }
-
-    if (editingStudent.value) {
-      const { error } = await supabase
-        .from('students')
-        .update(basePayload)
-        .eq('id', editingStudent.value.id)
-      if (error) throw error
-    } else {
-      const { data, error } = await supabase
-        .from('students')
-        .insert(basePayload)
-        .select('id')
-        .single()
-      if (error) throw error
-      studentId = data.id
-    }
-
-    const uploads = {}
-    if (studentPhotoFile.value) {
-      const ext = getFileExt(studentPhotoFile.value)
-      const path = `${authStore.activeSchoolId}/students/${studentId}/student-${Date.now()}.${ext}`
-      uploads.student_photo_url = await uploadPhotoToStorage(studentPhotoFile.value, path)
-    }
-    if (representativePhotoFile.value) {
-      const ext = getFileExt(representativePhotoFile.value)
-      const path = `${authStore.activeSchoolId}/students/${studentId}/representative-${Date.now()}.${ext}`
-      uploads.representative_photo_url = await uploadPhotoToStorage(representativePhotoFile.value, path)
-    }
-
-    if (Object.keys(uploads).length > 0) {
-      const { error } = await supabase
-        .from('students')
-        .update(uploads)
-        .eq('id', studentId)
-    
-      if (error) throw error
-    }
+    await saveStudentRecord({
+      client: supabase,
+      schoolId: authStore.activeSchoolId,
+      studentId: editingStudent.value?.id || null,
+      payload: basePayload,
+      studentPhotoFile: studentPhotoFile.value,
+      representativePhotoFile: representativePhotoFile.value,
+    })
 
     await fetchStudents()
     closeModal()
@@ -558,12 +546,17 @@ const deleteStudent = async (id) => {
     processing: false,
     action: async () => {
       try {
-        const { error } = await supabase
-          .from('students')
-          .delete()
-          .eq('school_id', authStore.activeSchoolId)
-          .eq('id', id)
+        const schoolId = authStore.activeSchoolId
+        if (!schoolId) throw new Error('No hay una institución activa.')
+        const { data, error } = await supabase.rpc('delete_students_batch', {
+          p_school_id: schoolId,
+          p_student_ids: [id],
+          p_delete_all: false
+        })
         if (error) throw error
+        if (!data?.success || Number(data.deleted_count) !== 1) {
+          throw new Error('La base de datos no confirmó la eliminación del estudiante.')
+        }
         await fetchStudents()
       } catch (error) {
         confirmModal.value = {
@@ -607,6 +600,8 @@ const loadStudentReport = async () => {
   reportLoading.value = true
   reportError.value = ''
   try {
+    const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
+    if (!schoolId) throw new Error('No hay una institución activa seleccionada.')
     const courseId = reportStudent.value.course_id
     const studentId = reportStudent.value.id
     const level = reportStudent.value?.courses?.level || ''
@@ -615,6 +610,7 @@ const loadStudentReport = async () => {
     const { data: courseSubjects, error: courseSubjectsError } = await supabase
       .from('course_subjects')
       .select('id, subject_id, subjects (name)')
+      .eq('school_id', schoolId)
       .eq('course_id', courseId)
     if (courseSubjectsError) throw courseSubjectsError
 

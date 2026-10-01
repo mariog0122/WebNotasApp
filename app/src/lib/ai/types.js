@@ -16,9 +16,9 @@ export const AI_MODELS = Object.freeze({
   GEMINI_25_FLASH_LITE: 'gemini-2.5-flash-lite',
   GEMINI_25_PRO: 'gemini-2.5-pro',
   // OpenAI
-  GPT_56_LUNA: 'gpt-5.6-luna',
-  GPT_4O_MINI: 'gpt-4o-mini',
-  GPT_4O: 'gpt-4o',
+  GPT_5_NANO: 'gpt-5-nano',
+  GPT_5_MINI: 'gpt-5-mini',
+  GPT_5: 'gpt-5',
   // Demo
   DEMO_DEFAULT: 'demo-pedagogico-ec'
 })

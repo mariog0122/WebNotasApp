@@ -13,7 +13,7 @@
           </div>
           <div>
             <h3 class="text-base font-bold text-slate-900 dark:text-white">Firma Electrónica (.p12 / .pfx)</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Validez legal para actas y notificaciones DECE</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Firma local con verificación oficial pendiente</p>
           </div>
         </div>
         <button @click="close" class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
@@ -33,7 +33,7 @@
         <div v-if="certDetails" class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 space-y-2 text-xs">
           <div class="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold">
             <CheckCircle2 class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            Certificado Digital Válido
+            Certificado local leído correctamente
           </div>
           <div class="grid grid-cols-1 gap-1 text-slate-700 dark:text-slate-300 pt-1">
             <div><span class="font-semibold text-slate-900 dark:text-white">Firmante:</span> {{ certDetails.commonName }}</div>
@@ -42,6 +42,9 @@
             <div><span class="font-semibold text-slate-900 dark:text-white">Válido hasta:</span> {{ formatDate(certDetails.validTo) }}</div>
             <div class="text-[11px] text-slate-500 break-all pt-1 font-mono">
               <span class="font-semibold">Huella SHA-256:</span> {{ certDetails.fingerprint }}
+            </div>
+            <div class="text-[11px] text-amber-600 dark:text-amber-400 font-medium pt-1">
+              Registro local completado · verificación oficial pendiente en servidor.
             </div>
           </div>
         </div>

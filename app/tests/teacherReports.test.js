@@ -11,12 +11,14 @@ import {
 } from '../src/lib/teacherReportTemplates'
 
 describe('Teacher Reports Module (Informes Docentes)', () => {
-  const routerSource = readFileSync(resolve(__dirname, '../src/router/index.js'), 'utf8')
-  const sidebarSource = readFileSync(resolve(__dirname, '../src/components/Sidebar.vue'), 'utf8')
   const migrationSource = readFileSync(resolve(__dirname, '../../migrations/47_teacher_reports_module.sql'), 'utf8')
+  const hardeningMigrationSource = readFileSync(resolve(__dirname, '../../supabase/migrations/20260916023802_harden_teacher_reports_authorization.sql'), 'utf8')
+  const composableSource = readFileSync(resolve(__dirname, '../src/composables/useTeacherReports.js'), 'utf8')
   const editorModalSource = readFileSync(resolve(__dirname, '../src/components/teacher-reports/TeacherReportEditorModal.vue'), 'utf8')
   const printDocSource = readFileSync(resolve(__dirname, '../src/components/teacher-reports/TeacherReportPrintDocument.vue'), 'utf8')
   const mainViewSource = readFileSync(resolve(__dirname, '../src/views/TeacherReports.vue'), 'utf8')
+  const routerSource = readFileSync(resolve(__dirname, '../src/router/index.js'), 'utf8')
+  const sidebarSource = readFileSync(resolve(__dirname, '../src/components/Sidebar.vue'), 'utf8')
 
   it('defines 5 official document templates with valid configurations', () => {
     expect(Object.keys(REPORT_TEMPLATES)).toHaveLength(5)
@@ -64,13 +66,8 @@ describe('Teacher Reports Module (Informes Docentes)', () => {
     expect(message).toContain('Elena Mendoza')
   })
 
-  it('registers /teacher-reports route in router and nav item in Sidebar', () => {
-    expect(routerSource).toContain("path: '/teacher-reports'")
-    expect(routerSource).toContain("name: 'teacher-reports'")
-    expect(sidebarSource).toContain("name: 'Informes Docentes'")
-    expect(sidebarSource).toContain("path: '/teacher-reports'")
-    expect(sidebarSource).toContain("FileText")
-  })
+  // Real navigation and accessible SVG links are covered in
+  // e2e/institution-authenticated.spec.js, independent of the icon library.
 
   it('verifies SQL migration 47 creates teacher_reports table, indexes and RLS', () => {
     expect(migrationSource).toContain('CREATE TABLE IF NOT EXISTS public.teacher_reports')
@@ -98,5 +95,31 @@ describe('Teacher Reports Module (Informes Docentes)', () => {
     expect(mainViewSource).toContain('Informes Docentes')
     expect(mainViewSource).toContain('TeacherReportEditorModal')
     expect(mainViewSource).toContain('TeacherReportPrintDocument')
+  })
+
+  it('fails closed in the browser and uses RPCs for every teacher-report mutation', () => {
+    expect(composableSource).toContain("supabase.rpc('save_teacher_report'")
+    expect(composableSource).toContain("supabase.rpc('set_teacher_report_status'")
+    expect(composableSource).toContain("supabase.rpc('delete_teacher_report'")
+    expect(composableSource).not.toMatch(/from\('teacher_reports'\)\.insert/)
+    expect(composableSource).not.toMatch(/from\('teacher_reports'\)\.update/)
+    expect(composableSource).not.toMatch(/from\('teacher_reports'\)\.delete/)
+    expect(composableSource).not.toContain('school_id.is.null')
+  })
+
+  it('uses the reports permission consistently in the route and menu', () => {
+    expect(routerSource).toMatch(/path: '\/teacher-reports'[\s\S]*?permission: 'reports\.read'/)
+    expect(sidebarSource).toMatch(/can\('reports\.read'\)[\s\S]*?name: 'Informes Docentes'/)
+  })
+
+  it('validates tenant relationships and revokes direct teacher-report writes', () => {
+    expect(hardeningMigrationSource).toContain('STUDENT_COURSE_MISMATCH')
+    expect(hardeningMigrationSource).toContain('SUBJECT_COURSE_MISMATCH')
+    expect(hardeningMigrationSource).toContain('QUARTER_TENANT_MISMATCH')
+    expect(hardeningMigrationSource).toContain("private.has_intelligence_permission(v_school_id, 'reports.read')")
+    expect(hardeningMigrationSource).toContain('set_teacher_report_status')
+    expect(hardeningMigrationSource).toContain('delete_teacher_report')
+    expect(hardeningMigrationSource).toContain('revoke insert, update, delete on table public.teacher_reports from authenticated')
+    expect(hardeningMigrationSource).not.toMatch(/or\s+school_id\s+is\s+null/i)
   })
 })

@@ -1,5 +1,5 @@
 <script setup>
-import { inject, ref } from 'vue'
+import { inject, nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Sparkles } from 'lucide-vue-next'
 import { gradesPageInjectionKey } from '../../composables/useGradesPage'
@@ -9,6 +9,111 @@ import StudentRecoveryModal from './StudentRecoveryModal.vue'
 const router = useRouter()
 const gp = inject(gradesPageInjectionKey)
 if (!gp) throw new Error('gradesPageInjectionKey no provisto')
+
+const scrollerRef = ref(null)
+
+const getDefColIndex = (defId) => {
+  return gp.orderedEditableDefs?.findIndex(d => d.id === defId) ?? -1
+}
+
+const focusGradeCell = (targetRow, targetCol, stepCol = 0, stepRow = 0) => {
+  const totalRows = gp.students?.length || 0
+  const totalCols = gp.orderedEditableDefs?.length || 0
+  if (targetRow < 0 || targetRow >= totalRows || targetCol < 0 || targetCol >= totalCols) return
+
+  const tryFocus = () => {
+    const selector = `[data-grade-input="${targetRow}-${targetCol}"]`
+    const targetInput = document.querySelector(selector)
+    if (targetInput) {
+      if (targetInput.disabled) {
+        if (stepCol !== 0 && targetCol + stepCol >= 0 && targetCol + stepCol < totalCols) {
+          focusGradeCell(targetRow, targetCol + stepCol, stepCol, stepRow)
+        }
+        return true
+      }
+      targetInput.focus()
+      targetInput.select?.()
+      return true
+    }
+    return false
+  }
+
+  if (tryFocus()) return
+
+  if (scrollerRef.value?.scrollToItem) {
+    scrollerRef.value.scrollToItem(targetRow)
+    nextTick(() => {
+      setTimeout(() => {
+        tryFocus()
+      }, 50)
+    })
+  }
+}
+
+const handleGradeKeyDown = (event, rowIdx, colIdx) => {
+  const totalRows = gp.students?.length || 0
+  const totalCols = gp.orderedEditableDefs?.length || 0
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    if (rowIdx + 1 < totalRows) {
+      focusGradeCell(rowIdx + 1, colIdx, 0, 1)
+    }
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    if (rowIdx > 0) {
+      focusGradeCell(rowIdx - 1, colIdx, 0, -1)
+    }
+  } else if (event.key === 'Enter') {
+    event.preventDefault()
+    if (event.shiftKey) {
+      if (rowIdx > 0) {
+        focusGradeCell(rowIdx - 1, colIdx, 0, -1)
+      }
+    } else {
+      if (rowIdx + 1 < totalRows) {
+        focusGradeCell(rowIdx + 1, colIdx, 0, 1)
+      }
+    }
+  } else if (event.key === 'Tab') {
+    if (event.shiftKey) {
+      if (colIdx > 0) {
+        event.preventDefault()
+        focusGradeCell(rowIdx, colIdx - 1, -1, 0)
+      } else if (rowIdx > 0) {
+        event.preventDefault()
+        focusGradeCell(rowIdx - 1, totalCols - 1, -1, 0)
+      }
+    } else {
+      if (colIdx + 1 < totalCols) {
+        event.preventDefault()
+        focusGradeCell(rowIdx, colIdx + 1, 1, 0)
+      } else if (rowIdx + 1 < totalRows) {
+        event.preventDefault()
+        focusGradeCell(rowIdx + 1, 0, 1, 0)
+      }
+    }
+  } else if (event.key === 'ArrowRight') {
+    const input = event.target
+    const isAtEnd = input.selectionEnd === (input.value?.length || 0)
+    if (isAtEnd && colIdx + 1 < totalCols) {
+      focusGradeCell(rowIdx, colIdx + 1, 1, 0)
+    }
+  } else if (event.key === 'ArrowLeft') {
+    const input = event.target
+    const isAtStart = input.selectionStart === 0
+    if (isAtStart && colIdx > 0) {
+      focusGradeCell(rowIdx, colIdx - 1, -1, 0)
+    }
+  }
+}
+
+const focusQualitativeCell = (targetRow) => {
+  const totalRows = gp.students?.length || 0
+  if (targetRow < 0 || targetRow >= totalRows) return
+  const el = document.querySelector(`[data-grade-qualitative="${targetRow}"]`)
+  if (el) el.focus()
+}
 
 // Recovery modal state
 const showRecoveryModal = ref(false)
@@ -150,6 +255,17 @@ const gradeBgClass = (val) => {
               </div>
             </div>
 
+            <!-- Live Region Accesible para Lectores de Pantalla (Anuncios de Autoguardado) -->
+            <div
+              id="grade-autosave-status"
+              class="sr-only"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {{ gp.saving ? 'Guardando calificaciones...' : 'Calificaciones al día y sincronizadas' }}
+            </div>
+
             <div class="rounded-lg border border-slate-700 bg-slate-900/80 p-4 mb-4">
               <div class="flex items-center gap-4 print-header">
                 <div class="h-12 w-12 rounded-lg border border-slate-700 bg-slate-950 overflow-hidden flex items-center justify-center">
@@ -237,6 +353,10 @@ const gradeBgClass = (val) => {
                     <select
                       v-model="gp.qualitativeScores[student.id]"
                       :disabled="gp.activeQuarterIsLocked"
+                      :data-grade-qualitative="idx"
+                      :aria-label="`Calificación cualitativa para ${student.full_name}`"
+                      aria-describedby="grade-autosave-status"
+                      @keydown.enter.prevent="focusQualitativeCell(idx + 1)"
                       class="w-full rounded-md border border-slate-600 bg-slate-950 text-white text-sm px-3 py-2.5 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:opacity-50"
                     >
                       <option value="">Seleccionar</option>
@@ -338,6 +458,7 @@ const gradeBgClass = (val) => {
 
               <!-- CUERPO VIRTUALIZADO -->
               <RecycleScroller
+                ref="scrollerRef"
                 class="flex-1"
                 :items="gp.students"
                 :item-size="44"
@@ -393,6 +514,10 @@ const gradeBgClass = (val) => {
                       class="w-full bg-transparent text-center text-sm px-1 focus:bg-blue-900/30 focus:outline-none focus:ring-1 focus:ring-blue-500 text-blue-200 h-full disabled:opacity-50"
                       placeholder="-" :value="gp.grades[student.id]?.[def.id]"
                       :disabled="gp.activeQuarterIsLocked"
+                      :data-grade-input="`${idx}-${getDefColIndex(def.id)}`"
+                      :aria-label="`Calificación ${def.name} para ${student.full_name}`"
+                      aria-describedby="grade-autosave-status"
+                      @keydown="handleGradeKeyDown($event, idx, getDefColIndex(def.id))"
                       @input="(e) => gp.onGradeInput(student.id, def.id, e)"
                       @paste="(e) => gp.handlePasteGrades(student.id, def.id, e)"
                     />
@@ -411,6 +536,10 @@ const gradeBgClass = (val) => {
                       class="w-full bg-transparent text-center text-sm px-1 focus:bg-purple-900/30 focus:outline-none focus:ring-1 focus:ring-purple-500 text-purple-200 h-full disabled:opacity-50"
                       placeholder="-" :value="gp.grades[student.id]?.[def.id]"
                       :disabled="gp.activeQuarterIsLocked"
+                      :data-grade-input="`${idx}-${getDefColIndex(def.id)}`"
+                      :aria-label="`Calificación ${def.name} para ${student.full_name}`"
+                      aria-describedby="grade-autosave-status"
+                      @keydown="handleGradeKeyDown($event, idx, getDefColIndex(def.id))"
                       @input="(e) => gp.onGradeInput(student.id, def.id, e)"
                       @paste="(e) => gp.handlePasteGrades(student.id, def.id, e)"
                     />
@@ -430,6 +559,10 @@ const gradeBgClass = (val) => {
                         class="w-full bg-transparent text-center text-sm px-1 focus:bg-amber-900/30 focus:outline-none focus:ring-1 focus:ring-amber-500 text-amber-100 h-full disabled:opacity-50"
                         placeholder="-" :value="gp.grades[student.id]?.[def.id]"
                         :disabled="gp.activeQuarterIsLocked"
+                        :data-grade-input="`${idx}-${getDefColIndex(def.id)}`"
+                        :aria-label="`Calificación ${def.name} para ${student.full_name}`"
+                        aria-describedby="grade-autosave-status"
+                        @keydown="handleGradeKeyDown($event, idx, getDefColIndex(def.id))"
                         @input="(e) => gp.onGradeInput(student.id, def.id, e)"
                         @paste="(e) => gp.handlePasteGrades(student.id, def.id, e)"
                       />
@@ -450,6 +583,10 @@ const gradeBgClass = (val) => {
                       class="w-full bg-transparent text-center text-sm px-1 focus:bg-emerald-900/30 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-emerald-100 disabled:text-slate-500 h-full disabled:opacity-50"
                       :disabled="(def.name.toLowerCase().includes('proyecto') && gp.projectSubjects.size > 0) || gp.activeQuarterIsLocked"
                       :value="def.name.toLowerCase().includes('proyecto') && gp.projectSubjects.size > 0 ? gp.getProjectAverage(student.id) ?? '' : gp.grades[student.id]?.[def.id]"
+                      :data-grade-input="`${idx}-${getDefColIndex(def.id)}`"
+                      :aria-label="`Calificación ${def.name} para ${student.full_name}`"
+                      aria-describedby="grade-autosave-status"
+                      @keydown="handleGradeKeyDown($event, idx, getDefColIndex(def.id))"
                       @input="(e) => { if (!def.name.toLowerCase().includes('proyecto') || gp.projectSubjects.size === 0) gp.onGradeInput(student.id, def.id, e) }"
                       @paste="(e) => gp.handlePasteGrades(student.id, def.id, e)"
                     />
@@ -639,6 +776,7 @@ const gradeBgClass = (val) => {
       v-if="showRecoveryModal && selectedStudentForRecovery"
       :student="selectedStudentForRecovery"
       :subject-name="gp.activeSubject?.subjects?.name || gp.activeSubject?.name || 'Asignatura'"
+      :subject-id="gp.activeSubject?.subject_id || gp.activeSubject?.subjects?.id || ''"
       :score="(gp.studentAveragesMap[selectedStudentForRecovery.id]?.total ?? gp.studentAveragesMap[selectedStudentForRecovery.id]?.formative ?? 0)"
       :course-name="gp.courses?.find(c => c.id === gp.selectedCourse)?.name || ''"
       :on-close="() => { showRecoveryModal = false }"

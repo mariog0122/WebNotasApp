@@ -5,6 +5,7 @@
 app/.env.admin
 PassSupabase*.txt
 *.txt
+private_data/
 
 # Dependencias y build
 node_modules/

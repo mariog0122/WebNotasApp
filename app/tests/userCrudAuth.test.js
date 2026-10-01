@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
+import { canDeleteTenantUser } from '../../supabase/functions/manage-tenant-user/authorization'
 
 const readAppFile = (relativePath) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), 'utf8')
@@ -8,17 +9,40 @@ const readRootFile = (relativePath) =>
   readFileSync(new URL(`../../${relativePath}`, import.meta.url), 'utf8')
 
 describe('Superadmin user CRUD', () => {
+  it('prevents tenant administrators from deleting users in another institution', () => {
+    expect(canDeleteTenantUser({
+      isPlatformAdmin: false,
+      requestedSchoolId: 'school-a',
+      targetUserSchoolId: 'school-a',
+    })).toBe(true)
+
+    expect(canDeleteTenantUser({
+      isPlatformAdmin: false,
+      requestedSchoolId: 'school-a',
+      targetUserSchoolId: 'school-b',
+    })).toBe(false)
+
+    expect(canDeleteTenantUser({
+      isPlatformAdmin: true,
+      requestedSchoolId: 'school-a',
+      targetUserSchoolId: 'school-b',
+    })).toBe(true)
+  })
+
   it('creates confirmed password users and deletes them only from a verified server function', () => {
     const functionSource = readRootFile('supabase/functions/manage-tenant-user/index.ts')
 
     expect(functionSource).toContain('auth.getUser')
-    expect(functionSource).toContain("rpc('is_platform_admin')")
+    expect(functionSource).toContain("rpc('has_platform_role'")
+    expect(functionSource).toContain("['platform_owner', 'platform_admin']")
     expect(functionSource).toContain('SUPABASE_SERVICE_ROLE_KEY')
     expect(functionSource).toContain('auth.admin.createUser')
     expect(functionSource).toContain('email_confirm: true')
     expect(functionSource).toContain('password')
     expect(functionSource).toContain('auth.admin.deleteUser')
     expect(functionSource).toContain('SELF_DELETE_FORBIDDEN')
+    expect(functionSource).toContain('canDeleteTenantUser')
+    expect(functionSource).toContain('reportEdgeFunctionError')
   })
 
   it('exposes create and delete actions from the isolated Superadmin users module', () => {

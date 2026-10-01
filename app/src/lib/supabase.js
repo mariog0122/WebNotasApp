@@ -18,10 +18,12 @@ const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     storageKey: 'webnotas-auth-token',
     flowType: 'pkce',
-    lock: async (name, acquireTimeout, fn) => {
-      // Dummy lock bypasses navigator.locks to prevent the 5000ms deadlocks in local Chromium
-      return await fn();
-    }
+    lock: typeof window !== 'undefined' && window.navigator?.locks && !import.meta.env.DEV
+      ? undefined // En producción, aprovecha navigator.locks para evitar colisiones entre pestañas
+      : async (name, acquireTimeout, fn) => {
+          // En desarrollo, evita deadlocks de 5000ms producidos por HMR en Chromium local
+          return await fn();
+        },
   },
 })
 

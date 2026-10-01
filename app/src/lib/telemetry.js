@@ -77,6 +77,80 @@ export const buildClientErrorEvent = async (error, options = {}) => {
   }
 }
 
+export const parseSentryDsn = (dsn) => {
+  try {
+    if (!dsn || typeof dsn !== 'string') return null
+    const url = new URL(dsn.trim())
+    const publicKey = url.username
+    const projectId = url.pathname.replace(/^\//, '')
+    if (!publicKey || !projectId) return null
+    const envelopeEndpoint = `${url.protocol}//${url.host}/api/${projectId}/envelope/`
+    return { publicKey, projectId, host: url.host, envelopeEndpoint }
+  } catch {
+    return null
+  }
+}
+
+export const sendSentryEnvelope = async (dsn, event, options = {}) => {
+  const parsed = parseSentryDsn(dsn)
+  if (!parsed) return false
+
+  try {
+    const eventId = (event.fingerprint || '').slice(0, 32) || '00000000000000000000000000000000'
+    const header = JSON.stringify({
+      event_id: eventId,
+      sent_at: new Date().toISOString(),
+      dsn: dsn,
+    })
+
+    const payload = JSON.stringify({
+      event_id: eventId,
+      timestamp: Date.now() / 1000,
+      platform: 'javascript',
+      level: 'error',
+      environment: options.environment || 'production',
+      release: event.release || options.release || 'unknown',
+      exception: {
+        values: [
+          {
+            type: event.error_name || 'Error',
+            value: event.error_code || 'Unknown error code',
+          },
+        ],
+      },
+      tags: {
+        source: event.source || 'client',
+        route: event.route || '/',
+      },
+      fingerprint: [event.fingerprint],
+    })
+
+    const itemHeader = JSON.stringify({
+      type: 'event',
+      content_type: 'application/json',
+      length: new TextEncoder().encode(payload).length,
+    })
+
+    const body = `${header}\n${itemHeader}\n${payload}\n`
+
+    if (typeof globalThis.fetch === 'function') {
+      const resp = await globalThis.fetch(parsed.envelopeEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-sentry-envelope',
+          'X-Sentry-Auth': `Sentry sentry_version=7, sentry_client=logreva-telemetry/1.0, sentry_key=${parsed.publicKey}`,
+        },
+        body,
+        keepalive: true,
+      })
+      return resp.ok
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
 export const reportClientError = async (client, error, options = {}) => {
   try {
     const event = await buildClientErrorEvent(error, options)
@@ -91,6 +165,11 @@ export const reportClientError = async (client, error, options = {}) => {
       }
     }
 
+    // Envío condicional a Sentry si está configurado el DSN
+    if (options.sentryDsn) {
+      void sendSentryEnvelope(options.sentryDsn, event, options)
+    }
+
     const { error: persistenceError } = await client.from('client_error_events').insert(event)
     if (persistenceError) {
       recentFingerprints.delete(event.fingerprint)
@@ -103,8 +182,15 @@ export const reportClientError = async (client, error, options = {}) => {
 }
 
 export const installErrorTelemetry = (app, client, options = {}) => {
+  const telemetryOptions = {
+    release: options.release || 'unknown',
+    sentryDsn: options.sentryDsn || null,
+    environment: options.environment || 'production',
+    ...options,
+  }
+
   const capture = (error, source) => {
-    void reportClientError(client, error, { ...options, source })
+    void reportClientError(client, error, { ...telemetryOptions, source })
   }
 
   app.config.errorHandler = (error) => {

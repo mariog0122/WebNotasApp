@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { supabase } from '../lib/supabase'
+import { academicService } from '../services/academicService'
 import { useNetwork } from '../composables/useNetwork'
 import { useAuthStore } from '../stores/auth'
 import { useSubjectsQuery } from '../composables/useQueries'
@@ -112,16 +112,9 @@ const saveSubject = async () => {
     if (!payload.name) throw new Error('El nombre de la asignatura no puede estar vacío.')
 
     if (editingSubject.value) {
-      const { error } = await supabase
-        .from('subjects')
-        .update(payload)
-        .eq('id', editingSubject.value.id)
-      if (error) throw error
+      await academicService.updateSubject(editingSubject.value.id, payload)
     } else {
-      const { error } = await supabase
-        .from('subjects')
-        .insert(payload)
-      if (error) throw error
+      await academicService.createSubject(payload)
     }
     await queryClient.invalidateQueries({ queryKey: ['subjects'] })
     closeModal()
@@ -149,12 +142,7 @@ const deleteSubject = async (id) => {
     processing: false,
     action: async () => {
       try {
-        let query = supabase.from('subjects').delete().eq('id', id)
-        if (sId) {
-          query = query.eq('school_id', sId)
-        }
-        const { error } = await query
-        if (error) throw error
+        await academicService.deleteSubject(id, sId)
         await queryClient.invalidateQueries({ queryKey: ['subjects'] })
       } catch (error) {
         confirmModal.value = {
@@ -351,8 +339,7 @@ const submitImportSubjects = async () => {
   importErrors.value = []
 
   try {
-    const { error } = await supabase.from('subjects').insert(toInsert)
-    if (error) throw error
+    await academicService.importSubjectsBatch(toInsert, sId)
 
     await queryClient.invalidateQueries({ queryKey: ['subjects'] })
     importSuccessMsg.value = `¡Se importaron ${toInsert.length} asignaturas exitosamente!`
@@ -398,16 +385,18 @@ const submitImportSubjects = async () => {
               <span>Descargar Plantilla CSV</span>
             </button>
 
-            <!-- Importar Masivo Excel -->
-            <button 
-              @click="openImportModal" 
-              class="inline-flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-blue-300 dark:border-blue-700/60 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors shadow-sm"
-              title="Subir archivo Excel con catálogo de asignaturas"
+            <!-- Importar masivo CSV / Excel -->
+            <button
+              @click="openImportModal"
+              class="group inline-flex items-center gap-2.5 h-10 pl-3 pr-4 text-xs sm:text-sm font-bold rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-md shadow-blue-900/25 ring-1 ring-inset ring-white/15 transition-all hover:-translate-y-px focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+              title="Subir un archivo CSV o Excel con el catálogo de asignaturas"
             >
-              <svg class="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              <span>Importar Excel</span>
+              <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-white/20">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+              </span>
+              <span>Importar CSV / Excel</span>
             </button>
 
             <!-- Exportar Catálogo Actual -->
@@ -443,7 +432,7 @@ const submitImportSubjects = async () => {
               v-model="searchQuery" 
               type="text" 
               placeholder="Buscar asignatura..." 
-              class="app-input pl-9 w-full text-xs sm:text-sm h-9"
+              class="app-input !pl-9 w-full text-xs sm:text-sm h-9"
             />
           </div>
           <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -492,7 +481,7 @@ const submitImportSubjects = async () => {
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
               <tr v-if="filteredSubjects.length === 0">
                 <td colspan="2" class="text-center text-sm text-slate-500 py-10">
-                  {{ searchQuery ? 'No se encontraron asignaturas con ese criterio.' : 'No hay asignaturas registradas. Haz clic en "+ Nueva Asignatura" o "Importar Excel".' }}
+                  {{ searchQuery ? 'No se encontraron asignaturas con ese criterio.' : 'No hay asignaturas registradas. Haz clic en "+ Nueva Asignatura" o "Importar CSV / Excel".' }}
                 </td>
               </tr>
               <tr v-else v-for="subject in filteredSubjects" :key="subject.id" class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">

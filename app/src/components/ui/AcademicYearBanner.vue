@@ -102,8 +102,9 @@ const confirmToggleLock = async () => {
 
 <template>
   <div 
-    class="relative overflow-hidden rounded-2xl border transition-all duration-300 shadow-sm mb-6"
+    class="relative overflow-hidden rounded-2xl border transition-all duration-300 shadow-sm"
     :class="[
+      props.compact ? 'mb-4' : 'mb-6',
       isLocked
         ? 'bg-gradient-to-r from-rose-50/95 via-white/90 to-amber-50/90 dark:from-slate-900/95 dark:via-slate-900/70 dark:to-rose-950/40 border-rose-300 dark:border-rose-900/60 ring-1 ring-rose-400/20'
         : isCurrentYear 
@@ -125,14 +126,15 @@ const confirmToggleLock = async () => {
       ]"
     ></div>
 
-    <div :class="props.compact ? 'p-3 sm:p-4' : 'p-4 sm:p-5'" class="relative z-10">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div :class="props.compact ? 'p-2.5 sm:py-3 sm:px-4' : 'p-4 sm:p-5'" class="relative z-10">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         
         <!-- Left Section: Icon + Year Details -->
-        <div class="flex items-center gap-3.5 min-w-0">
+        <div class="flex items-center gap-3 min-w-0">
           <div 
-            class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm border transition-transform duration-200 hover:scale-105"
+            class="rounded-xl flex items-center justify-center shrink-0 shadow-sm border transition-transform duration-200 hover:scale-105"
             :class="[
+              props.compact ? 'w-9 h-9 sm:w-10 sm:h-10' : 'w-11 h-11 sm:w-12 sm:h-12',
               isLocked
                 ? 'bg-rose-600 text-white border-rose-500/40 dark:bg-rose-500/30 dark:text-rose-300 dark:border-rose-500/40 shadow-rose-500/20'
                 : isCurrentYear 
@@ -140,9 +142,9 @@ const confirmToggleLock = async () => {
                   : 'bg-amber-600 text-white border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30'
             ]"
           >
-            <Lock v-if="isLocked" class="w-6 h-6 animate-pulse" />
-            <CalendarCheck2 v-else-if="isCurrentYear" class="w-6 h-6" />
-            <History v-else class="w-6 h-6" />
+            <Lock v-if="isLocked" :class="props.compact ? 'w-4 h-4 sm:w-5 sm:h-5 animate-pulse' : 'w-6 h-6 animate-pulse'" />
+            <CalendarCheck2 v-else-if="isCurrentYear" :class="props.compact ? 'w-4 h-4 sm:w-5 sm:h-5' : 'w-6 h-6'" />
+            <History v-else :class="props.compact ? 'w-4 h-4 sm:w-5 sm:h-5' : 'w-6 h-6'" />
           </div>
 
           <div class="min-w-0">
@@ -187,7 +189,10 @@ const confirmToggleLock = async () => {
             </div>
 
             <div class="flex items-baseline gap-2 flex-wrap">
-              <h2 class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+              <h2
+                class="tracking-tight text-slate-900 dark:text-white flex items-center gap-2"
+                :class="props.compact ? 'text-base sm:text-lg font-bold' : 'text-lg sm:text-xl font-extrabold'"
+              >
                 {{ selectedYearName }}
                 <span v-if="isLocked" class="text-xs px-2 py-0.5 rounded-md bg-rose-600 text-white font-bold tracking-normal uppercase">
                   Protegido
@@ -198,7 +203,7 @@ const confirmToggleLock = async () => {
               </span>
             </div>
 
-            <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-0.5 line-clamp-1 sm:line-clamp-none">
+            <p v-if="!props.compact" class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-0.5 line-clamp-1 sm:line-clamp-none">
               <template v-if="isLocked">
                 Este año lectivo está <strong>bloqueado</strong>. Los datos académicos están protegidos en modo solo lectura.
               </template>
@@ -291,9 +296,9 @@ const confirmToggleLock = async () => {
         </span>
       </div>
 
-      <!-- Warning Note ONLY for Rector and Institution Admin / Superadmin when Unlocked -->
+      <!-- Warning Note ONLY for Rector and Institution Admin / Superadmin when Unlocked (No compact) -->
       <div 
-        v-else-if="canManageLock" 
+        v-else-if="canManageLock && !props.compact"
         class="mt-3 pt-3 border-t border-amber-200/60 dark:border-amber-900/40 flex items-center gap-2 text-xs font-medium text-amber-800 dark:text-amber-300"
       >
         <AlertTriangle class="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />

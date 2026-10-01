@@ -1,5 +1,4 @@
 <script setup>
-import { computed } from 'vue'
 import { 
   Plus, 
   Search, 
@@ -13,19 +12,14 @@ import {
   Share2, 
   Edit, 
   Trash2, 
-  ShieldCheck, 
   Loader2, 
   CheckCircle, 
-  Clock, 
-  AlertTriangle,
-  Send,
   Sparkles,
   Inbox
 } from 'lucide-vue-next'
 import AcademicYearBanner from '../components/ui/AcademicYearBanner.vue'
 import TeacherReportEditorModal from '../components/teacher-reports/TeacherReportEditorModal.vue'
 import TeacherReportPrintDocument from '../components/teacher-reports/TeacherReportPrintDocument.vue'
-import DeceDigitalSignModal from '../components/dece/DeceDigitalSignModal.vue'
 import { useTeacherReports } from '../composables/useTeacherReports'
 import { 
   TEMPLATE_CONFIGS, 
@@ -39,7 +33,6 @@ const {
   loading,
   saving,
   reports,
-  totalCount,
   courses,
   quarters,
   availableStudents,
@@ -51,10 +44,8 @@ const {
   selectedTemplateFilter,
   selectedStatusFilter,
   selectedQuarterFilter,
-  page,
   showEditorModal,
   showPrintModal,
-  showDigitalSignModal,
   activeReport,
   formData,
   onCourseSelected,
@@ -64,10 +55,8 @@ const {
   openCreateModal,
   openEditModal,
   openPrintModal,
-  openDigitalSignModal,
   saveReport,
   deleteReport,
-  updateStatus,
   sendWhatsAppNotification
 } = useTeacherReports()
 
@@ -411,16 +400,6 @@ const getTemplateIcon = (iconName) => {
       :institution-config="institutionConfig"
       :on-close="() => { showPrintModal = false }"
       :on-send-whatsapp="sendWhatsAppNotification"
-    />
-
-    <DeceDigitalSignModal
-      v-if="showDigitalSignModal && activeReport"
-      :alert-id="activeReport.id"
-      :student-name="activeReport.students?.full_name || 'Estudiante'"
-      :case-code="`INF-${activeReport.id.substring(0, 8).toUpperCase()}`"
-      :description="activeReport.reason"
-      @close="showDigitalSignModal = false"
-      @signed="() => { showDigitalSignModal = false; fetchReports(); }"
     />
 
   </div>

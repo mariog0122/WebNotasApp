@@ -119,10 +119,26 @@ export const canManageAcademicYearLock = (accessContext, profile = null) => {
   return false
 }
 
+/** Autoriza la creación desde la UI; PostgreSQL vuelve a comprobarla. */
+export const canCreateAcademicYear = (accessContext, profile = null) => {
+  if (accessContext?.isPlatformAdmin || accessContext?.isPlatformOwner) return true
+  if (hasAccessPermission(accessContext, 'academic_year.create')) return true
+
+  // Compatibilidad con perfiles antiguos que todavía no tienen membresía RBAC.
+  if (!accessContext?.activeMembership) {
+    const legacyRole = accessContext?.raw?.role || profile?.role
+    return ['superadmin', 'admin', 'school_admin', 'rector'].includes(legacyRole)
+  }
+
+  return false
+}
+
 export const canAccessRoute = (meta = {}, accessContext) => {
   if (meta.platformAdminOnly) return accessContext?.isPlatformAdmin === true
   if (meta.institutionAdminOnly && !isInstitutionAdmin(accessContext)) return false
   if (meta.permission && !hasAccessPermission(accessContext, meta.permission)) return false
+  if (Array.isArray(meta.permissionsAll)
+    && !meta.permissionsAll.every(permission => hasAccessPermission(accessContext, permission))) return false
   if (meta.requiresAuth && !accessContext?.userId) return false
   return true
 }
@@ -146,11 +162,13 @@ export const hasPermission = (role, resource, action) => {
       'subjects.view', 'subjects.create', 'subjects.update', 'subjects.delete',
       'grades.view', 'grades.create', 'grades.update', 'grades.delete', 'grades.export',
       'institution.view', 'institution.update', 'reports.view', 'reports.export', 'audit.view',
+      'wellbeing.view', 'wellbeing.create', 'wellbeing.manage', 'wellbeing.sign',
     ]),
     teacher: new Set([
       'students.view', 'students.export', 'courses.view', 'courses.export', 'subjects.view',
       'grades.view', 'grades.create', 'grades.update', 'grades.export',
       'institution.view', 'reports.view', 'reports.export',
+      'wellbeing.view', 'wellbeing.create',
     ]),
   }
 
@@ -170,8 +188,11 @@ export const usePermissions = (authStore) => ({
   get canManageAcademicYearLock() {
     return canManageAcademicYearLock(authStore.accessContext, authStore.profile)
   },
+  get canCreateAcademicYear() {
+    return canCreateAcademicYear(authStore.accessContext, authStore.profile)
+  },
   can: (resource, action) => hasAccessPermission(
     authStore.accessContext,
-    `${resource}.${action === 'view' ? 'read' : action}`,
+    action ? `${resource}.${action === 'view' ? 'read' : action}` : resource,
   ),
 })

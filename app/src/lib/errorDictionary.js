@@ -43,3 +43,14 @@ export function translateError(error) {
     // Fallback to original message if not found, but we could also return a generic error.
     return msg;
 }
+
+export const EMAIL_ALREADY_REGISTERED_MESSAGE = 'Este correo ya está registrado en otra institución. Ingresa un correo electrónico diferente.'
+
+/** Unifica los avisos de correo duplicado que devuelven las funciones de usuarios. */
+export function normalizeUserEmailConflict(message) {
+    const text = String(message || '')
+    if (/correo[^.]*(ya pertenece|ya se encuentra registrado|ya est[aá] registrado)|already (been )?registered/i.test(text)) {
+        return EMAIL_ALREADY_REGISTERED_MESSAGE
+    }
+    return text
+}

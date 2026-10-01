@@ -27,6 +27,25 @@ export const useAuthStore = defineStore('auth', () => {
     let sessionPromise = null
     let profilePromise = null
     let accessContextPromise = null
+    let identityVersion = 0
+
+    const clearIdentity = () => {
+        identityVersion += 1
+        user.value = null
+        profile.value = null
+        accessContext.value = createAuthorizationContext(null)
+        sessionPromise = null
+        profilePromise = null
+        accessContextPromise = null
+    }
+
+    const assertCurrentIdentity = (version, userId) => {
+        if (version !== identityVersion || user.value?.id !== userId) {
+            const error = new Error('La sesión cambió. Inténtalo nuevamente.')
+            error.code = 'AUTH_SESSION_CHANGED'
+            throw error
+        }
+    }
 
     const schoolStorageKey = () => user.value?.id
         ? `logreva-active-school:${user.value.id}`
@@ -58,6 +77,8 @@ export const useAuthStore = defineStore('auth', () => {
     async function fetchAccessContext() {
         if (!user.value) throw createAuthorizationAccessError()
         if (accessContextPromise) return accessContextPromise
+        const version = identityVersion
+        const userId = user.value.id
 
         accessContextPromise = (async () => {
             let data = null
@@ -71,42 +92,14 @@ export const useAuthStore = defineStore('auth', () => {
                 rpcError = err
             }
 
-            // Fallback de contingencia: si el RPC falla por permisos o desincronización en DB
-            if (rpcError) {
-                console.warn('supabase.rpc("get_my_access_context") no disponible, usando fallback de perfil:', rpcError)
-                if (profile.value?.role === 'superadmin') {
-                    data = {
-                        user_id: user.value.id,
-                        is_platform_admin: true,
-                        is_platform_owner: true,
-                        platform_roles: ['platform_owner', 'platform_admin'],
-                        default_school_id: profile.value.school_id || null,
-                        memberships: [],
-                    }
-                    rpcError = null
-                } else if (profile.value?.role) {
-                    data = {
-                        user_id: user.value.id,
-                        is_platform_admin: false,
-                        is_platform_owner: false,
-                        platform_roles: [],
-                        default_school_id: profile.value.school_id || null,
-                        memberships: profile.value.school_id ? [{
-                            school_id: profile.value.school_id,
-                            role: profile.value.role,
-                            permissions: [],
-                        }] : [],
-                    }
-                    rpcError = null
-                }
-            }
-
+            assertCurrentIdentity(version, userId)
             if (rpcError) throw rpcError
 
             const context = createAuthorizationContext({
                 ...(data || {}),
                 active_school_id: readStoredSchoolId() || data?.default_school_id || null,
             })
+            if (context.userId !== userId) throw createAuthorizationAccessError()
             if (!context.isPlatformAdmin && context.memberships.length === 0) {
                 throw createAuthorizationAccessError()
             }
@@ -118,35 +111,40 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             return await accessContextPromise
         } finally {
-            accessContextPromise = null
+            if (version === identityVersion) accessContextPromise = null
         }
     }
 
     async function fetchProfile() {
         if (!user.value) throw createProfileAccessError()
         if (profilePromise) return profilePromise
+        const version = identityVersion
+        const userId = user.value.id
 
         profilePromise = (async () => {
             const { data, error } = await supabase
                 .from('profiles')
                 .select('id, email, role, full_name, school_id, created_at, photo_url')
-                .eq('id', user.value.id)
+                .eq('id', userId)
                 .maybeSingle()
 
+            assertCurrentIdentity(version, userId)
             if (error) {
                 profile.value = null
                 throw error
             }
-            if (!data) {
+            if (!data || data.id !== userId) {
                 profile.value = null
                 throw createProfileAccessError()
             }
 
             const photoPath = normalizeStoragePath(data.photo_url, 'profile-photos')
+            const photoUrl = await resolvePrivateImageUrl(supabase, 'profile-photos', photoPath).catch(() => '')
+            assertCurrentIdentity(version, userId)
             profile.value = {
                 ...data,
                 photo_storage_path: photoPath,
-                photo_url: await resolvePrivateImageUrl(supabase, 'profile-photos', photoPath).catch(() => ''),
+                photo_url: photoUrl,
             }
             return data
         })()
@@ -154,7 +152,7 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             return await profilePromise
         } finally {
-            profilePromise = null
+            if (version === identityVersion) profilePromise = null
         }
     }
 
@@ -165,11 +163,13 @@ export const useAuthStore = defineStore('auth', () => {
             return
         }
         if (sessionPromise) return sessionPromise
+        const version = identityVersion
 
         sessionPromise = (async () => {
             loading.value = true
             try {
                 const { data, error } = await supabase.auth.getSession()
+                if (version !== identityVersion) return
                 if (error) throw error
 
                 if (!data?.session) {
@@ -183,6 +183,7 @@ export const useAuthStore = defineStore('auth', () => {
                 await fetchProfile()
                 await fetchAccessContext()
             } catch (error) {
+                if (version !== identityVersion) throw error
                 user.value = null
                 profile.value = null
                 accessContext.value = createAuthorizationContext(null)
@@ -199,40 +200,42 @@ export const useAuthStore = defineStore('auth', () => {
                 }
                 throw error
             } finally {
-                loading.value = false
-                isInitialized.value = true
+                if (version === identityVersion) {
+                    loading.value = false
+                    isInitialized.value = true
+                }
             }
         })()
 
         try {
             return await sessionPromise
         } finally {
-            sessionPromise = null
+            if (version === identityVersion) sessionPromise = null
         }
     }
 
     async function signIn(email, password) {
+        clearIdentity()
+        const version = identityVersion
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-
+        if (version !== identityVersion) return
         user.value = data.user
         try {
             await fetchProfile()
             await fetchAccessContext()
         } catch (profileError) {
+            if (version !== identityVersion) throw profileError
             await supabase.auth.signOut()
-            user.value = null
-            profile.value = null
-            accessContext.value = createAuthorizationContext(null)
+            if (version === identityVersion) clearIdentity()
             throw profileError
         }
     }
 
     async function signOut() {
-        await supabase.auth.signOut()
-        user.value = null
-        profile.value = null
-        accessContext.value = createAuthorizationContext(null)
+        const { error } = await supabase.auth.signOut()
+        if (error) throw error
+        clearIdentity()
     }
 
     async function initialize() {
@@ -241,22 +244,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     function resetAuth() {
-        user.value = null
-        profile.value = null
-        accessContext.value = createAuthorizationContext(null)
+        clearIdentity()
         isInitialized.value = false
     }
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-            user.value = null
-            profile.value = null
-            accessContext.value = createAuthorizationContext(null)
+            clearIdentity()
             isInitialized.value = false
             if (typeof globalThis.window !== 'undefined' && globalThis.window.location.pathname !== '/login') {
                 globalThis.window.location.href = '/login'
             }
         } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+            if (user.value && user.value.id !== session.user.id) clearIdentity()
             user.value = session.user
         }
     })

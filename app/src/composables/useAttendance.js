@@ -12,6 +12,7 @@ import {
   buildAttendanceWhatsAppMessage 
 } from '../lib/attendanceConstants'
 import { normalizeStoragePath, resolvePrivateImageUrl } from '../lib/storageUtils'
+import { institutionalDateKey } from '../lib/civilDate'
 
 export function useAttendance() {
   const authStore = useAuthStore()
@@ -29,11 +30,19 @@ export function useAttendance() {
   // Roll-Call Filters & Form
   const selectedCourse = ref('')
   const selectedSubject = ref('')
-  const selectedDate = ref(new Date().toISOString().split('T')[0])
+  const initialDate = institutionalDateKey()
+  const selectedDate = ref(initialDate)
   const selectedHourBlock = ref('jornada_completa')
 
   // Roll-Call Data
   const students = ref([])
+  let rollCallRequest = 0
+  let loadedRollCallKey = null
+  const rollCallContextKey = () => JSON.stringify([
+    authStore.activeSchoolId || authStore.profile?.school_id, authStore.user?.id,
+    academicYearStore.selectedYearName, selectedCourse.value, selectedSubject.value,
+    selectedDate.value, selectedHourBlock.value,
+  ])
   const rollCallState = reactive({}) // { [studentId]: { status: 'presente', observations: '' } }
 
   // Justifications State
@@ -45,7 +54,7 @@ export function useAttendance() {
   const justifyingLoading = ref(false)
 
   // Monthly Grid State
-  const gridMonth = ref(new Date().toISOString().slice(0, 7)) // YYYY-MM
+  const gridMonth = ref(initialDate.slice(0, 7)) // YYYY-MM
   const gridCourseId = ref('')
   const gridDays = ref([])
   const gridMatrix = ref([]) // array of { student, daysMap: { 'YYYY-MM-DD': status }, stats }
@@ -89,13 +98,18 @@ export function useAttendance() {
   const fetchInstitutionConfig = async () => {
     const sId = authStore.activeSchoolId || authStore.profile?.school_id
     if (!sId) return
-    const { data } = await supabase
-      .from('system_config')
-      .select('key, value')
-      .eq('school_id', sId)
-      .in('key', ['institution_name', 'institution_logo_url'])
+    const [{ data }, { data: school }] = await Promise.all([
+      supabase.from('system_config').select('key, value').eq('school_id', sId)
+        .in('key', ['institution_name', 'institution_logo_url']),
+      supabase.from('schools').select('timezone').eq('id', sId).maybeSingle(),
+    ])
 
     const map = Object.fromEntries((data || []).map(i => [i.key, i.value]))
+    map.timezone = school?.timezone
+    const institutionToday = institutionalDateKey(new Date(), map.timezone)
+    // Keep a date/month already selected by the teacher while config was loading.
+    if (selectedDate.value === initialDate) selectedDate.value = institutionToday
+    if (gridMonth.value === initialDate.slice(0, 7)) gridMonth.value = institutionToday.slice(0, 7)
     map.institution_logo_url = await resolvePrivateImageUrl(
       supabase,
       'institution-assets',
@@ -106,23 +120,31 @@ export function useAttendance() {
 
   const fetchCourses = async () => {
     const sId = authStore.activeSchoolId || authStore.profile?.school_id
-    let query = supabase.from('courses').select('id, name, level, track, academic_year').order('name')
-    if (sId) {
-      query = query.or(`school_id.eq.${sId},school_id.is.null`)
+    if (!sId) {
+      courses.value = []
+      selectedCourse.value = ''
+      gridCourseId.value = ''
+      return
     }
+    let query = supabase.from('courses').select('id, name, level, track, academic_year').order('name')
+    query = query.eq('school_id', sId)
     const yearName = academicYearStore.selectedYearName
     if (yearName) {
       query = query.eq('academic_year', yearName)
     }
-    const { data } = await query
+    const { data, error } = await query
+    if (error) throw error
     let filteredCourses = data || []
 
     const userIds = [authStore.user?.id, authStore.profile?.id].filter(Boolean)
     if (!isAdmin.value && userIds.length > 0) {
-      const { data: assignedLinks } = await supabase
+      const { data: assignedLinks, error: assignedLinksError } = await supabase
         .from('course_subjects')
         .select('course_id')
+        .eq('school_id', sId)
         .in('teacher_id', userIds)
+
+      if (assignedLinksError) throw assignedLinksError
 
       const assignedCourseIds = new Set((assignedLinks || []).map(l => l.course_id).filter(Boolean))
       filteredCourses = filteredCourses.filter(c => assignedCourseIds.has(c.id))
@@ -142,20 +164,24 @@ export function useAttendance() {
       return
     }
     const sId = authStore.activeSchoolId || authStore.profile?.school_id
+    if (!sId) {
+      availableSubjects.value = []
+      selectedSubject.value = ''
+      return
+    }
     let query = supabase
       .from('course_subjects')
       .select('id, subject_id, teacher_id, subjects(id, name)')
       .eq('course_id', courseId)
-    if (sId) {
-      query = query.or(`school_id.eq.${sId},school_id.is.null`)
-    }
+    query = query.eq('school_id', sId)
 
     const userIds = [authStore.user?.id, authStore.profile?.id].filter(Boolean)
     if (!isAdmin.value && userIds.length > 0) {
       query = query.in('teacher_id', userIds)
     }
 
-    const { data } = await query
+    const { data, error } = await query
+    if (error) throw error
     availableSubjects.value = (data || []).map(cs => ({
       course_subject_id: cs.id,
       id: cs.subject_id,
@@ -164,59 +190,52 @@ export function useAttendance() {
   }
 
   const fetchRollCallData = async () => {
-    if (!selectedCourse.value || !selectedDate.value) return
+    const version = ++rollCallRequest
+    const key = rollCallContextKey()
+    const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
+    const courseId = selectedCourse.value
+    const subjectId = selectedSubject.value
+    const date = selectedDate.value
+    const hourBlock = selectedHourBlock.value
+    loadedRollCallKey = null
+    students.value = []
+    Object.keys(rollCallState).forEach(id => delete rollCallState[id])
+    loading.value = false
+    if (!schoolId || !courseId || !date) return
     loading.value = true
-
+    const isCurrent = () => version === rollCallRequest && key === rollCallContextKey()
     try {
-      const sId = authStore.activeSchoolId || authStore.profile?.school_id
-      
-      // 1. Cargar estudiantes del curso
-      let stuQuery = supabase
-        .from('students')
+      const { data: stuData, error: stuError } = await supabase.from('students')
         .select('id, full_name, student_cedula, representative_name, representative_phone')
-        .eq('course_id', selectedCourse.value)
-        .order('full_name')
-      if (sId) {
-        stuQuery = stuQuery.or(`school_id.eq.${sId},school_id.is.null`)
-      }
-      const { data: stuData } = await stuQuery
-      students.value = stuData || []
-      students.value.forEach(s => {
-        if (!rollCallState[s.id]) {
-          rollCallState[s.id] = { status: 'presente', observations: '' }
-        }
-      })
+        .eq('school_id', schoolId).eq('course_id', courseId).order('full_name')
+      if (!isCurrent()) return
+      if (stuError) throw stuError
+      if (!Array.isArray(stuData)) throw new Error('No se confirmó la lista de estudiantes.')
 
-      // 2. Cargar asistencias existentes para la fecha / materia / bloque
-      let attQuery = supabase
-        .from('attendance_records')
+      let query = supabase.from('attendance_records')
         .select('id, student_id, status, observations, hour_block, subject_id')
-        .eq('course_id', selectedCourse.value)
-        .eq('attendance_date', selectedDate.value)
-        .eq('hour_block', selectedHourBlock.value)
+        .eq('school_id', schoolId).eq('course_id', courseId)
+        .eq('attendance_date', date).eq('hour_block', hourBlock)
+      query = subjectId ? query.eq('subject_id', subjectId) : query.is('subject_id', null)
+      const { data: attData, error: attError } = await query
+      if (!isCurrent()) return
+      if (attError) throw attError
+      if (!Array.isArray(attData)) throw new Error('No se confirmó la carga de asistencia.')
 
-      if (selectedSubject.value) {
-        attQuery = attQuery.eq('subject_id', selectedSubject.value)
-      } else {
-        attQuery = attQuery.is('subject_id', null)
-      }
-
-      const { data: attData, error: attError } = await attQuery
-      const existingMap = new Map(((attError ? [] : attData) || []).map(r => [r.student_id, r]))
-
-      // 3. Inicializar estado reactivo
-      students.value.forEach(s => {
-        const existing = existingMap.get(s.id)
-        rollCallState[s.id] = {
+      const existingMap = new Map(attData.map(record => [record.student_id, record]))
+      stuData.forEach(student => {
+        const existing = existingMap.get(student.id)
+        rollCallState[student.id] = {
           status: existing?.status || 'presente',
-          observations: existing?.observations || ''
+          observations: existing?.observations || '',
         }
       })
+      students.value = stuData
+      loadedRollCallKey = key
     } catch (err) {
-      console.error('Error fetching roll call data:', err)
-      toast.error('Error al cargar la lista de asistencia', { description: translateError(err) })
+      if (isCurrent()) toast.error('Error al cargar la lista de asistencia', { description: translateError(err) })
     } finally {
-      loading.value = false
+      if (version === rollCallRequest) loading.value = false
     }
   }
 
@@ -252,6 +271,11 @@ export function useAttendance() {
       return
     }
 
+    if (saving.value || loading.value || !students.value.length || loadedRollCallKey !== rollCallContextKey()) {
+      toast.error('Espera a que se cargue correctamente la asistencia antes de guardar.')
+      return
+    }
+    const saveContext = rollCallContextKey()
     saving.value = true
     try {
       const records = students.value.map(s => ({
@@ -268,30 +292,11 @@ export function useAttendance() {
         p_records: records
       })
 
-      if (error) {
-        // Fallback directo con upsert si el RPC fallara
-        const sId = authStore.activeSchoolId || authStore.profile?.school_id
-        const upsertPayload = records.map(r => ({
-          school_id: sId,
-          course_id: selectedCourse.value,
-          subject_id: selectedSubject.value || null,
-          student_id: r.student_id,
-          teacher_id: authStore.user?.id,
-          attendance_date: selectedDate.value,
-          hour_block: selectedHourBlock.value,
-          status: r.status,
-          observations: r.observations,
-          academic_year: academicYearStore.selectedYearName || null
-        }))
-
-        const { error: upsertErr } = await supabase
-          .from('attendance_records')
-          .upsert(upsertPayload, {
-            onConflict: 'student_id,attendance_date,course_id,subject_id,hour_block'
-          })
-
-        if (upsertErr) throw upsertErr
+      if (error) throw error
+      if (data?.success !== true || data.saved_count !== records.length) {
+        throw new Error('El servidor no confirmó el guardado completo de asistencia.')
       }
+      if (saveContext !== rollCallContextKey()) return
 
       toast.success('Asistencia guardada correctamente')
       await fetchRollCallData()
@@ -342,21 +347,9 @@ export function useAttendance() {
         p_reason: justificationReason.value.trim()
       })
 
-      if (error) {
-        // Fallback directo
-        const { error: updErr } = await supabase
-          .from('attendance_records')
-          .update({
-            status: 'falta_justificada',
-            justification_reason: justificationReason.value.trim(),
-            justified_by: authStore.user?.id,
-            justified_at: new Date().toISOString()
-          })
-          .eq('student_id', selectedJustificationStudent.value.id)
-          .in('attendance_date', selectedDatesToJustify.value)
-          .in('status', ['falta_injustificada', 'atraso'])
-
-        if (updErr) throw updErr
+      if (error) throw error
+      if (data?.success !== true || !Number.isInteger(data.updated_count) || data.updated_count < 1) {
+        throw new Error('No se confirmó ninguna falta justificada. Actualiza la consulta.')
       }
 
       toast.success('Faltas justificadas exitosamente')
@@ -401,27 +394,29 @@ export function useAttendance() {
 
       // Cargar estudiantes del curso
       const sId = authStore.activeSchoolId || authStore.profile?.school_id
+      if (!sId) throw new Error('No hay una institución activa seleccionada.')
       let stuQuery = supabase
         .from('students')
         .select('id, full_name, student_cedula, representative_phone')
         .eq('course_id', gridCourseId.value)
         .order('full_name')
-      if (sId) {
-        stuQuery = stuQuery.or(`school_id.eq.${sId},school_id.is.null`)
-      }
-      const { data: stuData } = await stuQuery
+      stuQuery = stuQuery.eq('school_id', sId)
+      const { data: stuData, error: studentsError } = await stuQuery
+      if (studentsError) throw studentsError
       const studentList = stuData || []
 
       // Cargar registros de asistencia del mes
       const startDate = `${gridMonth.value}-01`
       const endDate = `${gridMonth.value}-${String(totalDaysInMonth).padStart(2, '0')}`
 
-      const { data: attData } = await supabase
+      const { data: attData, error: attendanceError } = await supabase
         .from('attendance_records')
         .select('student_id, attendance_date, status')
         .eq('course_id', gridCourseId.value)
         .gte('attendance_date', startDate)
         .lte('attendance_date', endDate)
+
+      if (attendanceError) throw attendanceError
 
       // Agrupar por estudiante
       const mapByStudent = new Map()
@@ -457,6 +452,10 @@ export function useAttendance() {
     alertsLoading.value = true
     try {
       const sId = authStore.activeSchoolId || authStore.profile?.school_id
+      if (!sId) {
+        atRiskStudents.value = []
+        return
+      }
       let query = supabase
         .from('attendance_records')
         .select(`
@@ -468,9 +467,7 @@ export function useAttendance() {
         .order('attendance_date', { ascending: false })
         .limit(100)
 
-      if (sId) {
-        query = query.or(`school_id.eq.${sId},school_id.is.null`)
-      }
+      query = query.eq('school_id', sId)
 
       const { data, error } = await query
       if (error) throw error

@@ -63,15 +63,7 @@ export class KnowledgePromotionService {
         quality
       }
     } catch (err) {
-      console.warn('Fallback al registrar feedback de IA vía RPC:', err)
-      // Fallback defensivo si la migración aún no fue ejecutada en la DB remota
-      return {
-        success: true,
-        fallback: true,
-        message: 'Feedback recibido localmente en modo defensivo.',
-        sanitization,
-        quality
-      }
+      throw new Error('No se pudo guardar la retroalimentación. Inténtalo nuevamente.', { cause: err })
     }
   }
 

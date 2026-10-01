@@ -2,6 +2,7 @@ import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from './auth'
+import { buildAcademicYearCreateArgs } from '../lib/academicYears'
 
 export const useAcademicYearStore = defineStore('academicYear', () => {
   const authStore = useAuthStore()
@@ -79,30 +80,20 @@ export const useAcademicYearStore = defineStore('academicYear', () => {
       ? nextLockedState
       : !currentYearObj?.is_locked
 
-    let updatedData = null
+    const { data, error: rpcErr } = await supabase
+      .rpc('toggle_academic_year_lock', {
+        target_year_id: yearId,
+        lock_status: targetStatus
+      })
 
-    // Intento 1: Ejecutar RPC seguro con validación de roles en Postgres
-    try {
-      const { data, error: rpcErr } = await supabase
-        .rpc('toggle_academic_year_lock', {
-          target_year_id: yearId,
-          lock_status: targetStatus
-        })
-
-      if (rpcErr) throw rpcErr
-      updatedData = data
-    } catch (rpcError) {
-      console.warn('RPC toggle_academic_year_lock no disponible, ejecutando actualización directa:', rpcError)
-      // Intento 2: Fallback directo a la tabla con RLS
-      const { data, error: updateErr } = await supabase
-        .from('academic_years')
-        .update({ is_locked: targetStatus })
-        .eq('id', yearId)
-        .select()
-        .single()
-
-      if (updateErr) throw updateErr
-      updatedData = data
+    if (rpcErr) throw rpcErr
+    const updatedData = Array.isArray(data) ? data[0] : data
+    if (
+      !updatedData
+      || updatedData.id !== yearId
+      || Boolean(updatedData.is_locked) !== targetStatus
+    ) {
+      throw new Error('El servidor no confirmó el cambio de bloqueo del año lectivo.')
     }
 
     // Actualizar estado reactivo local en el store
@@ -126,7 +117,7 @@ export const useAcademicYearStore = defineStore('academicYear', () => {
       }))
     }
 
-    return updatedData || { id: yearId, is_locked: targetStatus }
+    return updatedData
   }
 
   const fetchAcademicYears = async (force = false) => {
@@ -142,7 +133,7 @@ export const useAcademicYearStore = defineStore('academicYear', () => {
         .order('start_year', { ascending: false })
 
       if (sId) {
-        query = query.or(`school_id.eq.${sId},school_id.is.null`)
+        query = query.eq('school_id', sId)
       }
 
       const { data, error: fetchErr } = await query
@@ -184,37 +175,23 @@ export const useAcademicYearStore = defineStore('academicYear', () => {
 
   const createAcademicYear = async (name, isCurrent = false) => {
     const sId = schoolId.value
-    const parts = name.split('-').map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p))
-    const startYear = parts[0] || new Date().getFullYear()
-    const endYear = parts[1] || (startYear + 1)
-
-    const payload = {
-      name: name.trim(),
-      start_year: startYear,
-      end_year: endYear,
-      is_current: isCurrent,
-      is_locked: false
-    }
-    if (sId) {
-      payload.school_id = sId
-    }
+    const platformSchoolId = authStore.accessContext?.isPlatformAdmin ? sId : null
+    const args = buildAcademicYearCreateArgs(name, isCurrent, platformSchoolId)
 
     const { data, error: insertErr } = await supabase
-      .from('academic_years')
-      .insert(payload)
-      .select()
-      .single()
+      .rpc('create_academic_year', args)
 
     if (insertErr) {
       throw insertErr
     }
 
+    const createdYear = Array.isArray(data) ? data[0] : data
     await fetchAcademicYears(true)
-    if (data?.id) {
-      setSelectedYearId(data.id)
+    if (createdYear?.id) {
+      setSelectedYearId(createdYear.id)
     }
 
-    return data
+    return createdYear
   }
 
   // Watch for school change or auth initialization

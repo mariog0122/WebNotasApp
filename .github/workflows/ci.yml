@@ -1,4 +1,4 @@
-name: Production quality gate
+name: Production quality gate & CI/CD
 
 on:
   pull_request:
@@ -22,28 +22,62 @@ jobs:
       VITE_SUPABASE_URL: https://example.supabase.co
       VITE_SUPABASE_ANON_KEY: ci-placeholder-key
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js runtime
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: app/package-lock.json
+
       - name: Install locked dependencies
         run: npm ci
-      - name: Unit and contract tests
+
+      - name: Unit and contract tests (Vitest)
         run: npm run test -- --run
-      - name: Production build
+
+      - name: Production build (Vite)
         run: npm run build
+
       - name: Compressed bundle budget
         run: npm run check:bundle
+
+      - name: Cache Playwright browser binaries
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('app/package-lock.json') }}
+
       - name: Install browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
-      - name: Protected-route browser test
+
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Protected-route browser test (E2E)
         run: npm run test:e2e
-      - name: Upload production bundle
+
+      - name: Package production deployment ZIP
+        run: |
+          cd dist && zip -r ../logreva-dist-${{ github.sha }}.zip . && cd ..
+
+      - name: Upload production bundle directory
         uses: actions/upload-artifact@v4
         with:
           name: webnotas-production-bundle
           path: app/dist
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload production deployment ZIP archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: logreva-dist-zip
+          path: app/logreva-dist-${{ github.sha }}.zip
+          if-no-files-found: error
+          retention-days: 30

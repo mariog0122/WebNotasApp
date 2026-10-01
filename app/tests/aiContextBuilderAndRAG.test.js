@@ -1,7 +1,12 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { PromptRegistry } from '../src/lib/ai/PromptRegistry'
 import { AIContextBuilder } from '../src/lib/ai/AIContextBuilder'
 import { EducationAIGateway } from '../src/lib/ai/EducationAIGateway'
+
+const rpc = vi.hoisted(() => vi.fn(async (name) => ({ data: name === 'submit_ai_feedback' ? { success: true } : null, error: null })))
+vi.mock('../src/lib/supabase', () => ({ supabase: {
+  rpc, from: () => ({ insert: async () => ({ error: null }) }),
+} }))
 
 describe('RAG y Orquestación: Context Builder, Prompt Registry y Gateway', () => {
   it('manages versioned prompts and supports rollback without hardcoding', () => {
@@ -83,5 +88,11 @@ describe('RAG y Orquestación: Context Builder, Prompt Registry y Gateway', () =
 
     expect(feedbackResult.success).toBe(true)
     expect(feedbackResult.quality.reusable).toBe(true)
+  })
+
+  it('does not claim feedback was saved when the server rejects persistence', async () => {
+    rpc.mockResolvedValueOnce({ error: new Error('RPC unavailable') })
+    const gateway = new EducationAIGateway({ isDemo: true, schoolId: 'test-school-1' })
+    await expect(gateway.submitFeedback({ targetId: 'synthetic-plan', comment: 'Comentario docente' })).rejects.toThrow('guardar')
   })
 })

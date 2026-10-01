@@ -28,8 +28,8 @@ const downloadPdf = async () => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-    <div class="bg-white text-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden">
+  <div class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto planning-modal-root">
+    <div class="bg-white text-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden planning-modal-container">
       
       <!-- Top Action Bar (No Print) -->
       <div class="px-6 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-100 no-print">
@@ -174,7 +174,7 @@ const downloadPdf = async () => {
         </div>
 
         <!-- 3. ADAPTACIONES CURRICULARES / DUA -->
-        <div class="mt-4 border border-slate-900 text-xs">
+        <div class="mt-4 border border-slate-900 text-xs planning-avoid-break">
           <div class="bg-slate-200 px-3 py-1 font-bold border-b border-slate-900 uppercase">
             3. Adaptaciones Curriculares (Inclusión Educativa — Normativa MINEDEC)
           </div>
@@ -195,7 +195,7 @@ const downloadPdf = async () => {
         </div>
 
         <!-- 4. FIRMAS DE RESPONSABILIDAD -->
-        <div class="mt-8 border-t border-slate-900 pt-8 grid grid-cols-3 gap-6 text-center text-xs">
+        <div class="mt-8 border-t border-slate-900 pt-8 grid grid-cols-3 gap-6 text-center text-xs planning-signatures">
           <div>
             <div class="border-t border-slate-900 mx-4 pt-1 font-bold">
               DOCENTE
@@ -226,24 +226,81 @@ const downloadPdf = async () => {
 
 <style>
 @media print {
-  body * {
-    visibility: hidden;
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm;
   }
-  #printable-lesson-plan, #printable-lesson-plan * {
-    visibility: visible;
-  }
-  #printable-lesson-plan {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 20px;
+
+  body, html {
     background: white !important;
     color: black !important;
   }
-  .no-print {
+
+  .no-print,
+  nav,
+  header,
+  aside,
+  .app-shell > header,
+  .app-shell > aside {
     display: none !important;
+  }
+
+  /* Unfix modal container for browser pagination */
+  .planning-modal-root {
+    position: static !important;
+    padding: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  .planning-modal-container {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+  }
+
+  #printable-lesson-plan {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  table {
+    page-break-inside: auto;
+    break-inside: auto;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .planning-signatures {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-top: 32px !important;
+  }
+
+  .planning-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }
 </style>

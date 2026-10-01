@@ -170,7 +170,9 @@ export const signAlertPayload = (alertData, privateKey, certInfo) => {
     }
 
     const signatureData = {
-      is_valid: true,
+      local_signature_valid: true,
+      is_valid: false,
+      verification_status: 'pending_server_verification',
       algorithm: 'SHA256withRSA',
       document_digest: digestHex,
       signature_hex: signatureHex,

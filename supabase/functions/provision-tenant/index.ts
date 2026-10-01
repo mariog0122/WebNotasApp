@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.49.8'
+import { reportEdgeFunctionError } from '../_shared/telemetry.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,6 +56,7 @@ Deno.serve(async (req) => {
 
   let createdSchoolId: string | null = null
   let createdUserId: string | null = null
+  let callerUserId: string | null = null
 
   try {
     const token = authorization.replace(/^Bearer\s+/i, '')
@@ -62,9 +64,12 @@ Deno.serve(async (req) => {
     if (userError || !userData.user) {
       return jsonResponse({ success: false, message: 'Sesión no válida.' }, 401)
     }
+    callerUserId = userData.user.id
 
-    const { data: isPlatformAdmin, error: roleError } = await callerClient.rpc('is_platform_admin')
-    if (roleError || isPlatformAdmin !== true) {
+    const { data: canAdministerPlatform, error: roleError } = await callerClient.rpc('has_platform_role', {
+      p_roles: ['platform_owner', 'platform_admin'],
+    })
+    if (roleError || canAdministerPlatform !== true) {
       return jsonResponse({ success: false, message: 'Acceso denegado.' }, 403)
     }
 
@@ -133,7 +138,7 @@ Deno.serve(async (req) => {
     let administratorUserId: string | null = null
     let accountCreated = false
 
-    const loginUrl = 'https://sandybrown-alpaca-347737.hostingersite.com/'
+    const loginUrl = Deno.env.get('PLATFORM_APP_URL') || 'https://sandybrown-alpaca-347737.hostingersite.com/'
 
     // 1. Invitar al usuario por correo (esto crea el usuario y dispara AUTOMÁTICAMENTE el correo de Supabase Auth)
     const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(adminEmail, {
@@ -261,10 +266,11 @@ Deno.serve(async (req) => {
 
     // Método A: Hostinger Mailer direct HTTP API
     try {
-      await fetch('https://sandybrown-alpaca-347737.hostingersite.com/api/send-email.php', {
+      const mailerEndpoint = Deno.env.get('MAILER_API_URL') || 'https://sandybrown-alpaca-347737.hostingersite.com/api/send-email.php'
+      await fetch(mailerEndpoint, {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer LOGREVA_MAILER_SECRET_2026',
+          'Authorization': `Bearer ${Deno.env.get('LOGREVA_MAILER_SECRET') || ''}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -306,7 +312,6 @@ Deno.serve(async (req) => {
       administrator_user_id: administratorUserId,
       loginUrl,
       adminEmail,
-      adminPassword: adminPassword,
       message: accountCreated
         ? 'Institución y administrador creados exitosamente.'
         : 'Institución creada y administrador existente vinculado.',
@@ -322,9 +327,14 @@ Deno.serve(async (req) => {
 
     const errMessage = error instanceof Error ? error.message : 'No fue posible completar el alta de la institución.'
     console.error('provision-tenant failed:', errMessage)
+    await reportEdgeFunctionError(adminClient, 'provision-tenant', new Error('TENANT_PROVISION_FAILED'), {
+      schoolId: createdSchoolId,
+      userId: callerUserId,
+      statusCode: 500,
+    })
     return jsonResponse({
       success: false,
-      message: errMessage,
-    }, 400)
+      message: 'No fue posible completar el alta de la institución.',
+    }, 500)
   }
 })

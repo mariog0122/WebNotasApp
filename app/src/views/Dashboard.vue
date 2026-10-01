@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/auth'
 import { translateError } from '../lib/errorDictionary'
+import { normalizeUserEmailConflict } from '../lib/errorDictionary'
 import { normalizeStoragePath, resolvePrivateImageUrl, uploadPrivateImage } from '../lib/storageUtils'
 import { Users, Search, UserPlus, X, Eye, EyeOff, Upload, Download, BookOpen, Check, Layers, Sparkles } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
@@ -10,6 +11,9 @@ import { hasAccessPermission, isInstitutionAdmin } from '../lib/permissions'
 import { downloadTeachersTemplate } from '../lib/exportUtils'
 import { useAcademicYearStore } from '../stores/academicYear'
 import AcademicYearBanner from '../components/ui/AcademicYearBanner.vue'
+import InstitutionIdentityCard from '../components/dashboard/InstitutionIdentityCard.vue'
+import WorkflowGuideCard from '../components/dashboard/WorkflowGuideCard.vue'
+import QuartersConfigCard from '../components/dashboard/QuartersConfigCard.vue'
 
 const authStore = useAuthStore()
 const academicYearStore = useAcademicYearStore()
@@ -346,8 +350,10 @@ const processBulkTeachers = async () => {
         let errStr = 'Error al registrar'
         try {
           const body = await error.context?.json()
-          if (body?.message) errStr = body.message
-        } catch {}
+          if (body?.message) errStr = normalizeUserEmailConflict(body.message)
+        } catch (parseErr) {
+          console.warn('[Dashboard] Error parseando respuesta JSON de registro docente:', parseErr)
+        }
         results.push({
           fullName: item.fullName,
           email: item.email,
@@ -361,7 +367,7 @@ const processBulkTeachers = async () => {
           email: item.email,
           password: item.generatedPassword,
           status: 'error',
-          message: data.message || 'Fallo en registro'
+          message: normalizeUserEmailConflict(data.message) || 'Fallo en registro'
         })
       } else {
         const waText = encodeURIComponent(
@@ -413,25 +419,22 @@ const changeTeacherRole = async (teacher, newRole) => {
   if (!schoolId) return
 
   try {
-    const { error: profError } = await supabase
-      .from('profiles')
-      .update({ role: newRole })
-      .eq('id', teacher.id)
-
-    if (profError) throw profError
-
-    // Also update tenant_memberships
-    await supabase
-      .from('tenant_memberships')
-      .update({ role: newRole })
-      .eq('user_id', teacher.id)
-      .eq('school_id', schoolId)
+    const { data, error } = await supabase.rpc('update_tenant_user_role', {
+      p_user_id: teacher.id,
+      p_school_id: schoolId,
+      p_role: newRole,
+    })
+    if (error) throw error
+    if (!data?.success) throw new Error('La base de datos no confirmó el cambio de rol.')
 
     const roleLabels = {
       teacher: 'Docente',
-      admin: 'Rector / Administrador',
+      school_admin: 'Administrador institucional',
+      rector: 'Rector/a',
+      vicerrector: 'Vicerrector/a',
       inspector: 'Inspector General',
-      secretary: 'Secretaría'
+      counselor: 'Consejería Estudiantil',
+      secretary: 'Secretaría',
     }
     toast.success(`Rol de ${teacher.full_name || teacher.email} actualizado a ${roleLabels[newRole] || newRole}`)
     await fetchTeachers()
@@ -444,11 +447,13 @@ const fetchTeacherAssignmentsSummary = async () => {
   const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
   if (!schoolId) return
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('course_subjects')
       .select('id, course_id, subject_id, teacher_id')
       .eq('school_id', schoolId)
       .not('teacher_id', 'is', null)
+
+    if (error) throw error
 
     const summary = {}
     ;(data || []).forEach(cs => {
@@ -548,28 +553,19 @@ const saveTeacherAssignments = async () => {
   assignModalError.value = ''
   try {
     const teacherId = selectedTeacherForAssign.value.id
-    const selectedSet = teacherAssignedCourseSubjects.value
-
-    const previouslyAssigned = availableCourseSubjects.value
-      .filter(cs => cs.teacher_id === teacherId)
-      .map(cs => cs.id)
-
-    const toUnassign = previouslyAssigned.filter(id => !selectedSet.has(id))
-    if (toUnassign.length > 0) {
-      const { error: unassignErr } = await supabase
-        .from('course_subjects')
-        .update({ teacher_id: null })
-        .in('id', toUnassign)
-      if (unassignErr) throw unassignErr
-    }
-
-    const toAssign = Array.from(selectedSet).filter(id => !previouslyAssigned.includes(id))
-    if (toAssign.length > 0) {
-      const { error: assignErr } = await supabase
-        .from('course_subjects')
-        .update({ teacher_id: teacherId })
-        .in('id', toAssign)
-      if (assignErr) throw assignErr
+    const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
+    if (!schoolId) throw new Error('No hay una institución activa seleccionada.')
+    const scopeIds = availableCourseSubjects.value.map(cs => cs.id)
+    const selectedIds = Array.from(teacherAssignedCourseSubjects.value)
+    const { data, error } = await supabase.rpc('set_teacher_course_subject_assignments', {
+      p_user_id: teacherId,
+      p_school_id: schoolId,
+      p_scope_ids: scopeIds,
+      p_selected_ids: selectedIds,
+    })
+    if (error) throw error
+    if (!data?.success || Number(data.selected_count) !== selectedIds.length) {
+      throw new Error('La base de datos no confirmó todas las asignaciones docentes.')
     }
 
     toast.success('Asignaciones actualizadas', {
@@ -595,16 +591,36 @@ const fetchTeachers = async () => {
     const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
     if (!schoolId) return
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, full_name, email, role')
-      .eq('school_id', schoolId)
-      .neq('role', 'super_admin')
-      .order('full_name')
-    if (!error) {
-      teachers.value = data || []
-    }
+    const [profilesResult, membershipsResult] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, full_name, email, role')
+        .eq('school_id', schoolId)
+        .neq('role', 'superadmin')
+        .order('full_name'),
+      supabase
+        .from('tenant_memberships')
+        .select('user_id, tenant_roles(name)')
+        .eq('school_id', schoolId)
+        .eq('is_active', true),
+    ])
+    if (profilesResult.error) throw profilesResult.error
+    if (membershipsResult.error) throw membershipsResult.error
+
+    const membershipRoles = new Map((membershipsResult.data || []).map(membership => [
+      membership.user_id,
+      membership.tenant_roles?.name || null,
+    ]))
+    teachers.value = (profilesResult.data || []).map(teacher => ({
+      ...teacher,
+      tenant_role: membershipRoles.get(teacher.id)
+        || (teacher.role === 'admin' ? 'school_admin' : teacher.role)
+        || 'teacher',
+    }))
     await fetchTeacherAssignmentsSummary()
+  } catch (error) {
+    teachers.value = []
+    toast.error('No se pudo cargar la gestión de usuarios', { description: translateError(error) })
   } finally {
     loadingTeachers.value = false
   }
@@ -652,26 +668,36 @@ const inviteTeacher = async () => {
       let msg = 'No fue posible crear el docente.'
       try {
         const body = await error.context?.json()
-        if (body?.message) msg = body.message
-      } catch {}
+        if (body?.message) msg = normalizeUserEmailConflict(body.message)
+      } catch (parseErr) {
+        console.warn('[Dashboard] Error parseando respuesta JSON de creación docente:', parseErr)
+      }
       throw new Error(msg)
     }
-    if (!data?.success) throw new Error(data?.message || 'No fue posible crear el docente.')
+    if (!data?.success) throw new Error(normalizeUserEmailConflict(data?.message) || 'No fue posible crear el docente.')
 
     const createdUserId = data?.user_id
-    if (createdUserId && inviteSelectedCourseSubjects.value.size > 0) {
-      const csIdsToAssign = Array.from(inviteSelectedCourseSubjects.value)
-      await supabase
-        .from('course_subjects')
-        .update({ teacher_id: createdUserId })
-        .in('id', csIdsToAssign)
-    }
-
     createdTeacherResult.value = {
       email,
       password,
       fullName: `${firstName} ${lastName}`,
       loginUrl: 'https://sandybrown-alpaca-347737.hostingersite.com/login?reason=access'
+    }
+    if (createdUserId && inviteSelectedCourseSubjects.value.size > 0) {
+      const scopeIds = availableCourseSubjects.value.map(cs => cs.id)
+      const selectedIds = Array.from(inviteSelectedCourseSubjects.value)
+      const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
+      if (!schoolId) throw new Error('La cuenta fue creada, pero no hay una institución activa para asignar materias.')
+      const { data: assignmentResult, error: assignmentError } = await supabase.rpc('set_teacher_course_subject_assignments', {
+        p_user_id: createdUserId,
+        p_school_id: schoolId,
+        p_scope_ids: scopeIds,
+        p_selected_ids: selectedIds,
+      })
+      if (assignmentError) throw new Error(`La cuenta fue creada, pero no se pudieron asignar las materias: ${translateError(assignmentError)}`)
+      if (!assignmentResult?.success || Number(assignmentResult.selected_count) !== selectedIds.length) {
+        throw new Error('La cuenta fue creada, pero la base de datos no confirmó todas las materias asignadas.')
+      }
     }
     inviteTeacherMessage.value = data.message || 'Docente creado exitosamente.'
     await Promise.all([
@@ -707,11 +733,17 @@ const toggleQuarterLock = async (quarter) => {
   if (!isAdmin.value) return
   const newStatus = !quarter.is_locked
   try {
-    const { error } = await supabase.from('quarters').update({ is_locked: newStatus }).eq('id', quarter.id)
+    const { data, error } = await supabase.rpc('set_quarter_lock', {
+      p_quarter_id: quarter.id,
+      p_is_locked: newStatus,
+    })
     if (error) throw error
-    quarter.is_locked = newStatus
+    if (!data || data.id !== quarter.id || data.is_locked !== newStatus) {
+      throw new Error('La base de datos no confirmó el bloqueo del período.')
+    }
+    quarter.is_locked = data.is_locked
   } catch (err) {
-    alert('Error al cambiar candado del periodo: ' + translateError(err))
+    toast.error('No se pudo cambiar el bloqueo del período', { description: translateError(err) })
   }
 }
 
@@ -719,17 +751,18 @@ const setActiveQuarter = async (quarter) => {
   if (!isAdmin.value) return
   if (quarter.is_active) return
   try {
-    // Primero desactivamos todos (usamos un ineq para afectar a todos los ids)
-    const allIds = quarters.value.map(q => q.id)
-    await supabase.from('quarters').update({ is_active: false }).in('id', allIds)
-    // Luego activamos el seleccionado
-    const { error } = await supabase.from('quarters').update({ is_active: true }).eq('id', quarter.id)
+    const { data, error } = await supabase.rpc('set_active_quarter', {
+      p_quarter_id: quarter.id,
+    })
     if (error) throw error
-    
+    if (!data || data.id !== quarter.id || data.is_active !== true) {
+      throw new Error('La base de datos no confirmó el período activo.')
+    }
+
     quarters.value.forEach(q => q.is_active = false)
     quarter.is_active = true
   } catch (err) {
-    alert('Error al establecer periodo activo: ' + translateError(err))
+    toast.error('No se pudo activar el período', { description: translateError(err) })
   }
 }
 
@@ -789,6 +822,7 @@ const saveInstitution = async () => {
     return
   }
   saving.value = true
+  let uploadedLogoPath = ''
   try {
     const sId = authStore.activeSchoolId || authStore.profile?.school_id
     if (!sId) {
@@ -802,18 +836,25 @@ const saveInstitution = async () => {
       const ext = getFileExt(logoFile.value)
       const path = `${sId}/institution/logo-${Date.now()}.${ext}`
       logoPath = await uploadLogo(logoFile.value, path)
+      uploadedLogoPath = logoPath
     }
 
-    const payload = [
-      { school_id: sId, key: 'institution_name', value: institutionName.value.trim(), description: 'Nombre de la institución' },
-      { school_id: sId, key: 'institution_logo_url', value: logoPath || '', description: 'Logo de la institución' },
-      { school_id: sId, key: 'institution_tutor_name', value: institutionTutorName.value.trim(), description: 'Nombre del tutor' },
-      { school_id: sId, key: 'institution_rector_name', value: institutionRectorName.value.trim(), description: 'Nombre del rector' }
-    ]
-    const { error } = await supabase
-      .from('system_config')
-      .upsert(payload, { onConflict: 'school_id, key' })
+    const requestedConfig = {
+      institution_name: institutionName.value.trim(),
+      institution_logo_url: logoPath || '',
+      institution_tutor_name: institutionTutorName.value.trim(),
+      institution_rector_name: institutionRectorName.value.trim(),
+    }
+    const { data, error } = await supabase.rpc('save_institution_identity', {
+      p_school_id: sId,
+      p_payload: requestedConfig,
+    })
     if (error) throw error
+    if (!data?.success || data.school_id !== sId
+      || !data.config
+      || Object.entries(requestedConfig).some(([key, value]) => data.config[key] !== value)) {
+      throw new Error('La base de datos no confirmó la configuración institucional.')
+    }
     institutionLogoPath.value = logoPath || ''
     const resolvedUrl = await resolvePrivateImageUrl(supabase, 'institution-assets', logoPath).catch(() => '')
     institutionLogoUrl.value = resolvedUrl
@@ -822,6 +863,10 @@ const saveInstitution = async () => {
     saveMessage.value = 'Datos actualizados correctamente.'
     window.dispatchEvent(new CustomEvent('institution-config-updated'))
   } catch (error) {
+    if (uploadedLogoPath) {
+      const { error: cleanupError } = await supabase.storage.from('institution-assets').remove([uploadedLogoPath])
+      if (cleanupError) console.warn('[Dashboard] No se pudo limpiar el logo no confirmado:', cleanupError)
+    }
     saveError.value = 'Error guardando configuración: ' + translateError(error)
   }
   saving.value = false
@@ -868,74 +913,22 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="app-card p-6 mb-8">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Identidad de la Institución</h2>
-            <span v-if="!isAdmin" class="text-xs text-amber-700 bg-amber-100 border border-amber-200 px-2 py-1 rounded">
-              Solo administradores pueden editar
-            </span>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-600">Nombre de la Institución</label>
-              <input v-model="institutionName" :disabled="!isAdmin" type="text" class="app-input mt-1 disabled:opacity-60">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-600">Logo (PNG/JPG)</label>
-              <input type="file" accept="image/*" @change="onLogoChange" :disabled="!isAdmin" class="mt-1 block w-full text-sm text-slate-500 disabled:opacity-60" />
-              <p class="text-xs text-slate-500 mt-1">Se mostrará en el panel y reportes.</p>
-            </div>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-600">Nombre del Rector</label>
-              <input v-model="institutionRectorName" :disabled="!isAdmin" type="text" class="app-input mt-1 disabled:opacity-60">
-            </div>
-          </div>
-          <div class="mt-4 flex items-center gap-3">
-            <button @click="saveInstitution" :disabled="saving || !isAdmin" class="app-btn app-btn-primary disabled:opacity-50">
-              {{ saving ? 'Guardando...' : 'Guardar Cambios' }}
-            </button>
-            <span v-if="saveMessage" class="text-sm text-emerald-600">{{ saveMessage }}</span>
-            <span v-if="saveError" class="text-sm text-rose-600">{{ saveError }}</span>
-          </div>
-        </div>
+        <!-- Institution Identity Card Component -->
+        <InstitutionIdentityCard
+          :is-admin="isAdmin"
+          :institution-name="institutionName"
+          :institution-rector-name="institutionRectorName"
+          :saving="saving"
+          :save-message="saveMessage"
+          :save-error="saveError"
+          @update:institution-name="val => institutionName = val"
+          @update:institution-rector-name="val => institutionRectorName = val"
+          @logo-change="onLogoChange"
+          @save="saveInstitution"
+        />
 
-        <div class="app-card-soft p-5 mb-8">
-          <h2 class="text-lg font-semibold text-teal-900 mb-4 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Guía de Flujo de Trabajo
-          </h2>
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-              <div class="text-xs font-bold text-teal-600 uppercase mb-1">Paso 1</div>
-              <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-2">Configuración</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Configure los datos de la institución (Nombre, Logo, Autoridades) en este mismo panel.</p>
-            </div>
-            <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-              <div class="text-xs font-bold text-teal-600 uppercase mb-1">Paso 2</div>
-              <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-2">Catálogos</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Vaya a <strong>Asignaturas</strong> y <strong>Cursos</strong> para definir las materias y paralelos disponibles.</p>
-            </div>
-            <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-              <div class="text-xs font-bold text-teal-600 uppercase mb-1">Paso 3</div>
-              <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-2">Matriculación</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Vaya a <strong>Estudiantes</strong> para registrar a los alumnos y asignarlos a sus cursos.</p>
-            </div>
-            <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-              <div class="text-xs font-bold text-teal-600 uppercase mb-1">Paso 4</div>
-              <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-2">Calificaciones</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400">En <strong>Docentes / Notas</strong>, seleccione el curso y asignatura para ingresar los insumos y notas.</p>
-            </div>
-            <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-              <div class="text-xs font-bold text-teal-600 uppercase mb-1">Paso 5</div>
-              <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-2">Reportes</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400">El sistema calcula promedios automáticamente. Genere actas y libretas desde la sección de Notas.</p>
-            </div>
-          </div>
-        </div>
+        <!-- Workflow Guide Card Component -->
+        <WorkflowGuideCard />
 
         <!-- TEACHER MANAGEMENT (ADMIN ONLY) -->
         <div v-if="isAdmin" class="app-card p-6 mb-8 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm rounded-2xl">
@@ -1001,14 +994,17 @@ onMounted(() => {
                   </td>
                   <td class="px-4 py-3 text-center">
                     <select 
-                      :value="t.role || 'teacher'" 
+                      :value="t.tenant_role || 'teacher'"
                       @change="changeTeacherRole(t, $event.target.value)"
                       class="text-xs font-semibold py-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer transition-colors"
                       title="Cambiar rol del usuario"
                     >
                       <option value="teacher">Docente</option>
-                      <option value="admin">Rector / Administrador</option>
-                      <option value="inspector">Inspector</option>
+                      <option value="school_admin">Administrador institucional</option>
+                      <option value="rector">Rector/a</option>
+                      <option value="vicerrector">Vicerrector/a</option>
+                      <option value="inspector">Inspector/a</option>
+                      <option value="counselor">Consejería Estudiantil</option>
                       <option value="secretary">Secretaría</option>
                     </select>
                   </td>
@@ -1021,67 +1017,15 @@ onMounted(() => {
           </div>
         </div>
 
-        <div v-if="isAdmin" class="app-card p-6 mb-8 border border-amber-200 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/20 shadow-sm rounded-2xl">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600 dark:text-amber-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
-              </svg>
-              Gestión de Períodos de Calificación
-            </h2>
-            <div class="text-xs text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 border border-amber-200 dark:border-amber-800 px-3 py-1 rounded-full font-bold">Control de Rector</div>
-          </div>
-          
-          <div v-if="loadingQuarters" class="text-sm text-slate-500 dark:text-slate-400 py-4 text-center">Cargando períodos...</div>
-          <div v-else-if="quartersError" class="text-sm text-rose-600 dark:text-rose-400 py-4">{{ quartersError }}</div>
-          <div v-else class="overflow-x-auto bg-slate-50/50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800">
-            <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-              <thead class="bg-amber-100/50 dark:bg-amber-900/30">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Período</th>
-                  <th class="px-4 py-3 text-center text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Activo (Por Defecto)</th>
-                  <th class="px-4 py-3 text-center text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Estado (Bloqueo)</th>
-                  <th class="px-4 py-3 text-center text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Acción</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
-                <tr v-for="q in quarters" :key="q.id" class="hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors">
-                  <td class="px-4 py-3 text-sm font-bold text-slate-900 dark:text-white">
-                    {{ q.name }}
-                  </td>
-                  <td class="px-4 py-3 text-center">
-                    <input type="radio" name="active_quarter" :checked="q.is_active" @change="setActiveQuarter(q)" 
-                           class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer">
-                  </td>
-                  <td class="px-4 py-3 text-center">
-                    <span v-if="q.is_locked" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
-                      </svg>
-                      Cerrado
-                    </span>
-                    <span v-else class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z" />
-                      </svg>
-                      Abierto
-                    </span>
-                  </td>
-                  <td class="px-4 py-3 text-center">
-                    <button @click="toggleQuarterLock(q)" 
-                            :class="['px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors focus:ring-2 focus:outline-none shadow-sm', 
-                                     q.is_locked ? 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 focus:ring-emerald-500' : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/50 focus:ring-rose-500']">
-                      {{ q.is_locked ? 'Desbloquear Período' : 'Bloquear (Cerrar) Período' }}
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
-            <strong>Nota:</strong> Los períodos bloqueados previenen que los docentes modifiquen calificaciones en dicho período. Actívelo cuando hayan finalizado las juntas de curso.
-          </p>
-        </div>
+        <!-- Quarters Configuration Card Component -->
+        <QuartersConfigCard
+          :is-admin="isAdmin"
+          :loading-quarters="loadingQuarters"
+          :quarters-error="quartersError"
+          :quarters="quarters"
+          @set-active="setActiveQuarter"
+          @toggle-lock="toggleQuarterLock"
+        />
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <!-- TARJETAS DE ACCESO RÁPIDO A MÓDULOS (RESPONSIVO TOTAL)      -->

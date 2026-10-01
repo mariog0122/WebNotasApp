@@ -1,16 +1,17 @@
 <template>
   <div class="h-full flex flex-col space-y-6">
     <!-- Academic Year Banner -->
-    <AcademicYearBanner module-name="Alertas DECE" class="no-print" />
+    <AcademicYearBanner module-name="Bienestar Estudiantil" class="no-print" />
 
     <!-- Header & Stats -->
     <div class="flex flex-col gap-4 no-print">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Alertas Estudiantiles / DECE</h1>
-          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Gestión de disciplina, asistencia, actas oficiales y firma electrónica</p>
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Bienestar Estudiantil</h1>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Alertas, acompañamiento y gestión DECE</p>
         </div>
-        <button 
+        <button
+          v-if="canCreateWellbeing"
           @click="openNewAlertModal" 
           class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2.5 sm:py-2 text-sm font-medium text-white hover:bg-indigo-700 shadow-sm transition-colors ring-1 ring-indigo-500/50 gap-2 w-full sm:w-auto"
         >
@@ -174,8 +175,8 @@
                     <div class="w-2 h-2 rounded-full" :class="ALERT_STATUSES[alert.status]?.color?.replace('/20', '') || 'bg-slate-500'"></div>
                     <span class="text-xs font-medium text-slate-700 dark:text-slate-300">{{ ALERT_STATUSES[alert.status]?.label || alert.status }}</span>
                   </div>
-                  <span v-if="alert.is_digitally_signed" class="inline-flex items-center gap-1 text-[10px] font-bold text-teal-600 dark:text-teal-400">
-                    <ShieldCheck class="w-3 h-3" /> Firmada .p12
+                  <span v-if="alert.is_digitally_signed" class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                    <ShieldCheck class="w-3 h-3" /> Firma registrada · verificación pendiente
                   </span>
                 </div>
               </td>
@@ -185,7 +186,7 @@
               <td class="px-5 py-4 text-right">
                 <div class="flex items-center justify-end gap-1 sm:gap-1.5">
                   <!-- Print / View Physical Acta -->
-                  <button 
+                  <button
                     @click="openPrintModal(alert)"
                     class="p-2 text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/40 rounded-lg transition-colors"
                     title="Imprimir Acta DECE (Físico)"
@@ -194,7 +195,8 @@
                   </button>
 
                   <!-- Digital Sign -->
-                  <button 
+                  <button
+                    v-if="canSignWellbeing"
                     @click="openSignModal(alert)"
                     class="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors"
                     :title="alert.is_digitally_signed ? 'Refirmar con Firma Electrónica' : 'Firmar con Firma Electrónica (.p12)'"
@@ -212,8 +214,8 @@
                   </button>
 
                   <!-- WhatsApp -->
-                  <a 
-                    v-if="alert.students?.representative_phone"
+                  <a
+                    v-if="canCreateWellbeing && alert.students?.representative_phone"
                     :href="getWhatsAppLink(alert)"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -386,8 +388,8 @@
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" :class="ALERT_TYPES[selectedAlert.alert_type]?.color">
               {{ ALERT_TYPES[selectedAlert.alert_type]?.label }}
             </span>
-            <span v-if="selectedAlert.is_digitally_signed" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-300 dark:border-teal-700 gap-1">
-              <ShieldCheck class="w-3.5 h-3.5" /> Firmada Electrónicamente
+            <span v-if="selectedAlert.is_digitally_signed" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700 gap-1">
+              <ShieldCheck class="w-3.5 h-3.5" /> Firma registrada · verificación pendiente
             </span>
           </div>
           <button @click="showDetailsModal = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
@@ -405,7 +407,7 @@
             <div class="flex items-center justify-between">
               <span class="text-xs font-bold text-teal-900 dark:text-teal-300 flex items-center gap-1.5 uppercase tracking-wider">
                 <ShieldCheck class="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                Certificación de Firma Digital (.p12)
+                Firma Digital (.p12) · verificación oficial pendiente
               </span>
               <span class="text-[10px] text-teal-700 dark:text-teal-400 font-mono">
                 {{ formatFullDate(selectedAlert.signature_data.signed_at) }}
@@ -442,7 +444,7 @@
               </div>
               <div class="flex flex-col gap-2 shrink-0">
                 <a 
-                  v-if="selectedAlert.students?.representative_phone"
+                  v-if="canCreateWellbeing && selectedAlert.students?.representative_phone"
                   :href="getWhatsAppLink(selectedAlert)"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -493,7 +495,8 @@
                   v-for="(val, key) in ALERT_STATUSES" 
                   :key="key"
                   type="button"
-                  @click="selectedAlert.status = key"
+                  @click="canManageWellbeing && (selectedAlert.status = key)"
+                  :disabled="!canManageWellbeing"
                   class="px-3 py-1.5 text-xs font-medium rounded-full border transition-colors flex items-center gap-1.5"
                   :class="selectedAlert.status === key 
                     ? val.color.replace('/20', '/30') + ' border-' + val.color.split(' ')[1].split('-')[0] + '-500/50'
@@ -509,6 +512,7 @@
               <label class="text-sm font-medium text-slate-600 dark:text-slate-400">Notas / Seguimiento DECE</label>
               <textarea
                 v-model="selectedAlert.dece_notes"
+                :disabled="!canManageWellbeing"
                 rows="3"
                 placeholder="Registro de entrevistas, llamadas, observaciones..."
                 class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-shadow resize-none"
@@ -519,6 +523,7 @@
               <label class="text-sm font-medium text-slate-600 dark:text-slate-400">Resolución / Compromiso</label>
               <textarea
                 v-model="selectedAlert.resolution"
+                :disabled="!canManageWellbeing"
                 rows="3"
                 placeholder="Acuerdos firmados, medidas adoptadas..."
                 class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-shadow resize-none"
@@ -541,6 +546,7 @@
 
             <!-- Sign .p12 -->
             <button
+              v-if="canSignWellbeing"
               type="button"
               @click="openSignModal(selectedAlert)"
               class="px-4 py-2 text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 rounded-xl transition-colors flex items-center gap-1.5 shadow-sm"
@@ -551,13 +557,14 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <button 
+            <button
               @click="showDetailsModal = false"
               class="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               Cerrar
             </button>
-            <button 
+            <button
+              v-if="canManageWellbeing"
               @click="saveDetails"
               :disabled="savingDetails"
               class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-2 text-xs font-bold text-white hover:bg-indigo-700 shadow-sm transition-colors ring-1 ring-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed gap-2"
@@ -579,6 +586,7 @@
       :institution-logo-url="institutionLogoUrl"
       :institution-tutor-name="institutionTutorName"
       :selected-academic-year="academicYearStore.selectedYearName"
+      :can-sign="canSignWellbeing"
       @close="showPrintModal = false"
       @open-sign="openSignFromPrint"
     />
@@ -596,7 +604,8 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { supabase } from '../lib/supabase'
-import { normalizeStoragePath, resolvePrivateImageUrl } from '../lib/storageUtils'
+import { normalizeStoragePath, primeSignedUrls, resolvePrivateImageUrl } from '../lib/storageUtils'
+import { hasAccessPermission } from '../lib/permissions'
 import { useAuthStore } from '../stores/auth'
 import { useAcademicYearStore } from '../stores/academicYear'
 import { useCoursesQuery, useQuartersQuery } from '../composables/useQueries'
@@ -620,6 +629,15 @@ import {
 
 const authStore = useAuthStore()
 const academicYearStore = useAcademicYearStore()
+const canCreateWellbeing = computed(() => hasAccessPermission(authStore.accessContext, 'wellbeing.create'))
+const canManageWellbeing = computed(() => hasAccessPermission(authStore.accessContext, 'wellbeing.manage'))
+const canSignWellbeing = computed(() => hasAccessPermission(authStore.accessContext, 'wellbeing.sign'))
+
+const requireActiveSchoolId = () => {
+  const schoolId = authStore.activeSchoolId
+  if (!schoolId) throw new Error('Selecciona una institución activa para trabajar en Bienestar Estudiantil.')
+  return schoolId
+}
 
 // Queries
 const { data: coursesData } = useCoursesQuery(computed(() => academicYearStore.selectedYearName))
@@ -690,8 +708,8 @@ const stats = computed(() => {
 const fetchAlerts = async () => {
   loading.value = true
   try {
-    const sId = authStore.activeSchoolId || authStore.profile?.school_id
-    let query = supabase
+    const sId = requireActiveSchoolId()
+    const query = supabase
       .from('student_alerts')
       .select(`
         *,
@@ -699,15 +717,13 @@ const fetchAlerts = async () => {
         courses (id, name, academic_year),
         profiles (id, full_name)
       `)
+      .eq('school_id', sId)
       .order('created_at', { ascending: false })
-
-    if (sId) {
-      query = query.or(`school_id.eq.${sId},school_id.is.null`)
-    }
 
     const { data, error } = await query
     if (error) throw error
 
+    await primeSignedUrls(supabase, 'student-photos', (data || []).map((alert) => alert.students?.student_photo_url))
     alerts.value = await Promise.all((data || []).map(async (alert) => {
       if (!alert.students?.student_photo_url) return alert
       return {
@@ -723,22 +739,25 @@ const fetchAlerts = async () => {
       }
     }))
   } catch (e) {
+    alerts.value = []
     console.error('Error fetching alerts:', e)
+    toast.error('No se pudieron cargar los casos de Bienestar Estudiantil', {
+      description: e.message || 'Intenta nuevamente.',
+    })
   } finally {
     loading.value = false
   }
 }
 
 const fetchInstitutionConfig = async () => {
-  const sId = authStore.activeSchoolId || authStore.profile?.school_id
-  if (!sId) return
-  const { data, error } = await supabase
-    .from('system_config')
-    .select('key, value')
-    .eq('school_id', sId)
-    .in('key', ['institution_name', 'institution_logo_url', 'institution_tutor_name', 'institution_rector_name'])
-  
-  if (!error && data) {
+  try {
+    const sId = requireActiveSchoolId()
+    const { data, error } = await supabase
+      .from('system_config')
+      .select('key, value')
+      .eq('school_id', sId)
+      .in('key', ['institution_name', 'institution_logo_url', 'institution_tutor_name', 'institution_rector_name'])
+    if (error) throw error
     const map = Object.fromEntries(data.map(item => [item.key, item.value]))
     if (map.institution_name) institutionName.value = map.institution_name
     institutionTutorName.value = map.institution_tutor_name || ''
@@ -750,6 +769,10 @@ const fetchInstitutionConfig = async () => {
         normalizeStoragePath(map.institution_logo_url, 'institution-assets'),
       ).catch(() => '')
     }
+  } catch (error) {
+    console.error('Error loading wellbeing institution settings:', error)
+    institutionName.value = 'Nuestra Institución'
+    institutionLogoUrl.value = ''
   }
 }
 
@@ -760,6 +783,7 @@ const openPrintModal = (alert) => {
 }
 
 const openSignModal = (alert) => {
+  if (!canSignWellbeing.value) return
   alertForSign.value = alert
   showSignModal.value = true
 }
@@ -772,25 +796,19 @@ const openSignFromPrint = () => {
 }
 
 const handleAlertSigned = async ({ signatureData }) => {
-  if (!alertForSign.value?.id) return
+  if (!alertForSign.value?.id || !canSignWellbeing.value) return
   
   const targetId = alertForSign.value.id
-  const userId = authStore.user?.id || authStore.profile?.id
-
   try {
-    const updatePayload = {
-      is_digitally_signed: true,
-      signature_data: signatureData,
-      signed_at: signatureData.signed_at,
-      signed_by: userId || null
-    }
-
-    const { error } = await supabase
-      .from('student_alerts')
-      .update(updatePayload)
-      .eq('id', targetId)
+    const { data: updatedRecord, error } = await supabase.rpc('register_student_wellbeing_signature', {
+      p_alert_id: targetId,
+      p_signature: signatureData
+    })
 
     if (error) throw error
+
+    if (!updatedRecord?.id) throw new Error('El servidor no devolvió el caso actualizado.')
+    const updatePayload = updatedRecord
 
     // Actualizar estado reactivo local
     const index = alerts.value.findIndex(a => a.id === targetId)
@@ -816,8 +834,8 @@ const handleAlertSigned = async ({ signatureData }) => {
     }
 
     showSignModal.value = false
-    toast.success('Documento firmado con éxito', {
-      description: `Acta DECE firmada electrónicamente por ${signatureData.signer_name}.`
+    toast.success('Firma digital registrada', {
+      description: `Firma de ${signatureData.signer_name} guardada con verificación oficial pendiente.`
     })
 
     // Reabrir modal de impresión con la firma digital plasmada
@@ -907,6 +925,7 @@ const isNewAlertValid = computed(() => {
 })
 
 const openNewAlertModal = () => {
+  if (!canCreateWellbeing.value) return
   newAlertError.value = ''
   newAlert.value = getInitialNewAlert()
   if (newAlert.value.course_id) {
@@ -921,29 +940,27 @@ const fetchStudentsForNewAlert = async () => {
   newAlert.value.student_id = ''
   
   try {
-    const sId = authStore.activeSchoolId || authStore.profile?.school_id
-    let query = supabase
+    const sId = requireActiveSchoolId()
+    const query = supabase
       .from('students')
       .select('id, full_name')
       .eq('course_id', newAlert.value.course_id)
+      .eq('school_id', sId)
       .order('full_name')
-
-    if (sId) {
-      query = query.or(`school_id.eq.${sId},school_id.is.null`)
-    }
       
     const { data, error } = await query
     if (error) throw error
     currentCourseStudents.value = data || []
   } catch (e) {
-    console.error(e)
+    currentCourseStudents.value = []
+    newAlertError.value = e.message || 'No se pudieron cargar los estudiantes del curso.'
   } finally {
     loadingStudents.value = false
   }
 }
 
 const saveNewAlert = async () => {
-  if (!isNewAlertValid.value) return
+  if (!isNewAlertValid.value || !canCreateWellbeing.value) return
   
   savingAlert.value = true
   newAlertError.value = ''
@@ -957,24 +974,23 @@ const saveNewAlert = async () => {
       throw new Error("No hay un periodo (quimestre/trimestre) activo. Por favor configure uno en el panel de Periodos.")
     }
 
-    const sId = authStore.activeSchoolId || authStore.profile?.school_id
+    const sId = requireActiveSchoolId()
     const alertData = {
       ...newAlert.value,
-      school_id: sId || authStore.activeSchoolId,
-      reported_by: authStore.user.id,
-      status: 'PENDIENTE',
+      school_id: sId,
       date_occurred: new Date(newAlert.value.date_occurred).toISOString()
     }
     
-    const { error } = await supabase
-      .from('student_alerts')
-      .insert([alertData])
+    const { data: createdAlert, error } = await supabase.rpc('create_student_wellbeing_case', {
+      p_case: alertData
+    })
       
     if (error) throw error
+    if (!createdAlert?.id) throw new Error('El servidor no devolvió el caso creado.')
     
     showNewModal.value = false
     toast.success('Alerta registrada con éxito')
-    fetchAlerts()
+    await fetchAlerts()
   } catch (e) {
     newAlertError.value = e.message || 'Error al guardar la alerta'
   } finally {
@@ -995,22 +1011,22 @@ const openDetailsModal = (alert) => {
 }
 
 const saveDetails = async () => {
+  if (!canManageWellbeing.value || !selectedAlert.value?.id) return
   savingDetails.value = true
   detailsError.value = ''
   
   try {
-    const updateData = {
-      status: selectedAlert.value.status,
-      dece_notes: selectedAlert.value.dece_notes,
-      resolution: selectedAlert.value.resolution
-    }
-    
-    const { error } = await supabase
-      .from('student_alerts')
-      .update(updateData)
-      .eq('id', selectedAlert.value.id)
+    const { data: updatedRecord, error } = await supabase.rpc('update_student_wellbeing_case', {
+      p_alert_id: selectedAlert.value.id,
+      p_status: selectedAlert.value.status,
+      p_dece_notes: selectedAlert.value.dece_notes || null,
+      p_resolution: selectedAlert.value.resolution || null
+    })
       
     if (error) throw error
+
+    if (!updatedRecord?.id) throw new Error('El servidor no devolvió el caso actualizado.')
+    const updateData = updatedRecord
     
     const index = alerts.value.findIndex(a => a.id === selectedAlert.value.id)
     if (index !== -1) {
@@ -1048,22 +1064,25 @@ const getWhatsAppLink = (alert) => {
 }
 
 const markAsConvocado = async (alert) => {
+  if (!canCreateWellbeing.value) return
   if (alert.status !== 'RESUELTO' && alert.status !== 'ARCHIVADO') {
-    const { error } = await supabase
-      .from('student_alerts')
-      .update({ 
-        status: 'CONVOCADO', 
-        whatsapp_sent_at: new Date().toISOString() 
+    try {
+      const { data: updatedRecord, error } = await supabase.rpc('mark_student_wellbeing_convoked', {
+        p_alert_id: alert.id,
+        p_sent_at: new Date().toISOString(),
       })
-      .eq('id', alert.id)
-      
-    if (!error) {
-       const index = alerts.value.findIndex(a => a.id === alert.id)
-       if (index !== -1) alerts.value[index].status = 'CONVOCADO'
-       
-       if (selectedAlert.value && selectedAlert.value.id === alert.id) {
-         selectedAlert.value.status = 'CONVOCADO'
-       }
+      if (error) throw error
+      if (!updatedRecord?.id) throw new Error('El servidor no devolvió el caso actualizado.')
+      const index = alerts.value.findIndex(a => a.id === alert.id)
+      if (index !== -1) alerts.value[index] = { ...alerts.value[index], ...updatedRecord }
+      if (selectedAlert.value?.id === alert.id) {
+        selectedAlert.value = { ...selectedAlert.value, ...updatedRecord }
+      }
+    } catch (error) {
+      console.error('Error marking wellbeing notification:', error)
+      toast.error('La convocatoria se abrió, pero no se pudo registrar el estado', {
+        description: error.message || 'Actualiza el caso manualmente.',
+      })
     }
   }
 }
@@ -1091,14 +1110,19 @@ const formatFullDate = (dateString) => {
   })
 }
 
-onMounted(() => {
-  fetchInstitutionConfig()
-  fetchAlerts()
-  
-  watch(activeQuarter, (newVal) => {
-    if (newVal && !selectedQuarter.value) {
-      selectedQuarter.value = newVal
-    }
-  }, { immediate: true })
+watch(activeQuarter, (newVal) => {
+  if (newVal && !selectedQuarter.value) selectedQuarter.value = newVal
+}, { immediate: true })
+
+watch(() => authStore.activeSchoolId, async (newSchoolId, previousSchoolId) => {
+  if (!newSchoolId || newSchoolId === previousSchoolId) return
+  selectedCourse.value = ''
+  selectedQuarter.value = activeQuarter.value
+  currentCourseStudents.value = []
+  await Promise.all([fetchInstitutionConfig(), fetchAlerts()])
+})
+
+onMounted(async () => {
+  await Promise.all([fetchInstitutionConfig(), fetchAlerts()])
 })
 </script>

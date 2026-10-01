@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.49.8'
+import { reportEdgeFunctionError } from '../_shared/telemetry.ts'
 
 const encoder = new TextEncoder()
 const maxBodyBytes = 256 * 1024
@@ -40,6 +41,12 @@ const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {}
+const asUuidOrNull = (value: unknown) => {
+  const candidate = asText(value)
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
+    ? candidate
+    : null
+}
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return respond({ success: false, message: 'Método no permitido.' }, 405)
@@ -146,6 +153,11 @@ Deno.serve(async (req) => {
 
   if (error) {
     console.error('kushki-webhook persistence failed', error.code ?? 'unknown')
+    await reportEdgeFunctionError(adminClient, 'kushki-webhook', new Error('PAYMENT_EVENT_PERSISTENCE_FAILED'), {
+      schoolId: asUuidOrNull(metadata.school_id),
+      statusCode: 500,
+      metadata: { stage: 'persistence' },
+    })
     return respond({ success: false, message: 'No fue posible registrar el evento.' }, 500)
   }
 
@@ -162,6 +174,11 @@ Deno.serve(async (req) => {
       })
     }
     console.error('kushki-webhook processing failed', processingError.code ?? 'unknown')
+    await reportEdgeFunctionError(adminClient, 'kushki-webhook', new Error('PAYMENT_EVENT_PROCESSING_FAILED'), {
+      schoolId: asUuidOrNull(metadata.school_id),
+      statusCode: 500,
+      metadata: { stage: 'processing' },
+    })
     return respond({ success: false, message: 'No fue posible procesar el evento.' }, 500)
   }
 

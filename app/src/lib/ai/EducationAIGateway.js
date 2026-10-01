@@ -5,8 +5,7 @@
  */
 
 import { DemoEducationAIProvider } from './DemoEducationAIProvider'
-import { GeminiEducationAIProvider } from './GeminiEducationAIProvider'
-import { OpenAIEducationAIProvider } from './OpenAIEducationAIProvider'
+import { RemoteEducationAIProvider } from './RemoteEducationAIProvider'
 import { AI_PROVIDERS, AI_TASK_TYPES } from './types'
 import { supabase } from '../supabase'
 import { KnowledgePromotionService } from './KnowledgePromotionService'
@@ -18,25 +17,15 @@ export class EducationAIGateway {
     this.schoolId = options.schoolId || null
     this.userId = options.userId || null
     this.providerType = options.providerType || AI_PROVIDERS.DEMO
-    this.apiKey = options.apiKey || null
-    this.model = options.model || (this.providerType === 'openai' ? 'gpt-5.6-luna' : 'gemini-2.5-flash')
-    this.isDemo = options.isDemo !== undefined ? options.isDemo : (this.providerType === AI_PROVIDERS.DEMO || !this.apiKey)
+    this.model = options.model || (this.providerType === 'openai' ? 'gpt-5-mini' : 'gemini-2.5-flash')
+    this.isDemo = options.isDemo !== undefined ? options.isDemo : this.providerType === AI_PROVIDERS.DEMO
 
     this.demoProvider = new DemoEducationAIProvider()
-    this.geminiProvider = (this.apiKey && this.providerType === 'gemini') ? new GeminiEducationAIProvider(this.apiKey, this.model) : null
-    this.openaiProvider = (this.apiKey && this.providerType === 'openai') ? new OpenAIEducationAIProvider(this.apiKey, this.model) : null
+    this.remoteProvider = new RemoteEducationAIProvider(this.schoolId, options.quality)
   }
 
   get activeProvider() {
-    if (!this.isDemo && this.apiKey) {
-      if (this.providerType === 'openai' && this.openaiProvider) {
-        return this.openaiProvider
-      }
-      if (this.providerType === 'gemini' && this.geminiProvider) {
-        return this.geminiProvider
-      }
-    }
-    return this.demoProvider
+    return this.isDemo ? this.demoProvider : this.remoteProvider
   }
 
   /**
@@ -82,7 +71,7 @@ export class EducationAIGateway {
    * Registra el uso de IA en la tabla ai_usage_ledger de forma asíncrona no bloqueante
    */
   async logUsage(taskType, durationMs, status = 'success', errorMsg = null) {
-    if (!this.schoolId) return
+    if (!this.schoolId || !this.isDemo) return // El servidor registra el consumo real.
     try {
       await supabase.from('ai_usage_ledger').insert({
         school_id: this.schoolId,
@@ -148,7 +137,8 @@ export class EducationAIGateway {
           isDemo: this.isDemo,
           hasInstitutionalMemory: Boolean(sanitizedInput.institutionalMemory?.has_context),
           durationMs,
-          generatedAt: new Date().toISOString()
+          generatedAt: new Date().toISOString(),
+          ...result._meta
         }
       }
     } catch (err) {

@@ -92,4 +92,11 @@ describe('canonical authorization context', () => {
     expect(canAccessRoute({ platformAdminOnly: true }, access)).toBe(false)
     expect(roleLabel(access)).toBe('Docente')
   })
+
+  it('requires every permission declared by a sensitive route', () => {
+    const access = context()
+
+    expect(canAccessRoute({ permissionsAll: ['students.read', 'grades.update'] }, access)).toBe(true)
+    expect(canAccessRoute({ permissionsAll: ['students.read', 'settings.manage'] }, access)).toBe(false)
+  })
 })

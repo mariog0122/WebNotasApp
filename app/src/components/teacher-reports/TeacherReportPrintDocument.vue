@@ -289,7 +289,7 @@ const handleDownloadPdf = async () => {
         </div>
 
         <!-- Signatures Box -->
-        <div class="mt-12 pt-8 border-t border-slate-200">
+        <div class="mt-12 pt-8 border-t border-slate-200 report-signatures">
           <div class="grid grid-cols-2 gap-x-12 gap-y-10 text-center">
             
             <!-- Docente Emisor -->
@@ -335,7 +335,7 @@ const handleDownloadPdf = async () => {
         </div>
 
         <!-- Talón desprendible de citación (si es citación) -->
-        <div v-if="report.template_type === REPORT_TEMPLATES.CITACION_REPRESENTANTE" class="mt-10 pt-6 border-t-2 border-dashed border-slate-400 text-xs">
+        <div v-if="report.template_type === REPORT_TEMPLATES.CITACION_REPRESENTANTE" class="mt-10 pt-6 border-t-2 border-dashed border-slate-400 text-xs report-talon">
           <div class="flex items-center justify-between mb-2">
             <span class="text-[10px] font-mono text-slate-500">✁ CORTE AQUÍ (TALÓN DE DESPRENDIBLE Y RECEPCIÓN PARA EL DOCENTE)</span>
             <span class="text-[10px] font-bold text-slate-700">UNIDAD EDUCATIVA</span>
@@ -365,11 +365,47 @@ const handleDownloadPdf = async () => {
 
 <style scoped>
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm;
+  }
+
   body, html {
     background: white !important;
+    color: black !important;
   }
-  .no-print {
+
+  .no-print,
+  nav,
+  header,
+  aside,
+  .app-shell > header,
+  .app-shell > aside {
     display: none !important;
+  }
+
+  #printable-teacher-report {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    color: black !important;
+    background: white !important;
+  }
+
+  .report-signatures {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .report-talon {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .report-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 }
 </style>

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { institutionalDateKey } from '../src/lib/civilDate'
 import { 
   ATTENDANCE_STATUSES, 
   HOUR_BLOCKS, 
@@ -9,8 +10,6 @@ import {
 } from '../src/lib/attendanceConstants'
 
 describe('Attendance Module (Módulo de Asistencia para Docentes e Inspección)', () => {
-  const routerSource = readFileSync(resolve(__dirname, '../src/router/index.js'), 'utf8')
-  const sidebarSource = readFileSync(resolve(__dirname, '../src/components/Sidebar.vue'), 'utf8')
   const migrationSource = readFileSync(resolve(__dirname, '../../migrations/48_attendance_module.sql'), 'utf8')
   const rollCallTabSource = readFileSync(resolve(__dirname, '../src/components/attendance/AttendanceRollCallTab.vue'), 'utf8')
   const justificationsTabSource = readFileSync(resolve(__dirname, '../src/components/attendance/AttendanceJustificationsTab.vue'), 'utf8')
@@ -99,12 +98,18 @@ describe('Attendance Module (Módulo de Asistencia para Docentes e Inspección)'
     expect(msgTardiness).toContain('Ana Belén Morales')
   })
 
-  it('registers /attendance route in router and Asistencia navLink in Sidebar', () => {
-    expect(routerSource).toContain("path: '/attendance'")
-    expect(routerSource).toContain("name: 'attendance'")
-    expect(sidebarSource).toContain("name: 'Asistencia'")
-    expect(sidebarSource).toContain("path: '/attendance'")
-    expect(sidebarSource).toContain("CalendarCheck")
+  // Navigation, rendered SVGs and accessible link names are exercised in
+  // e2e/institution-authenticated.spec.js against the running Vue application.
+  it.each([
+    ['2026-09-01T00:00:00Z', 'America/Guayaquil', '2026-08-31'],
+    ['2026-09-01T04:59:59Z', 'America/Guayaquil', '2026-08-31'],
+    ['2026-09-01T05:00:00Z', 'America/Guayaquil', '2026-09-01'],
+    ['2027-01-01T04:30:00Z', 'America/Guayaquil', '2026-12-31'],
+    ['2026-09-01T05:30:00Z', 'Pacific/Galapagos', '2026-08-31'],
+    ['2026-09-01T04:30:00Z', undefined, '2026-08-31'],
+    ['2026-09-01T04:30:00Z', 'invalid-zone', '2026-08-31'],
+  ])('formats %s in institutional zone %s as %s', (instant, zone, expected) => {
+    expect(institutionalDateKey(new Date(instant), zone)).toBe(expected)
   })
 
   it('verifies SQL Migration 48 creates attendance_records table, RPCs and RLS', () => {

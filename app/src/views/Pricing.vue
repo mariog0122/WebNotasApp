@@ -8,7 +8,7 @@ import {
   HelpCircle, CreditCard, Lock, Sparkles, RefreshCw, FileText, 
   PhoneCall, Mail, MessageSquare, ChevronRight, Award, CheckCircle2, X,
   Shield, Users, BarChart3, Bell, CheckCircle, LayoutDashboard, BookOpen,
-  GraduationCap, User, Settings, ShieldAlert
+  GraduationCap, User, Settings, ShieldAlert, Brain, TrendingUp, Layers
 } from 'lucide-vue-next'
 
 const isAnnual = ref(true)
@@ -74,17 +74,17 @@ onMounted(() => {
           
           <!-- COLUMNA IZQUIERDA: CONTENIDO PUBLICITARIO -->
           <div class="lg:col-span-5 space-y-6 text-left">
-            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-950/80 border border-indigo-800/60 text-xs font-semibold text-indigo-300 tracking-wider shadow-sm">
-              <Sparkles class="w-3.5 h-3.5 text-indigo-400" />
-              PLATAFORMA SaaS MULTIINSTITUCIÓN
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-950/80 border border-indigo-800/60 text-xs font-bold text-indigo-300 tracking-wider shadow-sm">
+              <Sparkles class="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              GESTIÓN ACADÉMICA + INTELIGENCIA DEL APRENDIZAJE 2026
             </div>
 
             <h1 class="text-4xl sm:text-5xl lg:text-[3.1rem] font-black text-white tracking-tight leading-[1.12]">
-              La plataforma que centraliza toda la <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-sky-400 to-cyan-300">gestión de tu institución educativa.</span>
+              La primera plataforma escolar que une gestión oficial con <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-sky-400 to-cyan-300">Inteligencia del Aprendizaje.</span>
             </h1>
 
             <p class="text-slate-300 text-base sm:text-lg leading-relaxed font-normal">
-              Administra estudiantes, docentes, cursos, asignaturas, calificaciones, planificaciones didácticas con IA (Normativa MINEDEC), reportes, familias y alertas DECE desde una sola plataforma segura, moderna y fácil de usar.
+              Mucho más que notas y asistencia: LOGREVA diagnostica la causa raíz de las brechas pedagógicas con grafos competenciales, organiza al docente en 3 a 5 grupos viables de 15 minutos (Teacher Cockpit), guía a los estudiantes con un Tutor Socrático Anti-Cheat y entrega a las familias un Pasaporte de Aprendizaje claro.
             </p>
 
             <div class="pt-2 flex flex-col sm:flex-row items-center gap-4">
@@ -137,6 +137,13 @@ onMounted(() => {
                       <div class="bg-indigo-600/90 text-white font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-2 shadow-md shadow-indigo-600/30">
                         <LayoutDashboard class="w-3.5 h-3.5" /> Dashboard
                       </div>
+                      <div class="px-2.5 py-1.5 text-indigo-300 bg-indigo-950/60 border border-indigo-700/50 rounded-lg flex items-center justify-between shadow-xs">
+                        <span class="flex items-center gap-2"><Sparkles class="w-3.5 h-3.5 text-indigo-400" /> Cockpit IA</span>
+                        <span class="text-[7px] font-black px-1.5 py-0.2 rounded bg-indigo-500 text-white">NUEVO</span>
+                      </div>
+                      <div class="px-2.5 py-1.5 text-cyan-300 bg-cyan-950/40 border border-cyan-800/40 rounded-lg flex items-center gap-2">
+                        <TrendingUp class="w-3.5 h-3.5 text-cyan-400" /> Impact Analytics
+                      </div>
                       <div class="px-2.5 py-1.5 text-slate-400 hover:text-slate-200 flex items-center gap-2">
                         <BookOpen class="w-3.5 h-3.5" /> Cursos
                       </div>
@@ -147,19 +154,10 @@ onMounted(() => {
                         <GraduationCap class="w-3.5 h-3.5" /> Estudiantes
                       </div>
                       <div class="px-2.5 py-1.5 text-slate-400 hover:text-slate-200 flex items-center gap-2">
-                        <Users class="w-3.5 h-3.5" /> Familias
-                      </div>
-                      <div class="px-2.5 py-1.5 text-slate-400 hover:text-slate-200 flex items-center gap-2">
                         <CheckCircle2 class="w-3.5 h-3.5" /> Calificaciones
                       </div>
                       <div class="px-2.5 py-1.5 text-slate-400 hover:text-slate-200 flex items-center gap-2">
-                        <BarChart3 class="w-3.5 h-3.5" /> Reportes
-                      </div>
-                      <div class="px-2.5 py-1.5 text-slate-400 hover:text-slate-200 flex items-center gap-2">
                         <Bell class="w-3.5 h-3.5" /> Alertas DECE
-                      </div>
-                      <div class="px-2.5 py-1.5 text-slate-400 hover:text-slate-200 flex items-center gap-2">
-                        <User class="w-3.5 h-3.5" /> Usuarios
                       </div>
                       <div class="px-2.5 py-1.5 text-slate-400 hover:text-slate-200 flex items-center gap-2">
                         <Settings class="w-3.5 h-3.5" /> Configuración
@@ -247,19 +245,19 @@ onMounted(() => {
                       </svg>
                     </div>
 
-                    <!-- Card 4 -->
-                    <div class="bg-[#0b0e1e] border border-slate-800/90 p-2.5 rounded-xl space-y-1 relative overflow-hidden">
+                    <!-- Card 4: Cierre de Brechas -->
+                    <div class="bg-[#0b0e1e] border border-indigo-900/60 p-2.5 rounded-xl space-y-1 relative overflow-hidden">
                       <div class="flex justify-between items-start">
-                        <span class="text-[9px] text-slate-400 font-medium">Asistencias Hoy</span>
-                        <span class="text-[8px] text-emerald-400 font-bold bg-emerald-500/10 px-1 py-0.5 rounded">+4.7%</span>
+                        <span class="text-[9px] text-indigo-300 font-bold">Cierre Brechas</span>
+                        <span class="text-[8px] text-emerald-400 font-bold bg-emerald-500/10 px-1 py-0.5 rounded">84.5%</span>
                       </div>
                       <div class="flex items-baseline gap-1">
-                        <span class="text-base font-extrabold text-white">96%</span>
-                        <span class="text-[8px] text-slate-500">Promedio</span>
+                        <span class="text-base font-extrabold text-white">24 / 32</span>
+                        <span class="text-[8px] text-slate-400">Resueltas</span>
                       </div>
                       <!-- Sparkline SVG Verde Esmeralda -->
                       <svg class="w-full h-6 text-emerald-400 stroke-current fill-none stroke-[2]" viewBox="0 0 100 30">
-                        <path d="M0 26 Q20 16 40 22 T70 10 T100 14" />
+                        <path d="M0 26 Q20 16 40 22 T70 10 T100 6" />
                       </svg>
                     </div>
                   </div>
@@ -507,6 +505,72 @@ onMounted(() => {
             </p>
           </div>
         </div>
+
+        <!-- Showcase de Diferenciación Única en el Mercado: Inteligencia del Aprendizaje -->
+        <div class="mt-16 pt-12 border-t border-slate-900/80 space-y-8">
+          <div class="text-center max-w-3xl mx-auto space-y-2">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/40 text-[11px] font-bold text-cyan-300">
+              <Sparkles class="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              EL FACTOR DIFERENCIAL LOGREVA 2026
+            </div>
+            <h3 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              ¿Por qué LOGREVA supera a cualquier software escolar tradicional?
+            </h3>
+            <p class="text-slate-400 text-sm">
+              Las aplicaciones comunes solo almacenan notas frías. LOGREVA interviene en el proceso formativo con pedagogía computacional y andamiaje real.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            <!-- 1. Grafo Causal -->
+            <div class="bg-gradient-to-b from-indigo-950/40 to-slate-900/60 border border-indigo-900/50 p-6 rounded-2xl space-y-3 relative overflow-hidden">
+              <div class="w-11 h-11 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
+                <Brain class="w-6 h-6" />
+              </div>
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-indigo-300 block">Diagnóstico Causal</span>
+              <h4 class="font-bold text-base text-white">Grafo Competencial</h4>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                Identifica el prerrequisito básico no superado (ej. mínimo común múltiplo) que causa el fallo en temas avanzados, no solo el promedio numérico.
+              </p>
+            </div>
+
+            <!-- 2. Teacher Cockpit -->
+            <div class="bg-gradient-to-b from-cyan-950/40 to-slate-900/60 border border-cyan-900/50 p-6 rounded-2xl space-y-3 relative overflow-hidden">
+              <div class="w-11 h-11 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
+                <Sparkles class="w-6 h-6" />
+              </div>
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-cyan-300 block">Acción Viable en Aula</span>
+              <h4 class="font-bold text-base text-white">Teacher Cockpit (15 min)</h4>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                En vez de saturar al docente con 30 planes individuales, agrupa a los estudiantes en 3 a 5 equipos por dificultad común con microestrategias listas.
+              </p>
+            </div>
+
+            <!-- 3. Tutor Socrático Anti-Cheat -->
+            <div class="bg-gradient-to-b from-purple-950/40 to-slate-900/60 border border-purple-900/50 p-6 rounded-2xl space-y-3 relative overflow-hidden">
+              <div class="w-11 h-11 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">
+                <ShieldCheck class="w-6 h-6" />
+              </div>
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-purple-300 block">Andamiaje Sin Trampas</span>
+              <h4 class="font-bold text-base text-white">Tutor Socrático RAG</h4>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                Nunca entrega la respuesta directa. Guía el razonamiento con pistas progresivas y sanitización estricta de datos personales de menores.
+              </p>
+            </div>
+
+            <!-- 4. Pasaporte Familiar -->
+            <div class="bg-gradient-to-b from-emerald-950/40 to-slate-900/60 border border-emerald-900/50 p-6 rounded-2xl space-y-3 relative overflow-hidden">
+              <div class="w-11 h-11 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                <Award class="w-6 h-6" />
+              </div>
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-300 block">Alianza con el Hogar</span>
+              <h4 class="font-bold text-base text-white">Pasaporte Familiar</h4>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                Sustituye la libreta fría por un reporte claro: qué domina el estudiante, en qué avanza en clase y cómo apoyarlo con actividades sencillas en casa.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -557,6 +621,8 @@ onMounted(() => {
                 <li class="flex items-center gap-2.5"><Check class="w-4 h-4 text-emerald-400" /> Ingreso de calificaciones e insumos</li>
                 <li class="flex items-center gap-2.5"><Check class="w-4 h-4 text-emerald-400" /> Generación de sábanas y boletines</li>
                 <li class="flex items-center gap-2.5"><Check class="w-4 h-4 text-emerald-400" /> Alertas DECE e incidencias</li>
+                <li class="flex items-center gap-2.5 font-medium text-cyan-300"><Sparkles class="w-4 h-4 text-cyan-400 shrink-0" /> Suite Inteligencia: Grafo Causal & Cockpit 15m</li>
+                <li class="flex items-center gap-2.5 font-medium text-cyan-300"><Sparkles class="w-4 h-4 text-cyan-400 shrink-0" /> Pasaporte de Aprendizaje para Familias</li>
                 <li class="flex items-center gap-2.5"><Check class="w-4 h-4 text-emerald-400" /> Soporte técnico por correo y WhatsApp</li>
               </ul>
             </div>
@@ -584,6 +650,8 @@ onMounted(() => {
               <ul class="space-y-3 pt-4 border-t border-slate-800 text-sm text-slate-200">
                 <li class="flex items-center gap-2.5"><Check class="w-4 h-4 text-indigo-400" /> Todo lo incluido en el Plan 500</li>
                 <li class="flex items-center gap-2.5"><Check class="w-4 h-4 text-indigo-400" /> Hasta 1.000 estudiantes activos</li>
+                <li class="flex items-center gap-2.5 font-medium text-cyan-300"><Sparkles class="w-4 h-4 text-cyan-400 shrink-0" /> Tutor Socrático con andamiaje RAG delimitado</li>
+                <li class="flex items-center gap-2.5 font-medium text-cyan-300"><Sparkles class="w-4 h-4 text-cyan-400 shrink-0" /> Reevaluación relámpago con cierre de brechas</li>
                 <li class="flex items-center gap-2.5"><Check class="w-4 h-4 text-indigo-400" /> Cierre de periodo por candado</li>
                 <li class="flex items-center gap-2.5"><Check class="w-4 h-4 text-indigo-400" /> Atención prioritaria de incidencias</li>
               </ul>
@@ -608,6 +676,8 @@ onMounted(() => {
               <ul class="space-y-3 pt-4 border-t border-slate-800 text-sm text-slate-300">
                 <li class="flex items-center gap-2.5"><Check class="w-4 h-4 text-emerald-400" /> Todo lo incluido en el Plan 1000</li>
                 <li class="flex items-center gap-2.5"><Check class="w-4 h-4 text-emerald-400" /> Hasta 2.000 estudiantes activos</li>
+                <li class="flex items-center gap-2.5 font-medium text-cyan-300"><Sparkles class="w-4 h-4 text-cyan-400 shrink-0" /> Impact Analytics Institucional & Panel Rectoral</li>
+                <li class="flex items-center gap-2.5 font-medium text-cyan-300"><Sparkles class="w-4 h-4 text-cyan-400 shrink-0" /> Detección de Cuellos de Botella Curriculares</li>
                 <li class="flex items-center gap-2.5"><Check class="w-4 h-4 text-emerald-400" /> Multicursos y múltiples paralelos</li>
                 <li class="flex items-center gap-2.5"><Check class="w-4 h-4 text-emerald-400" /> Acompañamiento especializado</li>
               </ul>
@@ -712,6 +782,42 @@ onMounted(() => {
                   <td class="text-center font-medium text-emerald-400">Incluido</td>
                 </tr>
                 <tr>
+                  <td class="px-6 py-4 font-medium text-white flex items-center gap-2">
+                    <Brain class="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span>Diagnóstico Causal (Grafo Competencial)</span>
+                  </td>
+                  <td class="text-center font-medium text-cyan-400">Incluido</td>
+                  <td class="text-center font-medium text-cyan-400">Incluido</td>
+                  <td class="text-center font-medium text-cyan-400">Incluido</td>
+                </tr>
+                <tr>
+                  <td class="px-6 py-4 font-medium text-white flex items-center gap-2">
+                    <Sparkles class="w-4 h-4 text-indigo-400 shrink-0" />
+                    <span>Teacher Cockpit (Acción en Aula 15m)</span>
+                  </td>
+                  <td class="text-center font-medium text-indigo-300">3-5 Grupos</td>
+                  <td class="text-center font-medium text-indigo-300">3-5 Grupos</td>
+                  <td class="text-center font-medium text-indigo-300">3-5 Grupos</td>
+                </tr>
+                <tr>
+                  <td class="px-6 py-4 font-medium text-white flex items-center gap-2">
+                    <ShieldCheck class="w-4 h-4 text-purple-400 shrink-0" />
+                    <span>Tutor Socrático Anti-Cheat (RAG)</span>
+                  </td>
+                  <td class="text-center font-medium text-purple-300">Guía Básica</td>
+                  <td class="text-center font-bold text-purple-400">RAG Curricular</td>
+                  <td class="text-center font-bold text-purple-400">RAG Multicurso</td>
+                </tr>
+                <tr>
+                  <td class="px-6 py-4 font-medium text-white flex items-center gap-2">
+                    <Award class="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Pasaporte de Aprendizaje Familiar</span>
+                  </td>
+                  <td class="text-center font-medium text-emerald-400">Incluido</td>
+                  <td class="text-center font-medium text-emerald-400">Incluido</td>
+                  <td class="text-center font-medium text-emerald-400">Incluido</td>
+                </tr>
+                <tr>
                   <td class="px-6 py-4 font-medium text-white">Actualizaciones de mantenimiento</td>
                   <td class="text-center font-medium text-emerald-400">Incluidas</td>
                   <td class="text-center font-medium text-emerald-400">Incluidas</td>
@@ -775,6 +881,30 @@ onMounted(() => {
               <div>
                 <strong class="text-white text-sm block">Escalas Cualitativas & Candados</strong>
                 <span class="text-xs text-slate-400">Calificación A-E y cierre de periodos académicos.</span>
+              </div>
+            </div>
+
+            <div class="bg-slate-900/40 border border-slate-800/80 p-4 rounded-2xl flex items-start gap-3">
+              <Brain class="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+              <div>
+                <strong class="text-white text-sm block">Grafo Causal & Detección de Brechas</strong>
+                <span class="text-xs text-slate-400">Mapeo de prerrequisitos no consolidados en tiempo real.</span>
+              </div>
+            </div>
+
+            <div class="bg-slate-900/40 border border-slate-800/80 p-4 rounded-2xl flex items-start gap-3">
+              <Sparkles class="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <strong class="text-white text-sm block">Teacher Cockpit en 15 Minutos</strong>
+                <span class="text-xs text-slate-400">Acción docente inmediata y agrupación pedagógica inteligente.</span>
+              </div>
+            </div>
+
+            <div class="bg-slate-900/40 border border-slate-800/80 p-4 rounded-2xl flex items-start gap-3">
+              <CheckCircle2 class="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <strong class="text-white text-sm block">Tutor Socrático & Pasaporte Familiar</strong>
+                <span class="text-xs text-slate-400">Andamiaje seguro sin trampas y reporte de valor para hogares.</span>
               </div>
             </div>
           </div>

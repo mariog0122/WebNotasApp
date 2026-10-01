@@ -6,8 +6,7 @@ import { ref } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/auth'
 import { toast } from 'vue-sonner'
-import { GeminiEducationAIProvider } from '../lib/ai/GeminiEducationAIProvider'
-import { OpenAIEducationAIProvider } from '../lib/ai/OpenAIEducationAIProvider'
+import { AI_SETTINGS_COLUMNS, invokeEducationAI } from '../lib/ai/RemoteEducationAIProvider'
 import { DemoEducationAIProvider } from '../lib/ai/DemoEducationAIProvider'
 
 export function useInstitutionAISettings() {
@@ -44,40 +43,44 @@ export function useInstitutionAISettings() {
     try {
       const { data, error } = await supabase
         .from('institution_ai_settings')
-        .select('*')
+        .select(AI_SETTINGS_COLUMNS)
         .eq('school_id', schoolId)
         .maybeSingle()
 
+      if (error) throw error
       if (data) {
         settings.value = {
           mode: data.mode || 'managed',
           provider: data.provider || 'gemini',
           model_id: data.model_id || 'auto',
           apiKey: '',
-          hasExistingKey: !!data.encrypted_api_key,
-          monthly_quota_generations: data.monthly_quota_generations || 200,
-          teacher_daily_limit: data.teacher_daily_limit || 15,
+          hasExistingKey: !!data.has_api_key,
+          monthly_quota_generations: data.monthly_quota_generations ?? 200,
+          teacher_daily_limit: data.teacher_daily_limit ?? 15,
           status: data.status || 'active',
           alert_thresholds: data.alert_thresholds || [70, 90, 100]
         }
       }
 
       // Cargar estadísticas de consumo
-      const { data: usageCount } = await supabase
+      const { count: usageCount, error: usageError } = await supabase
         .from('ai_usage_ledger')
         .select('id', { count: 'exact', head: true })
         .eq('school_id', schoolId)
+        .eq('status', 'success')
         .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
 
-      const count = usageCount || 0
-      const quota = settings.value.monthly_quota_generations || 200
+      if (usageError) throw usageError
+      const count = usageCount ?? 0
+      const quota = settings.value.monthly_quota_generations ?? 200
       usageStats.value = {
         monthly_usage: count,
         monthly_quota: quota,
-        usage_percentage: Math.min(100, Math.round((count / quota) * 100))
+        usage_percentage: quota > 0 ? Math.min(100, Math.round((count / quota) * 100)) : 100,
+        history: []
       }
     } catch (err) {
-      console.warn('Error cargando configuración de IA:', err)
+      toast.error('Error cargando configuración de IA: ' + err.message)
     } finally {
       loading.value = false
     }
@@ -91,16 +94,13 @@ export function useInstitutionAISettings() {
       if (settings.value.mode === 'demo') {
         const demo = new DemoEducationAIProvider()
         testResult.value = await demo.testConnection()
-      } else if (settings.value.provider === 'openai') {
-        const keyToTest = customApiKey || settings.value.apiKey
-        const model = settings.value.model_id === 'auto' ? 'gpt-5.6-luna' : (settings.value.model_id || 'gpt-5.6-luna')
-        const openai = new OpenAIEducationAIProvider(keyToTest, model)
-        testResult.value = await openai.testConnection()
       } else {
-        const keyToTest = customApiKey || settings.value.apiKey
-        const model = settings.value.model_id === 'auto' ? 'gemini-2.5-flash' : (settings.value.model_id || 'gemini-2.5-flash')
-        const gemini = new GeminiEducationAIProvider(keyToTest, model)
-        testResult.value = await gemini.testConnection()
+        testResult.value = await invokeEducationAI({
+          action: 'test_connection',
+          schoolId: authStore.activeSchoolId || authStore.profile?.school_id,
+          settings: { provider: settings.value.provider, model_id: settings.value.model_id },
+          apiKey: (customApiKey || settings.value.apiKey || '').trim() || undefined
+        })
       }
 
       if (testResult.value.success) {
@@ -126,30 +126,23 @@ export function useInstitutionAISettings() {
     saving.value = true
     try {
       const payload = {
-        school_id: schoolId,
         mode: settings.value.mode,
         provider: settings.value.provider,
         model_id: settings.value.model_id,
         monthly_quota_generations: Number(settings.value.monthly_quota_generations),
         teacher_daily_limit: Number(settings.value.teacher_daily_limit),
         status: settings.value.mode === 'demo' ? 'demo' : 'active',
-        alert_thresholds: settings.value.alert_thresholds,
-        updated_at: new Date().toISOString()
+        alert_thresholds: settings.value.alert_thresholds
       }
 
-      if (settings.value.apiKey && settings.value.apiKey.trim()) {
-        payload.encrypted_api_key = settings.value.apiKey.trim()
-      }
-
-      const { error } = await supabase
-        .from('institution_ai_settings')
-        .upsert(payload, { onConflict: 'school_id' })
-
-      if (error) throw error
+      const result = await invokeEducationAI({
+        action: 'save_settings', schoolId, settings: payload,
+        apiKey: settings.value.apiKey.trim() || undefined
+      })
 
       toast.success('Configuración de Inteligencia Artificial guardada correctamente.')
       settings.value.apiKey = ''
-      settings.value.hasExistingKey = true
+      settings.value.hasExistingKey = !!result.has_api_key
     } catch (err) {
       toast.error('Error al guardar configuración: ' + err.message)
     } finally {

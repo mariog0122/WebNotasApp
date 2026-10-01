@@ -188,7 +188,9 @@ const submitWizard = async () => {
           const body = await error.context.json()
           if (body?.message) msg = body.message
         }
-      } catch {}
+      } catch (parseErr) {
+        console.warn('[WizardTab] Error parseando respuesta JSON de error:', parseErr)
+      }
       throw new Error(msg)
     }
 

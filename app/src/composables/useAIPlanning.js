@@ -7,26 +7,31 @@
 import { ref, computed, reactive } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/auth'
+import { useAcademicYearStore } from '../stores/academicYear'
 import { toast } from 'vue-sonner'
 import { EducationAIGateway } from '../lib/ai/EducationAIGateway'
+import { AI_SETTINGS_COLUMNS } from '../lib/ai/RemoteEducationAIProvider'
 import { getCurriculumItems, getSuggestedAgeForGrade } from '../lib/ecuadorCurriculumCatalog'
 
 export function useAIPlanning() {
   const authStore = useAuthStore()
+  const academicYearStore = useAcademicYearStore()
 
   // Estados de Carga y Acceso
   const loading = ref(false)
   const generating = ref(false)
   const saving = ref(false)
   const moduleAccess = ref({
-    module_enabled: true,
-    subscription_status: 'active',
-    mode: 'managed',
-    provider: 'gemini',
-    ai_status: 'active',
-    monthly_quota: 200,
+    module_enabled: false,
+    subscription_status: 'unknown',
+    mode: 'unavailable',
+    provider: null,
+    ai_status: 'unavailable',
+    is_demo: false,
+    monthly_quota: 0,
     monthly_usage: 0,
-    is_limit_reached: false
+    is_limit_reached: false,
+    is_teacher_limit_reached: false,
   })
 
   // Listados y Datos de Contexto
@@ -125,51 +130,68 @@ export function useAIPlanning() {
   // Planes Filtrados
   const filteredLessonPlans = computed(() => {
     return lessonPlans.value.filter(plan => {
-      const matchesSearch = !searchQuery.value ||
-        plan.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        plan.topic_title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        plan.subject_name.toLowerCase().includes(searchQuery.value.toLowerCase())
+      const normalizedSearch = searchQuery.value.trim().toLocaleLowerCase('es')
+      const matchesSearch = !normalizedSearch || [plan.title, plan.topic_title, plan.subject_name]
+        .some(value => String(value || '').toLocaleLowerCase('es').includes(normalizedSearch))
 
       const matchesCourse = !selectedCourseFilter.value || plan.course_id === selectedCourseFilter.value
-      const matchesSubject = !selectedSubjectFilter.value || plan.subject_name.toLowerCase() === selectedSubjectFilter.value.toLowerCase()
+      const matchesSubject = !selectedSubjectFilter.value || String(plan.subject_name || '').toLocaleLowerCase('es') === selectedSubjectFilter.value.toLocaleLowerCase('es')
       const matchesStatus = selectedStatusFilter.value === 'all' || plan.status === selectedStatusFilter.value
 
       return matchesSearch && matchesCourse && matchesSubject && matchesStatus
     })
   })
 
+  const requireActiveSchoolId = () => {
+    const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
+    if (!schoolId) throw new Error('Selecciona una institución antes de usar la planificación curricular.')
+    return schoolId
+  }
+
   // Verificación de Acceso al Módulo
   const checkAccess = async () => {
-    const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
-    if (!schoolId) return
-
-    try {
-      const { data, error } = await supabase.rpc('check_ai_planning_access', { p_school_id: schoolId })
-      if (!error && data) {
-        moduleAccess.value = data
-      }
-    } catch (err) {
-      console.warn('Fallback al verificar acceso de IA:', err)
+    const schoolId = requireActiveSchoolId()
+    const { data, error } = await supabase.rpc('check_ai_planning_access', { p_school_id: schoolId })
+    if (error) throw error
+    if (!data || typeof data.module_enabled !== 'boolean') {
+      throw new Error('El servidor no devolvió un estado válido para el módulo de IA.')
     }
+    moduleAccess.value = data
+    return data
   }
 
   // Carga de Cursos, Asignaturas, Estudiantes y Planes
   const fetchInitialData = async () => {
-    const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
-    if (!schoolId) return
-
     loading.value = true
+    courses.value = []
+    subjects.value = []
+    lessonPlans.value = []
+    activeResources.value = []
+    activeSupportPlans.value = []
+    institutionConfig.value = {}
     try {
-      await checkAccess()
+      const schoolId = requireActiveSchoolId()
+      const access = await checkAccess()
+      if (!access.module_enabled) return
 
-      const [coursesRes, subjectsRes, plansRes, cfgRes, resRes, suppRes] = await Promise.all([
+      const [coursesRes, subjectsRes, plansRes, cfgRes, resRes, suppRes, aiSettingsRes] = await Promise.all([
         supabase.from('courses').select('id, name, level, parallel, academic_year').eq('school_id', schoolId).order('name'),
         supabase.from('subjects').select('id, name').eq('school_id', schoolId).order('name'),
         supabase.from('lesson_plans').select('*').eq('school_id', schoolId).order('created_at', { ascending: false }),
         supabase.from('system_config').select('key, value').eq('school_id', schoolId),
         supabase.from('lesson_plan_resources').select('*').eq('school_id', schoolId),
-        supabase.from('student_support_plans').select('*').eq('school_id', schoolId)
+        supabase.from('student_support_plans').select('*').eq('school_id', schoolId),
+        supabase.from('institution_ai_settings').select(AI_SETTINGS_COLUMNS).eq('school_id', schoolId).maybeSingle()
       ])
+
+      for (const result of [coursesRes, subjectsRes, plansRes, cfgRes, resRes, suppRes, aiSettingsRes]) {
+        if (result.error) throw result.error
+      }
+
+      moduleAccess.value = {
+        ...moduleAccess.value,
+        is_demo: aiSettingsRes.data?.mode === 'demo' || !aiSettingsRes.data?.has_api_key,
+      }
 
       courses.value = coursesRes.data || []
       subjects.value = subjectsRes.data || []
@@ -180,17 +202,12 @@ export function useAIPlanning() {
       if (cfgRes.data) {
         institutionConfig.value = Object.fromEntries(cfgRes.data.map(i => [i.key, i.value]))
       }
-
-      // Si no hay cursos en DB, precargar cursos demostrativos
-      if (courses.value.length === 0) {
-        courses.value = [
-          { id: 'demo-c1', name: '6to Año EGB - Paralelo A', level: 'basica_media', parallel: 'A' },
-          { id: 'demo-c2', name: '3ro Año EGB - Paralelo B', level: 'basica_elemental', parallel: 'B' },
-          { id: 'demo-c3', name: '10mo Año EGB - Paralelo A', level: 'basica_superior', parallel: 'A' },
-          { id: 'demo-c4', name: '1ro BGU - Paralelo A', level: 'bachillerato_general', parallel: 'A' }
-        ]
-      }
     } catch (err) {
+      moduleAccess.value = {
+        ...moduleAccess.value,
+        module_enabled: false,
+        ai_status: 'unavailable',
+      }
       toast.error('Error cargando planificaciones: ' + err.message)
     } finally {
       loading.value = false
@@ -199,33 +216,26 @@ export function useAIPlanning() {
 
   // Carga de estudiantes de un curso
   const fetchStudentsForCourse = async (courseId) => {
+    students.value = []
     if (!courseId) {
-      students.value = []
-      return
+      return true
     }
 
     try {
+      const schoolId = requireActiveSchoolId()
       const { data, error } = await supabase
         .from('students')
         .select('id, full_name, email, phone, is_active')
+        .eq('school_id', schoolId)
         .eq('course_id', courseId)
         .order('full_name')
 
-      if (!error && data && data.length > 0) {
-        students.value = data
-      } else {
-        // Fallback demostrativo contextualizado
-        students.value = [
-          { id: 'st-1', full_name: 'Alvarado Mendoza Carlos Andrés', status: 'normal' },
-          { id: 'st-2', full_name: 'Baque Zambrano Elena Sofía', status: 'refuerzo_requerido' },
-          { id: 'st-3', full_name: 'Cedeño Moreira Jonathan David', status: 'normal' },
-          { id: 'st-4', full_name: 'García Loor Doménica Valentina', status: 'adecuacion_activa' },
-          { id: 'st-5', full_name: 'Paredes Intriago Mateo Alexander', status: 'recuperacion_pendiente' },
-          { id: 'st-6', full_name: 'Vera Quimi Ariana Nicole', status: 'normal' }
-        ]
-      }
-    } catch {
-      students.value = []
+      if (error) throw error
+      students.value = data || []
+      return true
+    } catch (err) {
+      toast.error('No se pudieron cargar los estudiantes del curso: ' + err.message)
+      return false
     }
   }
 
@@ -252,8 +262,17 @@ export function useAIPlanning() {
 
   // Navegación del Asistente
   const openWizard = () => {
+    if (!moduleAccess.value.module_enabled || moduleAccess.value.is_limit_reached || moduleAccess.value.is_teacher_limit_reached) {
+      toast.error(moduleAccess.value.is_teacher_limit_reached
+        ? 'Alcanzaste el límite diario de generación asignado a docentes.'
+        : moduleAccess.value.is_limit_reached
+          ? 'La institución alcanzó el límite mensual de generación.'
+        : 'La planificación con IA no está habilitada para esta institución.')
+      return false
+    }
     wizardStep.value = 1
     showWizardModal.value = true
+    return true
   }
 
   const nextStep = () => {
@@ -266,27 +285,28 @@ export function useAIPlanning() {
 
   // Inicialización del Gateway de IA
   const createAIGateway = async () => {
-    const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
-    let apiKey = null
+    const schoolId = requireActiveSchoolId()
+    let hasApiKey = false
     let mode = 'managed'
     let provider = 'gemini'
     let configuredModel = 'auto'
 
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('institution_ai_settings')
-        .select('*')
+        .select(AI_SETTINGS_COLUMNS)
         .eq('school_id', schoolId)
         .maybeSingle()
 
+      if (error) throw error
       if (data) {
         mode = data.mode
         provider = data.provider || 'gemini'
         configuredModel = data.model_id || 'auto'
-        apiKey = data.encrypted_api_key
+        hasApiKey = !!data.has_api_key
       }
     } catch (e) {
-      console.warn('Usando gateway default:', e)
+      throw new Error('No se pudo cargar la configuración de IA. Inténtalo nuevamente.')
     }
 
     // Resolver modelo según calidad elegida por el docente
@@ -294,13 +314,13 @@ export function useAIPlanning() {
     const quality = wizardData.generation_quality || 'automatica'
 
     if (quality === 'economica') {
-      effectiveModel = provider === 'openai' ? 'gpt-5.6-luna' : 'gemini-2.5-flash-lite'
+      effectiveModel = provider === 'openai' ? 'gpt-5-nano' : 'gemini-2.5-flash-lite'
     } else if (quality === 'alta_calidad') {
-      effectiveModel = provider === 'openai' ? 'gpt-4o' : 'gemini-3.7-flash'
+      effectiveModel = provider === 'openai' ? 'gpt-5' : 'gemini-3.7-flash'
     } else {
       // Automática: Si está en 'auto', asignar modelo equilibrado por defecto
       if (effectiveModel === 'auto' || !effectiveModel) {
-        effectiveModel = provider === 'openai' ? 'gpt-5.6-luna' : 'gemini-2.5-flash'
+        effectiveModel = provider === 'openai' ? 'gpt-5-mini' : 'gemini-2.5-flash'
       }
     }
 
@@ -308,29 +328,33 @@ export function useAIPlanning() {
       schoolId,
       userId: authStore.user?.id,
       providerType: provider,
-      apiKey,
+      quality,
       model: effectiveModel,
-      isDemo: mode === 'demo' || !apiKey
+      isDemo: mode === 'demo' || !hasApiKey
     })
   }
 
   // Generación de la Planificación con IA
   const generatePlanWithAI = async () => {
+    if (generating.value) return false
+    if (!moduleAccess.value.module_enabled || moduleAccess.value.is_limit_reached || moduleAccess.value.is_teacher_limit_reached) {
+      toast.error('La generación de planificaciones no está disponible en este momento.')
+      return false
+    }
     generating.value = true
     try {
+      const schoolId = requireActiveSchoolId()
       let adaptedStudents = []
       if (wizardData.course_id) {
-        try {
-          const { data: stData } = await supabase
-            .from('students')
-            .select('id, full_name, has_adaptation, adaptation_grade, adaptation_details')
-            .eq('course_id', wizardData.course_id)
-            .eq('has_adaptation', true)
-          if (stData && stData.length > 0) {
-            adaptedStudents = stData
-          }
-        } catch (e) {
-          console.warn('Error fetching adapted students for plan:', e)
+        const { data: stData, error: studentError } = await supabase
+          .from('students')
+          .select('id, full_name, has_adaptation, adaptation_grade, adaptation_details')
+          .eq('school_id', schoolId)
+          .eq('course_id', wizardData.course_id)
+          .eq('has_adaptation', true)
+        if (studentError) throw studentError
+        if (stData && stData.length > 0) {
+          adaptedStudents = stData
         }
       }
 
@@ -355,13 +379,12 @@ export function useAIPlanning() {
         adaptedStudents
       })
 
-      const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
       const newPlanPayload = {
         school_id: schoolId,
-        teacher_id: authStore.user?.id || '00000000-0000-0000-0000-000000000000',
+        teacher_id: authStore.user?.id,
         course_id: wizardData.course_id || null,
         subject_id: wizardData.subject_id || null,
-        academic_year: '2025-2026',
+        academic_year: academicYearStore.selectedYearName || courses.value.find(course => course.id === wizardData.course_id)?.academic_year || null,
         title: aiResult.summary?.title || `Plan de Clase: ${wizardData.topic_title}`,
         regime: wizardData.regime,
         level: wizardData.level,
@@ -409,14 +432,16 @@ export function useAIPlanning() {
         ai_metadata: aiResult._meta || {}
       }
 
-      // Guardar en Supabase o en memoria local
+      // Mostrar como guardado únicamente después de confirmar la persistencia.
       const { data, error } = await supabase
         .from('lesson_plans')
         .insert(newPlanPayload)
         .select()
         .single()
 
-      const savedPlan = data || { id: `local-${Date.now()}`, ...newPlanPayload, created_at: new Date().toISOString() }
+      if (error) throw error
+      if (!data?.id) throw new Error('No se confirmó el guardado de la planificación.')
+      const savedPlan = data
 
       lessonPlans.value.unshift(savedPlan)
       activePlan.value = savedPlan
@@ -437,65 +462,71 @@ export function useAIPlanning() {
 
   // Guardar Planificación Actualizada (con historial de versiones)
   const saveActivePlan = async (silent = false) => {
-    if (!activePlan.value) return
+    if (!activePlan.value || saving.value) return false
     saving.value = true
 
     try {
-      const nextVersion = (activePlan.value.version || 1) + 1
+      const planBeingSaved = activePlan.value
+      const nextVersion = (planBeingSaved.version || 1) + 1
       const updatePayload = {
-        ...activePlan.value,
+        ...JSON.parse(JSON.stringify(planBeingSaved)),
         version: nextVersion,
         updated_at: new Date().toISOString()
       }
 
-      const { error } = await supabase
-        .from('lesson_plans')
-        .update(updatePayload)
-        .eq('id', activePlan.value.id)
+      const { data, error } = await supabase.rpc('save_lesson_plan_version', {
+        p_plan_id: planBeingSaved.id,
+        p_payload: updatePayload,
+        p_expected_version: planBeingSaved.version || 1,
+      })
 
-      if (!error) {
-        // Registrar versión en historial
-        await supabase.from('lesson_plan_versions').insert({
-          lesson_plan_id: activePlan.value.id,
-          version_number: nextVersion,
-          snapshot_content: activePlan.value,
-          change_summary: `Actualización manual de bloques pedagógicos (v${nextVersion})`,
-          created_by: authStore.user?.id
-        }).catch(() => {})
-
+      if (error) throw error
+      const confirmedPlan = data?.plan
+      if (!data?.success || data.history_saved !== true
+        || data.version !== nextVersion
+        || !confirmedPlan?.id
+        || confirmedPlan.id !== planBeingSaved.id
+        || confirmedPlan.version !== nextVersion) {
+        throw new Error('No se confirmó el guardado completo de la planificación y su historial.')
+      }
+      {
         // Si la planificación fue aprobada o marcada como lista, registrar diff como candidato a conocimiento
-        if (activePlan.value.status === 'aprobada' || activePlan.value.status === 'lista') {
+        if (confirmedPlan.status === 'aprobada' || confirmedPlan.status === 'lista') {
           try {
             const gateway = await createAIGateway()
             const studentNames = students.value.map(s => s.full_name).filter(Boolean)
             await gateway.submitFeedback({
               targetType: 'lesson_plan',
-              targetId: activePlan.value.id,
+              targetId: planBeingSaved.id,
               rating: 5,
               category: 'pedagogical',
               tags: ['aprobada_coordinacion', 'correccion_docente'],
               comment: `Plan v${nextVersion} consolidado y validado en aula.`,
               diffContent: {
                 version: nextVersion,
-                title: activePlan.value.title,
-                topic: activePlan.value.topic_title,
-                status: activePlan.value.status
+                title: confirmedPlan.title,
+                topic: confirmedPlan.topic_title,
+                status: confirmedPlan.status
               },
               knownStudentNames: studentNames
-            }).catch(() => {})
-          } catch {
-            // No bloquear el guardado si falla el feedback asíncrono
+            }).catch(error => {
+              console.warn('No se pudo registrar el aprendizaje de la planificación:', error)
+            })
+          } catch (error) {
+            console.warn('No se pudo preparar el aprendizaje de la planificación:', error)
           }
         }
       }
 
-      activePlan.value.version = nextVersion
-      const idx = lessonPlans.value.findIndex(p => p.id === activePlan.value.id)
-      if (idx !== -1) lessonPlans.value[idx] = { ...activePlan.value }
+      Object.assign(planBeingSaved, confirmedPlan)
+      const idx = lessonPlans.value.findIndex(p => p.id === planBeingSaved.id)
+      if (idx !== -1) lessonPlans.value[idx] = { ...planBeingSaved }
 
       if (!silent) toast.success('Planificación guardada con éxito (v' + nextVersion + ')')
+      return true
     } catch (err) {
       if (!silent) toast.error('Error guardando planificación: ' + err.message)
+      return false
     } finally {
       saving.value = false
     }
@@ -522,6 +553,7 @@ export function useAIPlanning() {
   const regenerateSingleSection = async (sectionKey) => {
     if (!activePlan.value) return
     generating.value = true
+    const previousContent = activePlan.value[sectionKey]
 
     try {
       const gateway = await createAIGateway()
@@ -536,7 +568,10 @@ export function useAIPlanning() {
       }, sectionKey)
 
       activePlan.value[sectionKey] = regeneratedContent
-      await saveActivePlan(true)
+      if (!await saveActivePlan(true)) {
+        activePlan.value[sectionKey] = previousContent
+        throw new Error('La sección se generó, pero no se pudo guardar. Reintenta el guardado.')
+      }
       toast.success(`Sección "${sectionKey}" regenerada exitosamente con IA.`)
     } catch (err) {
       toast.error('Error al regenerar sección: ' + err.message)
@@ -566,7 +601,7 @@ export function useAIPlanning() {
       const payload = {
         school_id: schoolId,
         lesson_plan_id: activePlan.value.id,
-        teacher_id: authStore.user?.id || '00000000-0000-0000-0000-000000000000',
+        teacher_id: authStore.user?.id,
         resource_type: resourceType,
         title: resourceResult.title || `Recurso: ${activePlan.value.topic_title}`,
         content: resourceResult,
@@ -581,7 +616,9 @@ export function useAIPlanning() {
         .select()
         .single()
 
-      const saved = data || { id: `res-${Date.now()}`, ...payload }
+      if (error) throw error
+      if (!data?.id) throw new Error('No se confirmó el guardado del recurso.')
+      const saved = data
       activeResources.value.unshift(saved)
       showResourceModal.value = false
       toast.success(`Recurso "${resourceResult.title || resourceType}" creado y asociado a la planificación.`)
@@ -614,12 +651,6 @@ export function useAIPlanning() {
 
       const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
       const payload = {
-        school_id: schoolId,
-        lesson_plan_id: activePlan.value.id,
-        student_id: studentId,
-        teacher_id: authStore.user?.id || '00000000-0000-0000-0000-000000000000',
-        course_id: activePlan.value.course_id,
-        subject_id: activePlan.value.subject_id,
         support_type: supportData.supportType || 'refuerzo',
         observed_difficulty: supportData.observedDifficulty,
         evidence_type: supportData.evidenceType,
@@ -628,18 +659,26 @@ export function useAIPlanning() {
         proposed_actions: proposalResult,
         status: 'aprobado_docente',
         target_date: supportData.targetDate || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
-        approved_at: new Date().toISOString(),
         observations: supportData.observations || null,
-        created_at: new Date().toISOString()
       }
 
-      const { data, error } = await supabase
-        .from('student_support_plans')
-        .insert(payload)
-        .select()
-        .single()
+      const { data, error } = await supabase.rpc('create_student_support_plan', {
+        p_school_id: schoolId,
+        p_student_id: studentId,
+        p_course_id: activePlan.value.course_id,
+        p_subject_id: activePlan.value.subject_id,
+        p_lesson_plan_id: activePlan.value.id,
+        p_payload: payload,
+      })
 
-      const saved = data || { id: `supp-${Date.now()}`, ...payload }
+      if (error) throw error
+      const saved = data?.plan
+      if (!data?.success || !saved?.id
+        || saved.school_id !== schoolId
+        || saved.student_id !== studentId
+        || saved.lesson_plan_id !== activePlan.value.id) {
+        throw new Error('No se confirmó el guardado del plan de apoyo.')
+      }
       activeSupportPlans.value.unshift(saved)
       showSupportModal.value = false
       toast.success(`Plan de apoyo pedagógico para ${targetStudent?.full_name || 'el estudiante'} registrado.`)
@@ -661,7 +700,9 @@ export function useAIPlanning() {
 
   const deletePlan = async (planId) => {
     try {
-      await supabase.from('lesson_plans').delete().eq('id', planId)
+      const { data, error } = await supabase.from('lesson_plans').delete().eq('id', planId).select('id')
+      if (error) throw error
+      if (!data?.some(plan => plan.id === planId)) throw new Error('No se confirmó la eliminación de la planificación.')
       lessonPlans.value = lessonPlans.value.filter(p => p.id !== planId)
       if (activePlan.value?.id === planId) {
         showViewerModal.value = false
@@ -685,8 +726,10 @@ export function useAIPlanning() {
       }
       delete copy.id
 
-      const { data } = await supabase.from('lesson_plans').insert(copy).select().single()
-      const saved = data || { id: `local-${Date.now()}`, ...copy }
+      const { data, error } = await supabase.from('lesson_plans').insert(copy).select().single()
+      if (error) throw error
+      if (!data?.id) throw new Error('No se confirmó la duplicación de la planificación.')
+      const saved = data
       lessonPlans.value.unshift(saved)
       toast.success('Planificación duplicada correctamente.')
     } catch (err) {

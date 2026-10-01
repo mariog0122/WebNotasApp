@@ -14,6 +14,14 @@ describe('authorization integration', () => {
     expect(authStore).not.toMatch(/const\s+userRole\s*=\s*authStore\.profile\?\.role\s*\|\|/)
   })
 
+  it('fails closed when the canonical authorization RPC is unavailable', () => {
+    const authStore = readAppFile('src/stores/auth.js')
+
+    expect(authStore).not.toContain('usando fallback de perfil')
+    expect(authStore).not.toMatch(/profile\.value\?\.role\s*===\s*['"]superadmin['"]/)
+    expect(authStore).not.toContain("platform_roles: ['platform_owner', 'platform_admin']")
+  })
+
   it('uses permission metadata in the router and sends denied users to 403', () => {
     const router = readAppFile('src/router/index.js')
 

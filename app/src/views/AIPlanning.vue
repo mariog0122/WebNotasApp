@@ -80,6 +80,13 @@ const {
   submitFeedback
 } = useAIPlanning()
 
+const canGeneratePlan = computed(() => (
+  moduleAccess.value.module_enabled &&
+  !moduleAccess.value.is_limit_reached &&
+  !moduleAccess.value.is_teacher_limit_reached &&
+  !loading.value
+))
+
 onMounted(() => {
   fetchInitialData()
 })
@@ -114,7 +121,7 @@ const statusBadgeClasses = {
           <div>
             <div class="flex items-center gap-2">
               <h1 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Planificación Curricular con IA</h1>
-              <span v-if="moduleAccess.mode === 'demo'" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+              <span v-if="moduleAccess.is_demo" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                 Modo Demostración
               </span>
             </div>
@@ -139,8 +146,9 @@ const statusBadgeClasses = {
 
         <button
           @click="openWizard"
+          :disabled="!canGeneratePlan"
           type="button"
-          class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-sm font-bold shadow-lg shadow-indigo-900/20 transition-all cursor-pointer"
+          class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-sm font-bold shadow-lg shadow-indigo-900/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus class="w-4 h-4" />
           Nueva Planificación con IA
@@ -150,10 +158,12 @@ const statusBadgeClasses = {
 
     <!-- Paywall / Notice Banner if module is disabled by Superadmin -->
     <PlanningPaywallBanner
-      v-if="!moduleAccess.module_enabled || moduleAccess.is_limit_reached"
-      :reason="moduleAccess.is_limit_reached ? 'limit_reached' : 'inactive'"
+      v-if="!moduleAccess.module_enabled || moduleAccess.is_limit_reached || moduleAccess.is_teacher_limit_reached"
+      :reason="moduleAccess.is_teacher_limit_reached ? 'daily_limit' : moduleAccess.is_limit_reached ? 'limit_reached' : 'inactive'"
       :monthly-quota="moduleAccess.monthly_quota"
       :monthly-usage="moduleAccess.monthly_usage"
+      :daily-limit="moduleAccess.teacher_daily_limit"
+      :daily-usage="moduleAccess.teacher_daily_usage"
       @open-settings="showSettingsModal = true"
       class="no-print"
     />
@@ -395,8 +405,9 @@ const statusBadgeClasses = {
           <div class="pt-2">
             <button
               @click="openWizard"
+              :disabled="!canGeneratePlan"
               type="button"
-              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/20 transition-all cursor-pointer"
+              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus class="w-4 h-4" />
               Crear Planificación con IA
@@ -416,7 +427,7 @@ const statusBadgeClasses = {
       :courses="courses"
       :subjects="subjects"
       :generating="generating"
-      :is-demo="moduleAccess.mode === 'demo'"
+      :is-demo="moduleAccess.is_demo"
       :on-next="nextStep"
       :on-prev="prevStep"
       :on-generate="generatePlanWithAI"

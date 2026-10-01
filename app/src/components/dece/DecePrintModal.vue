@@ -21,7 +21,7 @@
         <div class="flex items-center gap-2">
           <!-- Digital Sign Button -->
           <button
-            v-if="!alertData?.is_digitally_signed"
+            v-if="canSign && !alertData?.is_digitally_signed"
             type="button"
             @click="$emit('open-sign')"
             class="px-3 py-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 rounded-xl transition-colors flex items-center gap-1.5 shadow-sm"
@@ -29,9 +29,9 @@
             <ShieldCheck class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
             <span>Firmar con .p12</span>
           </button>
-          <div v-else class="px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-xl flex items-center gap-1.5">
+          <div v-else-if="alertData?.is_digitally_signed" class="px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 rounded-xl flex items-center gap-1.5">
             <CheckCircle2 class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Firmado Electrónicamente</span>
+            <span>Verificación pendiente</span>
           </div>
 
           <!-- Print Button -->
@@ -189,7 +189,7 @@
           </div>
 
           <!-- Section 4: Signatures and Certification -->
-          <div>
+          <div class="dece-signatures">
             <div class="bg-slate-100 px-3 py-1.5 border border-slate-300 rounded-t-lg font-bold text-[11px] uppercase tracking-wider text-slate-800 mb-0">
               4. Certificación y Firmas de Responsabilidad
             </div>
@@ -199,7 +199,7 @@
               <div v-if="alertData?.is_digitally_signed && alertData?.signature_data" class="p-3.5 border-2 border-dashed border-teal-600 bg-teal-50/50 rounded-xl space-y-1.5">
                 <div class="flex items-center gap-2 text-teal-900 font-black text-[11px] uppercase tracking-wider">
                   <ShieldCheck class="w-4 h-4 text-teal-600 shrink-0" />
-                  <span>Documento Firmado Electrónicamente (Ley de Comercio Electrónico y Firmas Digitales)</span>
+                  <span>Firma digital registrada · pendiente de verificación oficial</span>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-slate-700 pt-1">
                   <div><span class="font-bold text-slate-900">Firmante:</span> {{ alertData.signature_data.signer_name }}</div>
@@ -289,6 +289,10 @@ const props = defineProps({
   selectedAcademicYear: {
     type: String,
     default: ''
+  },
+  canSign: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -362,6 +366,16 @@ const formatFullDateTime = (isoString) => {
     margin: 0 !important;
     border: none !important;
     box-shadow: none !important;
+  }
+
+  .dece-signatures {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .dece-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   @page {

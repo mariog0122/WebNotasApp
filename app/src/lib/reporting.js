@@ -123,16 +123,23 @@ export const computeFinalAnnual = (p, s) => {
 export const computeFinalObservation = (p, s, finalAnnual) => {
   if (p === null || p === undefined || isNaN(p)) return ''
   const sVal = s === null || s === undefined || s === '' || isNaN(s) ? null : parseFloat(s)
-  if (p >= 7 && sVal !== null) return 'DEJE EN BLANCO EL CASILLERO SUPLETORIO'
-  if (p < 5 && sVal !== null) return 'NO PUEDE RENDIR SUPLETORIO;REPRUEBA EL GRADO'
-  if (finalAnnual !== null && finalAnnual < 7) return 'NO PROMOVIDO'
-  if (finalAnnual !== null && finalAnnual >= 7) return 'PROMOVIDO'
-  return ''
+  if (p >= 7) {
+    return sVal !== null ? 'DEJE EN BLANCO EL CASILLERO SUPLETORIO' : 'PROMOVIDO'
+  }
+  if (p < 4.01) {
+    return 'NO PUEDE RENDIR SUPLETORIO;REPRUEBA EL GRADO'
+  }
+  if (sVal === null) {
+    return 'SUPLETORIO'
+  }
+  if (finalAnnual !== null && finalAnnual >= 7) {
+    return 'PROMOVIDO'
+  }
+  return 'NO PROMOVIDO'
 }
 
 export const computeTrimesterObservation = (p) => {
   if (p === null || p === undefined || isNaN(p)) return ''
   if (p >= 7) return 'APROBADO'
-  if (p >= 5) return 'SUPLETORIO'
-  return 'REPROBADO'
+  return 'REQUIERE REFUERZO'
 }

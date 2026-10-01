@@ -25,6 +25,7 @@ const { theme, toggleTheme } = useTheme()
 
 const institutionName = ref('')
 const institutionLogoUrl = ref('')
+const intelligenceEnabled = ref(false)
 const isCollapsed = computed({
   get: () => uiStore.isSidebarCollapsed,
   set: (val) => { uiStore.isSidebarCollapsed = val }
@@ -50,20 +51,26 @@ const navLinks = computed(() => [
     { name: 'Estudiantes', subtitle: 'Registro estudiantil', path: '/students', color: '#06B6D4', iconType: 'students' },
     { name: 'Familias', subtitle: 'Representantes legales', path: '/families', color: '#EC4899', iconType: 'families' },
   ] : []),
-  ...(can('attendance.read') || can('attendance.manage') || can('grades.read') || isAdmin.value ? [
-    { name: 'Asistencia', subtitle: 'Control de asistencia', path: '/attendance', color: '#10B981', iconType: 'attendance' }
+  ...(can('attendance.read') ? [
+     { name: 'Asistencia Escolar', subtitle: 'Control de asistencia', path: '/attendance', color: '#10B981', iconType: 'attendance' }
   ] : []),
   ...(can('grades.read') ? [{ name: 'Calificaciones', subtitle: 'Notas y evaluaciones', path: '/grades', color: '#F97316', iconType: 'grades' }] : []),
   ...(can('reports.read') ? [
-    { name: 'Reportes', subtitle: 'Informes y estadísticas', path: '/reports', color: '#3B82F6', iconType: 'reports' }
+     { name: 'Reportes Académicos', subtitle: 'Informes y estadísticas', path: '/reports', color: '#3B82F6', iconType: 'reports' },
+     { name: 'Informes Docentes', subtitle: 'Documentos del profesor', path: '/teacher-reports', color: '#14B8A6', iconType: 'teacher-reports' }
   ] : []),
-  ...(can('grades.read') || can('reports.read') || isAdmin.value ? [
-    { name: 'Informes Docentes', subtitle: 'Documentos del profesor', path: '/teacher-reports', color: '#14B8A6', iconType: 'teacher-reports' },
-    { name: 'Planificación IA', subtitle: 'Asistente inteligente', path: '/planificacion-ia', color: '#A855F7', iconType: 'ai-planning' }
+  ...(can('grades.read') && intelligenceEnabled.value ? [
+     { name: 'Panel Docente', subtitle: 'Inteligencia y brechas', path: '/intelligence/cockpit', color: '#6366F1', iconType: 'intelligence' }
   ] : []),
-  ...(can('attendance.read') ? [{ name: 'Alertas DECE', subtitle: 'Bienestar estudiantil', path: '/alerts', color: '#EF4444', iconType: 'alerts' }] : []),
+  ...(can('reports.read') && intelligenceEnabled.value ? [
+     { name: 'Indicadores Institucionales', subtitle: 'Crecimiento directivo', path: '/intelligence/impacto', color: '#4F46E5', iconType: 'impact' }
+  ] : []),
+  ...(can('grades.read') ? [
+     { name: 'Planificación Curricular IA', subtitle: 'Asistente inteligente', path: '/planificacion-ia', color: '#A855F7', iconType: 'ai-planning' }
+  ] : []),
+   ...(can('wellbeing.read') ? [{ name: 'Bienestar Estudiantil', subtitle: 'Alertas y acompañamiento (DECE)', path: '/alerts', color: '#EF4444', iconType: 'alerts' }] : []),
   { name: 'Mi Perfil', subtitle: 'Cuenta y preferencias', path: '/profile', color: '#64748B', iconType: 'profile' },
-  ...(isPlatformAdmin.value ? [{ name: 'Súper Admin', subtitle: 'Administración global', path: '/superadmin', color: '#DC2626', iconType: 'superadmin' }] : [])
+   ...(isPlatformAdmin.value ? [{ name: 'Administración Global', subtitle: 'Gestión de la plataforma', path: '/superadmin', color: '#DC2626', iconType: 'superadmin' }] : [])
 ])
 
 const handleLogout = async () => {
@@ -91,6 +98,18 @@ const fetchInstitutionConfig = async () => {
   ).catch(() => '')
 }
 
+let intelligenceRequestVersion = 0
+const refreshIntelligenceAvailability = async () => {
+  const requestVersion = ++intelligenceRequestVersion
+  intelligenceEnabled.value = false
+  const schoolId = authStore.activeSchoolId
+  if (!schoolId || (!can('grades.read') && !can('reports.read'))) return
+
+  const { intelligenceFeatureService } = await import('../modules/intelligence/services/intelligenceFeatureService')
+  const enabled = await intelligenceFeatureService.checkModuleEnabled({ schoolId })
+  if (requestVersion === intelligenceRequestVersion) intelligenceEnabled.value = enabled
+}
+
 const onLogoError = async () => {
   if (institutionLogoUrl.value) {
     const path = normalizeStoragePath(institutionLogoUrl.value, 'institution-assets')
@@ -107,6 +126,7 @@ const onLogoError = async () => {
 
 onMounted(() => {
   fetchInstitutionConfig()
+  refreshIntelligenceAvailability()
   window.addEventListener('institution-config-updated', fetchInstitutionConfig)
 })
 
@@ -116,6 +136,7 @@ onUnmounted(() => {
 
 watch(() => authStore.activeSchoolId, () => {
   fetchInstitutionConfig()
+  refreshIntelligenceAvailability()
 })
 
 const toggleSidebar = () => {
@@ -168,6 +189,7 @@ const toggleSidebar = () => {
         v-for="link in navLinks" 
         :key="link.path"
         :to="link.path"
+        :aria-label="link.name"
         @click="uiStore.isMobileMenuOpen = false"
         :class="['sidebar-nav-item', { 'sidebar-nav-item--active': isActive(link.path) }]"
         :style="isActive(link.path) ? { '--item-active-color': link.color } : {}"
@@ -240,6 +262,16 @@ const toggleSidebar = () => {
             <line x1="8" y1="13" x2="16" y2="13"/>
             <line x1="8" y1="17" x2="16" y2="17"/>
             <circle cx="12" cy="9.5" r="1.5" stroke-width="1.5"/>
+          </svg>
+          <!-- Intelligence / Cockpit -->
+          <svg v-else-if="link.iconType === 'intelligence'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-icon-svg">
+            <circle cx="12" cy="12" r="10"/>
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+          </svg>
+          <!-- Impact Analytics -->
+          <svg v-else-if="link.iconType === 'impact'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-icon-svg">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+            <polyline points="17 6 23 6 23 12"/>
           </svg>
           <!-- AI Planning -->
           <svg v-else-if="link.iconType === 'ai-planning'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-icon-svg">

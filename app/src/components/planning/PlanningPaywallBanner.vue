@@ -1,16 +1,24 @@
 <script setup>
-import { Sparkles, ShieldAlert, CreditCard, Lock, CheckCircle2, ArrowRight } from 'lucide-vue-next'
+import { Sparkles, CreditCard, CheckCircle2, ArrowRight } from 'lucide-vue-next'
 
 const props = defineProps({
   reason: {
     type: String,
-    default: 'inactive' // 'inactive' | 'limit_reached'
+    default: 'inactive' // 'inactive' | 'limit_reached' | 'daily_limit'
   },
   monthlyQuota: {
     type: Number,
     default: 200
   },
   monthlyUsage: {
+    type: Number,
+    default: 0
+  },
+  dailyLimit: {
+    type: Number,
+    default: 0
+  },
+  dailyUsage: {
     type: Number,
     default: 0
   }
@@ -32,14 +40,19 @@ const emit = defineEmits(['open-settings'])
       </div>
 
       <h2 class="text-3xl font-extrabold text-white tracking-tight">
-        {{ reason === 'limit_reached' ? 'Límite Mensual de Generaciones Alcanzado' : 'Módulo de Planificación IA no Activo' }}
+        {{ reason === 'daily_limit'
+          ? 'Límite Diario Docente Alcanzado'
+          : reason === 'limit_reached'
+            ? 'Límite Mensual de Generaciones Alcanzado'
+            : 'Módulo de Planificación IA no Activo' }}
       </h2>
 
       <p class="text-slate-300 text-sm md:text-base leading-relaxed">
-        {{ reason === 'limit_reached'
-          ? `Tu institución ha consumido ${monthlyUsage} de ${monthlyQuota} generaciones este mes. Puedes solicitar una ampliación de cuota o conectar una clave propia de Gemini.`
-          : 'Este módulo requiere que el Superadministrador de la plataforma active la suscripción tras el registro y verificación del pago correspondiente.'
-        }}
+        {{ reason === 'daily_limit'
+          ? `Has utilizado ${dailyUsage} de ${dailyLimit} generaciones disponibles hoy. El acceso se restablece al iniciar el siguiente día institucional.`
+          : reason === 'limit_reached'
+            ? `Tu institución ha consumido ${monthlyUsage} de ${monthlyQuota} generaciones este mes. Puedes solicitar una ampliación de cuota o conectar una clave propia de Gemini.`
+            : 'Este módulo requiere que el Superadministrador de la plataforma active la suscripción tras el registro y verificación del pago correspondiente.' }}
       </p>
 
       <!-- Feature Highlights -->

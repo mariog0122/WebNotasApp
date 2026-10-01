@@ -36,6 +36,10 @@ const props = defineProps({
     type: String,
     default: ''
   },
+  subjectId: {
+    type: String,
+    default: ''
+  },
   onClose: {
     type: Function,
     required: true
@@ -48,6 +52,8 @@ const generating = ref(false)
 const generatedContent = ref(null)
 const copySuccess = ref(false)
 const saveSuccess = ref(false)
+const saving = ref(false)
+const saveError = ref('')
 
 const studentHasAdaptation = computed(() => !!props.student?.has_adaptation)
 const adaptationGradeLabel = computed(() => {
@@ -140,21 +146,49 @@ const sendWhatsApp = () => {
 }
 
 const saveToDatabase = async () => {
-  if (!generatedContent.value) return
+  if (!generatedContent.value || saving.value) return
+  const schoolId = props.student.school_id
+  const courseId = props.student.course_id || null
+  if (!schoolId) {
+    saveError.value = 'No se pudo identificar la institución del estudiante.'
+    return
+  }
+  saving.value = true
+  saveError.value = ''
+  saveSuccess.value = false
   try {
-    const { error } = await supabase.from('student_support_plans').insert({
-      student_id: props.student.id,
-      school_id: props.student.school_id,
-      subject_name: props.subjectName,
-      status: 'propuesta',
-      content: generatedContent.value
+    const weeklyPlan = generatedContent.value.data?.weekly_plan || []
+    const requestedStatus = 'propuesta'
+    const { data, error } = await supabase.rpc('create_student_support_plan', {
+      p_school_id: schoolId,
+      p_student_id: props.student.id,
+      p_course_id: courseId,
+      p_subject_id: props.subjectId || null,
+      p_lesson_plan_id: null,
+      p_payload: {
+        support_type: recoveryType.value === 'cuestionario_recuperacion' ? 'recuperacion' : 'refuerzo',
+        observed_difficulty: generatedContent.value.data?.diagnostic || topicDescription.value || `Refuerzo requerido en ${props.subjectName}`,
+        evidence_type: 'calificacion',
+        intensity: 'moderada',
+        duration_weeks: Math.max(1, Math.min(52, weeklyPlan.length || 2)),
+        proposed_actions: generatedContent.value,
+        status: requestedStatus,
+      },
     })
-    if (!error) {
-      saveSuccess.value = true
-      setTimeout(() => { saveSuccess.value = false }, 2500)
+    if (error) throw error
+    if (!data?.success || !data.plan?.id
+      || data.plan.school_id !== schoolId
+      || data.plan.student_id !== props.student.id
+      || data.plan.status !== requestedStatus) {
+      throw new Error('La base de datos no confirmó el plan de apoyo.')
     }
+    saveSuccess.value = true
+    setTimeout(() => { saveSuccess.value = false }, 2500)
   } catch (e) {
     console.warn('Error saving recovery plan:', e)
+    saveError.value = `No se pudo guardar el plan: ${e.message || 'verifica la conexión y los permisos.'}`
+  } finally {
+    saving.value = false
   }
 }
 </script>
@@ -300,6 +334,14 @@ const saveToDatabase = async () => {
             </div>
           </div>
 
+          <div v-if="saveError" class="p-3 rounded-xl border border-rose-200 bg-rose-50 text-xs text-rose-700 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300">
+            {{ saveError }}
+          </div>
+
+          <div v-if="saveSuccess" class="p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-xs text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+            Plan de apoyo guardado correctamente.
+          </div>
+
           <!-- Tarjeta de Contenido -->
           <div class="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-3 text-xs leading-relaxed">
             <div>
@@ -330,6 +372,17 @@ const saveToDatabase = async () => {
 
       <!-- Footer -->
       <div class="px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2 bg-slate-50 dark:bg-slate-900/80">
+        <button
+          v-if="generatedContent"
+          @click="saveToDatabase"
+          :disabled="saving || saveSuccess"
+          type="button"
+          class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+        >
+          <Loader2 v-if="saving" class="w-3.5 h-3.5 animate-spin" />
+          <Save v-else class="w-3.5 h-3.5" />
+          {{ saving ? 'Guardando…' : saveSuccess ? 'Guardado' : 'Guardar plan' }}
+        </button>
         <button
           @click="onClose"
           type="button"

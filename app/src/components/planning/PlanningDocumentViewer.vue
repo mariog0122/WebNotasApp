@@ -112,9 +112,8 @@ const onOpenFeedback = (data) => {
 }
 
 const onDirectFeedback = async (payload) => {
-  if (props.onSubmitFeedback) {
-    await props.onSubmitFeedback(payload)
-  }
+  if (!props.onSubmitFeedback) throw new Error('La retroalimentación no está disponible.')
+  return await props.onSubmitFeedback(payload)
 }
 
 const tabs = [
@@ -170,7 +169,7 @@ const statusColors = {
           <FeedbackActionButtons
             target-type="lesson_plan"
             :target-id="plan.id"
-            @feedback-submitted="onDirectFeedback"
+            :on-submit-feedback="onDirectFeedback"
             @open-modal="onOpenFeedback"
           />
 
@@ -579,6 +578,7 @@ const statusColors = {
 
     <!-- Modal de Retroalimentación y Sugerencias -->
     <PlanningFeedbackModal
+      v-if="showFeedbackModal"
       :show="showFeedbackModal"
       :target-type="feedbackTarget.targetType"
       :target-id="feedbackTarget.targetId"
@@ -587,7 +587,7 @@ const statusColors = {
       :mode="feedbackTarget.mode"
       :known-student-names="students.map(s => s.full_name).filter(Boolean)"
       @close="showFeedbackModal = false"
-      @submit="onDirectFeedback"
+      :on-submit-feedback="onDirectFeedback"
     />
   </div>
 </template>

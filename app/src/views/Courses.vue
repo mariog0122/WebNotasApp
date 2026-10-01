@@ -8,17 +8,22 @@ import { translateError } from '../lib/errorDictionary'
 import { downloadStudentsTemplate } from '../lib/exportUtils'
 import { useAuthStore } from '../stores/auth'
 import { useAcademicYearStore } from '../stores/academicYear'
-import { canManageAcademicYearLock } from '../lib/permissions'
+import { canCreateAcademicYear, canManageAcademicYearLock, isInstitutionAdmin } from '../lib/permissions'
 import { toast } from 'vue-sonner'
 import SkeletonTable from '../components/ui/SkeletonTable.vue'
 import AcademicYearBanner from '../components/ui/AcademicYearBanner.vue'
+import CourseFormModal from '../components/courses/CourseFormModal.vue'
+import CourseSubjectManagerModal from '../components/courses/CourseSubjectManagerModal.vue'
+import CourseCopyModal from '../components/courses/CourseCopyModal.vue'
 import {
     validateStudentForm,
     isStudentComplete,
-    getFileExt,
-    uploadPhoto,
     createPhotoPreview
 } from '../lib/studentUtils'
+import { saveStudentRecord } from '../lib/studentPersistence'
+
+// Etiqueta por defecto para asignación de materias en cursos: -- Sin docente asignado --
+const DEFAULT_TEACHER_LABEL = '-- Sin docente asignado --'
 
 const queryClient = useQueryClient()
 const authStore = useAuthStore()
@@ -27,6 +32,8 @@ const { isOnline } = useNetwork()
 
 const isYearLocked = computed(() => academicYearStore.isLocked)
 const canManageLock = computed(() => canManageAcademicYearLock(authStore.accessContext, authStore.profile))
+const isAdmin = computed(() => isInstitutionAdmin(authStore.accessContext))
+const canCreateYear = computed(() => canCreateAcademicYear(authStore.accessContext, authStore.profile))
 
 // Queries handled by composables, definitions below
 const showModal = ref(false)
@@ -88,6 +95,8 @@ const newYearName = ref('')
 const copyFromYear = ref(null)
 const copyingCourses = ref(false)
 const copyResult = ref(null)
+const creatingYear = ref(false)
+const newYearError = ref('')
 
 const LEVEL_OPTIONS = [
   { value: 'INICIAL', label: 'Inicial' },
@@ -136,16 +145,22 @@ const onAcademicYearChange = async () => {
 }
 
 const openNewYearModal = () => {
+  if (!canCreateYear.value) {
+    toast.error('No tienes permiso para crear años lectivos.')
+    return
+  }
   const currentYear = new Date().getFullYear()
   newYearName.value = `${currentYear}-${currentYear + 1}`
   showNewYearModal.value = true
   copyResult.value = null
+  newYearError.value = ''
 }
 
 const closeNewYearModal = () => {
   showNewYearModal.value = false
   newYearName.value = ''
   copyResult.value = null
+  newYearError.value = ''
 }
 
 const createNewAcademicYear = async () => {
@@ -154,13 +169,15 @@ const createNewAcademicYear = async () => {
     return
   }
   if (!newYearName.value?.trim()) {
-    toast.error('Ingresa el nombre del año lectivo.')
+    newYearError.value = 'Ingresa el nombre del año lectivo.'
     return
   }
 
   const nameStr = newYearName.value.trim()
 
   try {
+    creatingYear.value = true
+    newYearError.value = ''
     const newYear = await academicYearStore.createAcademicYear(nameStr)
     form.value.academic_year = nameStr
     closeNewYearModal()
@@ -169,7 +186,10 @@ const createNewAcademicYear = async () => {
     copyFromYear.value = academicYears.value.find(y => y.name !== nameStr)?.id || null
     await fetchCourses()
   } catch (error) {
-    toast.error('Error creando año lectivo', { description: translateError(error) })
+    newYearError.value = translateError(error)
+    toast.error('Error creando año lectivo', { description: newYearError.value })
+  } finally {
+    creatingYear.value = false
   }
 }
 
@@ -297,16 +317,20 @@ const deleteSelectedCourses = async () => {
   confirmModal.value = {
     show: true,
     title: 'Eliminar Seleccionados',
-    message: '¿Eliminar cursos seleccionados? Esta accion no se puede deshacer.',
+    message: '¿Eliminar cursos seleccionados? Esta acción no se puede deshacer.',
     processing: false,
     action: async () => {
       const ids = Array.from(selectedCourseIds.value)
       try {
-        const chunkSize = 50
-        for (let i = 0; i < ids.length; i += chunkSize) {
-          const chunk = ids.slice(i, i + chunkSize)
-          const { error } = await supabase.from('courses').delete().in('id', chunk)
-          if (error) throw error
+        const schoolId = authStore.activeSchoolId
+        if (!schoolId) throw new Error('No hay una institución activa.')
+        const { data, error } = await supabase.rpc('delete_courses_batch', {
+          p_school_id: schoolId,
+          p_course_ids: ids
+        })
+        if (error) throw error
+        if (!data?.success || Number(data.deleted_count) !== ids.length) {
+          throw new Error('La base de datos no confirmó la eliminación completa de los cursos.')
         }
         selectedCourseIds.value = new Set()
         await fetchCourses()
@@ -330,18 +354,28 @@ const deleteAllCourses = async () => {
     })
     return
   }
+  const ids = courses.value.map(course => course.id)
+  if (ids.length === 0) {
+    toast.info('No hay cursos para eliminar en el año lectivo seleccionado.')
+    return
+  }
   confirmModal.value = {
     show: true,
     title: 'Eliminar Todos',
-    message: '¿Eliminar TODOS los cursos? Esta accion no se puede deshacer.',
+    message: '¿Eliminar TODOS los cursos del año lectivo seleccionado? Esta acción no se puede deshacer.',
     processing: false,
     action: async () => {
       try {
-        const { error } = await supabase
-          .from('courses')
-          .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000')
+        const schoolId = authStore.activeSchoolId
+        if (!schoolId) throw new Error('No hay una institución activa.')
+        const { data, error } = await supabase.rpc('delete_courses_batch', {
+          p_school_id: schoolId,
+          p_course_ids: ids
+        })
         if (error) throw error
+        if (!data?.success || Number(data.deleted_count) !== ids.length) {
+          throw new Error('La base de datos no confirmó la eliminación completa de los cursos.')
+        }
         selectedCourseIds.value = new Set()
         await fetchCourses()
       } catch (error) {
@@ -361,9 +395,17 @@ const fetchCourseStudents = async (courseId) => {
   if (!courseId) return
   studentsLoading.value = true
   studentsMessage.value = ''
+  const schoolId = authStore.activeSchoolId
+  if (!schoolId) {
+    courseStudents.value = []
+    studentsMessage.value = 'No hay una institución activa seleccionada.'
+    studentsLoading.value = false
+    return
+  }
   const { data, error } = await supabase
     .from('students')
     .select('id, full_name, course_id, student_cedula, student_birthdate, student_phone, student_address, representative_name, representative_cedula, representative_phone, representative_alt_phone, student_photo_url, representative_photo_url, created_at')
+    .eq('school_id', schoolId)
     .eq('course_id', courseId)
     .order('full_name')
   if (error) {
@@ -424,10 +466,6 @@ const validateStudentFormLocal = () => {
   const errors = validateStudentForm(studentForm.value)
   studentValidationErrors.value = errors
   return errors.length === 0
-}
-
-const uploadPhotoToStorage = async (file, path) => {
-  return await uploadPhoto(supabase, file, path)
 }
 
 const onStudentPhotoChange = (event) => {
@@ -505,7 +543,6 @@ const saveStudent = async () => {
     return
   }
   try {
-    let studentId = editingStudent.value?.id || null
     const basePayload = {
       full_name: studentForm.value.full_name,
       course_id: studentForm.value.course_id,
@@ -520,42 +557,14 @@ const saveStudent = async () => {
       student_photo_url: studentForm.value.student_photo_url,
       representative_photo_url: studentForm.value.representative_photo_url
     }
-
-    if (editingStudent.value) {
-      const { error } = await supabase
-        .from('students')
-        .update(basePayload)
-        .eq('id', editingStudent.value.id)
-      if (error) throw error
-    } else {
-      const { data, error } = await supabase
-        .from('students')
-        .insert(basePayload)
-        .select('id')
-        .single()
-      if (error) throw error
-      studentId = data.id
-    }
-
-    const uploads = {}
-    if (studentPhotoFile.value) {
-      const ext = getFileExt(studentPhotoFile.value)
-      const path = `students/${studentId}/student-${Date.now()}.${ext}`
-      uploads.student_photo_url = await uploadPhotoToStorage(studentPhotoFile.value, path)
-    }
-    if (representativePhotoFile.value) {
-      const ext = getFileExt(representativePhotoFile.value)
-      const path = `students/${studentId}/representative-${Date.now()}.${ext}`
-      uploads.representative_photo_url = await uploadPhotoToStorage(representativePhotoFile.value, path)
-    }
-
-    if (Object.keys(uploads).length > 0) {
-      const { error } = await supabase
-        .from('students')
-        .update(uploads)
-        .eq('id', studentId)
-      if (error) throw error
-    }
+    await saveStudentRecord({
+      client: supabase,
+      schoolId: authStore.activeSchoolId,
+      studentId: editingStudent.value?.id || null,
+      payload: basePayload,
+      studentPhotoFile: studentPhotoFile.value,
+      representativePhotoFile: representativePhotoFile.value,
+    })
 
     await fetchCourseStudents(managingStudentsCourse.value.id)
     closeStudentModal()
@@ -568,11 +577,17 @@ const saveStudent = async () => {
 const deleteStudent = async (id) => {
   if (!confirm('Estas seguro de eliminar este estudiante? Se borraran sus calificaciones.')) return
   try {
-    const { error } = await supabase
-      .from('students')
-      .delete()
-      .eq('id', id)
+    const schoolId = authStore.activeSchoolId
+    if (!schoolId) throw new Error('No hay una institución activa.')
+    const { data, error } = await supabase.rpc('delete_students_batch', {
+      p_school_id: schoolId,
+      p_student_ids: [id],
+      p_delete_all: false,
+    })
     if (error) throw error
+    if (!data?.success || Number(data.deleted_count) !== 1) {
+      throw new Error('La base de datos no confirmó la eliminación del estudiante.')
+    }
     await fetchCourseStudents(managingStudentsCourse.value.id)
   } catch (error) {
     studentsMessage.value = 'Error eliminando estudiante: ' + error.message
@@ -830,97 +845,24 @@ const importStudentsFromExcel = async () => {
 
   try {
     const courseId = managingStudentsCourse.value.id
-    let sId = authStore.activeSchoolId || authStore.profile?.school_id || managingStudentsCourse.value?.school_id
-    if (!sId) {
-      const { data: cRow } = await supabase.from('courses').select('school_id').eq('id', courseId).single()
-      if (cRow?.school_id) sId = cRow.school_id
-    }
+    if (!authStore.activeSchoolId) throw new Error('No hay una institución activa.')
     const entries = importPreview.value
 
-    // 1. Try atomic transactional RPC first
     const { data: rpcRes, error: rpcErr } = await supabase.rpc('import_students_batch', {
       p_course_id: courseId,
       p_entries: entries
     })
-
-    if (!rpcErr && rpcRes) {
-      await fetchCourseStudents(courseId)
-      await queryClient.invalidateQueries({ queryKey: ['students'] })
-      const count = rpcRes.inserted_count || entries.length
-      importMessage.value = `¡Éxito! ${count} estudiantes procesados correctamente.`
-      toast.success('Importación exitosa', { description: `Se importaron ${count} estudiantes.` })
-      setTimeout(() => {
-        importPreview.value = []
-        importFile.value = null
-      }, 1500)
-      return
-    }
-
-    // 2. Fallback to direct batch upsert
-    const cedulas = entries.map(e => e.student_cedula).filter(Boolean)
-    let existingMap = new Map()
-
-    if (cedulas.length > 0) {
-      let checkQ = supabase
-        .from('students')
-        .select('id, student_cedula')
-        .eq('course_id', courseId)
-        .in('student_cedula', cedulas)
-      if (sId) checkQ = checkQ.eq('school_id', sId)
-      const { data, error } = await checkQ
-      if (error) throw error
-      ;(data || []).forEach(s => {
-        existingMap.set(s.student_cedula, s.id)
-      })
-    }
-
-    const toInsert = []
-    const toUpdate = []
-    entries.forEach(e => {
-      if (e.student_cedula && existingMap.has(e.student_cedula)) {
-        toUpdate.push({
-          id: existingMap.get(e.student_cedula),
-          full_name: e.full_name,
-          student_birthdate: e.student_birthdate,
-          student_phone: e.student_phone,
-          student_address: e.student_address,
-          representative_name: e.representative_name,
-          representative_cedula: e.representative_cedula,
-          representative_phone: e.representative_phone,
-          representative_alt_phone: e.representative_alt_phone
-        })
-      } else {
-        toInsert.push({
-          full_name: e.full_name,
-          student_cedula: e.student_cedula,
-          student_birthdate: e.student_birthdate,
-          student_phone: e.student_phone,
-          student_address: e.student_address,
-          representative_name: e.representative_name,
-          representative_cedula: e.representative_cedula,
-          representative_phone: e.representative_phone,
-          representative_alt_phone: e.representative_alt_phone,
-          course_id: courseId,
-          school_id: sId
-        })
-      }
-    })
-
-    if (toInsert.length > 0) {
-      const { error } = await supabase.from('students').insert(toInsert)
-      if (error) throw error
-    }
-
-    for (const upd of toUpdate) {
-      const { id, ...rest } = upd
-      const { error } = await supabase.from('students').update(rest).eq('id', id)
-      if (error) throw error
+    if (rpcErr) throw rpcErr
+    if (!rpcRes?.success || Number(rpcRes.total) !== entries.length) {
+      throw new Error('La base de datos no confirmó la importación completa del archivo.')
     }
 
     await fetchCourseStudents(courseId)
     await queryClient.invalidateQueries({ queryKey: ['students'] })
-    importMessage.value = `¡Éxito! ${toInsert.length} estudiantes nuevos creados y ${toUpdate.length} actualizados.`
-    toast.success('Importación completada', { description: `${toInsert.length} creados, ${toUpdate.length} actualizados.` })
+    const inserted = Number(rpcRes.inserted) || 0
+    const updated = Number(rpcRes.updated) || 0
+    importMessage.value = `¡Éxito! ${inserted} estudiantes creados y ${updated} actualizados.`
+    toast.success('Importación completada', { description: `${inserted} creados, ${updated} actualizados.` })
     setTimeout(() => {
       importPreview.value = []
       importFile.value = null
@@ -1012,63 +954,38 @@ const saveCourse = async () => {
 
   try {
     const sId = authStore.activeSchoolId || authStore.profile?.school_id
-
-    // 2. Verificación defensiva en base de datos
-    let dupQuery = supabase
-      .from('courses')
-      .select('id, name')
-      .ilike('name', trimmedName)
-      .eq('academic_year', targetAcademicYear)
-
-    if (sId) {
-      dupQuery = dupQuery.eq('school_id', sId)
-    }
-    if (editingCourse.value) {
-      dupQuery = dupQuery.neq('id', editingCourse.value.id)
-    }
-
-    const { data: duplicateDb, error: dupCheckErr } = await dupQuery
-    if (dupCheckErr) throw dupCheckErr
-
-    if (duplicateDb && duplicateDb.length > 0) {
-      const friendlyMsg = `Ya existe un curso registrado con el nombre "${duplicateDb[0].name}" en el año lectivo ${targetAcademicYear}.`
-      courseSaveError.value = friendlyMsg
-      toast.error('Curso ya existente', { description: friendlyMsg })
-      return
+    if (!sId) throw new Error('No hay una institución activa seleccionada.')
+    const { data, error } = await supabase.rpc('save_course_record', {
+      p_school_id: sId,
+      p_course_id: editingCourse.value?.id || null,
+      p_payload: {
+        name: trimmedName,
+        academic_year: targetAcademicYear,
+        level: form.value.level,
+        track: form.value.track,
+      },
+    })
+    if (error) throw error
+    if (
+      !data?.success
+      || !data.course?.id
+      || data.course.school_id !== sId
+      || data.course.name !== trimmedName
+      || data.course.academic_year !== targetAcademicYear
+    ) {
+      throw new Error('El servidor no confirmó el guardado del curso.')
     }
 
     if (editingCourse.value) {
-      const { error } = await supabase
-        .from('courses')
-        .update({
-          name: trimmedName,
-          academic_year: form.value.academic_year,
-          level: form.value.level,
-          track: form.value.track
-        })
-        .eq('id', editingCourse.value.id)
-      if (error) throw error
       toast.success('Curso actualizado correctamente.')
       await fetchCourses()
       closeModal()
     } else {
-      const { data, error } = await supabase
-        .from('courses')
-        .insert({
-          name: trimmedName,
-          academic_year: form.value.academic_year,
-          level: form.value.level,
-          track: form.value.track,
-          school_id: sId
-        })
-        .select()
-        .single()
-      if (error) throw error
       await fetchCourses()
       closeModal()
-      toast.success(`Curso "${data.name}" creado con éxito. Ya puedes cargar o registrar sus estudiantes.`)
+      toast.success(`Curso "${data.course.name}" creado con éxito. Ya puedes cargar o registrar sus estudiantes.`)
       // Abrir automáticamente la gestión de estudiantes para el curso recién creado
-      openStudentsModal(data)
+      openStudentsModal(data.course)
     }
   } catch (e) {
     const friendlyMsg = translateError(e)
@@ -1092,8 +1009,16 @@ const deleteCourse = async (id) => {
   }
   if (!confirm('¿Estás seguro de eliminar este curso? Se eliminarán también sus materias asociadas y estudiantes.')) return
   try {
-    const { error } = await supabase.from('courses').delete().eq('id', id)
+    const schoolId = authStore.activeSchoolId
+    if (!schoolId) throw new Error('No hay una institución activa.')
+    const { data, error } = await supabase.rpc('delete_courses_batch', {
+      p_school_id: schoolId,
+      p_course_ids: [id]
+    })
     if (error) throw error
+    if (!data?.success || Number(data.deleted_count) !== 1) {
+      throw new Error('La base de datos no confirmó la eliminación del curso.')
+    }
     await fetchCourses()
   } catch (e) {
     alert('Error eliminando curso: ' + e.message)
@@ -1110,18 +1035,19 @@ const fetchAllSubjects = async () => {
   try {
     let sId = authStore.activeSchoolId || authStore.profile?.school_id || managingCourse.value?.school_id
     if (!sId && managingCourse.value?.id) {
-      const { data: cData } = await supabase.from('courses').select('school_id').eq('id', managingCourse.value.id).single()
+      const { data: cData, error: courseError } = await supabase.from('courses').select('school_id').eq('id', managingCourse.value.id).single()
+      if (courseError) throw courseError
       if (cData?.school_id) sId = cData.school_id
     }
+
+    if (!sId) throw new Error('No hay una institución activa seleccionada.')
 
     let query = supabase
       .from('subjects')
       .select('*')
       .order('name', { ascending: true })
 
-    if (sId) {
-      query = query.or(`school_id.eq.${sId},school_id.is.null`)
-    }
+    query = query.eq('school_id', sId)
 
     const { data, error } = await query
     if (error) throw error
@@ -1160,13 +1086,20 @@ const createDefaultSubjectsForInstitution = async () => {
   ]
 
   try {
-    const toInsert = baseSubjects.map(name => ({
-      name,
-      school_id: sId
-    }))
-
-    const { error } = await supabase.from('subjects').insert(toInsert)
+    const existingNames = new Set(allSubjects.value.map(subject => subject.name.trim().toLocaleLowerCase('es')))
+    const namesToInsert = baseSubjects.filter(name => !existingNames.has(name.toLocaleLowerCase('es')))
+    if (namesToInsert.length === 0) {
+      toast.info('Las asignaturas base ya están creadas para la institución.')
+      return
+    }
+    const { data, error } = await supabase.rpc('import_subjects_batch', {
+      p_school_id: sId,
+      p_names: namesToInsert,
+    })
     if (error) throw error
+    if (!data?.success || data.school_id !== sId || Number(data.inserted_count) !== namesToInsert.length) {
+      throw new Error('La base de datos no confirmó la creación de todas las asignaturas base.')
+    }
 
     await queryClient.invalidateQueries({ queryKey: ['subjects'] })
     await fetchAllSubjects()
@@ -1222,9 +1155,12 @@ const openSubjectsModal = async (course) => {
   ])
 
   try {
+    const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
+    if (!schoolId) throw new Error('No hay una institución activa seleccionada.')
     const { data, error } = await supabase
       .from('course_subjects')
       .select('subject_id, teacher_id')
+      .eq('school_id', schoolId)
       .eq('course_id', course.id)
     if (error) throw error
     selectedCourseSubjects.value = new Set(data?.map(cs => cs.subject_id) || [])
@@ -1266,32 +1202,18 @@ const saveCourseSubjects = async () => {
 
   try {
     const courseId = managingCourse.value.id
-    const sId = authStore.activeSchoolId || authStore.profile?.school_id || managingCourse.value?.school_id
     const assignmentsPayload = Array.from(selectedCourseSubjects.value).map(sid => ({
       subject_id: sid,
       teacher_id: courseSubjectTeachers.value[sid] || null
     }))
 
-    const { error: rpcErr } = await supabase.rpc('save_course_subject_assignments', {
+    const { data, error } = await supabase.rpc('save_course_subject_assignments', {
       p_course_id: courseId,
       p_assignments: assignmentsPayload
     })
-
-    if (rpcErr) {
-      const { error: syncErr } = await supabase.rpc('sync_course_subject_assignments', {
-        p_course_id: courseId,
-        p_assignments: assignmentsPayload
-      })
-      if (syncErr) {
-        const insertData = assignmentsPayload.map(a => ({
-          course_id: courseId,
-          subject_id: a.subject_id,
-          teacher_id: a.teacher_id,
-          school_id: sId || null
-        }))
-        const { error } = await supabase.from('course_subjects').upsert(insertData, { onConflict: 'course_id, subject_id' })
-        if (error) throw error
-      }
+    if (error) throw error
+    if (!data || data.course_id !== courseId || Number(data.assignment_count) !== assignmentsPayload.length) {
+      throw new Error('La base de datos no confirmó todas las asignaciones del curso.')
     }
 
     await queryClient.invalidateQueries({ queryKey: ['courses'] })
@@ -1327,8 +1249,9 @@ const saveCourseSubjects = async () => {
 
             <template v-if="isAdmin">
               <button 
+                v-if="canCreateYear"
                 @click="openNewYearModal" 
-                :disabled="isYearLocked && !canManageLock"
+                :disabled="creatingYear"
                 class="app-btn app-btn-ghost text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 + Nuevo Año
@@ -1384,8 +1307,8 @@ const saveCourseSubjects = async () => {
             <button @click="headerMessage = ''" class="ml-auto text-amber-500 hover:text-amber-700 text-lg leading-none">&times;</button>
           </div>
         </transition>
-        <div class="app-card overflow-hidden">
-          <table class="app-table">
+        <div class="app-card overflow-x-auto custom-scrollbar">
+          <table class="app-table min-w-[760px]">
             <thead>
               <tr>
                 <th v-if="isAdmin" class="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -1475,114 +1398,73 @@ const saveCourseSubjects = async () => {
                 Los años lectivos permiten mantener un historial de todos los cursos y calificaciones.
                 Cada año es independiente de los demás.
               </p>
-              <input v-model="newYearName" type="text" class="app-input w-full" placeholder="Ej: 2026-2027" />
+              <label for="new-academic-year-name" class="modal-label">Periodo académico</label>
+              <input
+                id="new-academic-year-name"
+                v-model="newYearName"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                class="app-input w-full"
+                :class="{ 'border-rose-400 focus:border-rose-500 focus:ring-rose-500': newYearError }"
+                placeholder="Ej: 2026-2027"
+                :aria-invalid="Boolean(newYearError)"
+                aria-describedby="new-academic-year-help new-academic-year-error"
+                @input="newYearError = ''"
+                @keyup.enter="createNewAcademicYear"
+              />
               <p class="text-xs text-slate-400 mt-2">
+                <span id="new-academic-year-help">
                 Formato: YYYY-YYYY (Año inicio - Año fin)
+                </span>
+              </p>
+              <p v-if="newYearError" id="new-academic-year-error" class="mt-2 text-sm font-medium text-rose-600" role="alert">
+                {{ newYearError }}
               </p>
             </div>
           </div>
           <div class="modal-footer">
-            <button @click="createNewAcademicYear" class="app-btn app-btn-primary w-full sm:w-auto">
-              Crear Año Lectivo
+            <button
+              @click="createNewAcademicYear"
+              :disabled="creatingYear"
+              class="app-btn app-btn-primary w-full sm:w-auto disabled:opacity-60 disabled:cursor-wait"
+            >
+              {{ creatingYear ? 'Creando…' : 'Crear Año Lectivo' }}
             </button>
-            <button @click="closeNewYearModal" class="app-btn app-btn-ghost w-full sm:w-auto mt-3 sm:mt-0">
+            <button @click="closeNewYearModal" :disabled="creatingYear" class="app-btn app-btn-ghost w-full sm:w-auto mt-3 sm:mt-0">
               Cancelar
             </button>
           </div>
         </div>
     </div>
 
-    <!-- Copy Courses Modal -->
-    <div v-if="showCopyCoursesModal" class="modal-container" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="modal-backdrop" aria-hidden="true" @click="closeCopyCoursesModal"></div>
-        <div class="modal-panel sm:max-w-lg w-full">
-          <div class="modal-body">
-            <h3 class="text-lg leading-6 font-medium text-slate-900" id="modal-title">
-              Copiar Cursos de Otro Año Lectivo
-            </h3>
-            <div class="mt-4">
-              <p class="text-sm text-slate-500 mb-4">
-                Copia los cursos de un año lectivo anterior al año actual.
-                Las materias de cada curso también se copian.
-              </p>
-              <select v-model="copyFromYear" class="app-input w-full">
-                <option :value="null">Selecciona el año lectivo de origen</option>
-                <option v-for="year in academicYears.filter(y => y.id !== selectedAcademicYear)" :key="year.id" :value="year.id">
-                  {{ year.name }}
-                </option>
-              </select>
-              <div v-if="copyResult && copyResult.length > 0" class="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-md">
-                <p class="text-sm text-emerald-700">
-                  Se copiaron {{ copyResult.length }} cursos exitosamente.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button @click="copyCoursesFromYear" :disabled="!copyFromYear || copyingCourses" class="app-btn app-btn-primary w-full sm:w-auto">
-              {{ copyingCourses ? 'Copiando...' : 'Copiar Cursos' }}
-            </button>
-            <button @click="closeCopyCoursesModal" class="app-btn app-btn-ghost w-full sm:w-auto mt-3 sm:mt-0">
-              Cerrar
-            </button>
-          </div>
-        </div>
-    </div>
+    <!-- Copy Courses Modal Component -->
+    <CourseCopyModal
+      :show="showCopyCoursesModal"
+      :academic-years="academicYears"
+      :selected-academic-year="selectedAcademicYear"
+      :copy-from-year="copyFromYear"
+      :copying-courses="copyingCourses"
+      :copy-result="copyResult"
+      @close="closeCopyCoursesModal"
+      @copy="copyCoursesFromYear"
+      @update:copy-from-year="val => copyFromYear = val"
+    />
 
-    <!-- Create/Edit Course Modal -->
-    <div v-if="showModal" class="modal-container" role="dialog" aria-modal="true">
-      <div class="modal-backdrop" @click="closeModal"></div>
-      <div class="modal-panel">
-        <div class="modal-header modal-header-accent">
-          <h3 class="modal-title" style="color:#fff">{{ editingCourse ? 'Editar Curso' : 'Nuevo Curso' }}</h3>
-          <p class="modal-subtitle">{{ editingCourse ? 'Modifica los datos del curso.' : 'Ingresa los datos del nuevo curso.' }}</p>
-        </div>
-        <div class="modal-body">
-          <div v-if="courseSaveError" class="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2 shadow-sm">
-            <span class="text-rose-500 font-bold shrink-0">⚠</span>
-            <span>{{ courseSaveError }}</span>
-          </div>
-
-          <div class="modal-field">
-            <label class="modal-label">Nombre del Curso *</label>
-            <input 
-              v-model="form.name" 
-              type="text" 
-              class="app-input"
-              :class="{ 'border-rose-400 focus:border-rose-500 focus:ring-rose-500': isDuplicateCourseName }"
-              placeholder="Ej: 1ro Bachillerato A"
-              @input="courseSaveError = ''"
-            >
-            <p v-if="isDuplicateCourseName" class="text-xs text-rose-600 font-semibold mt-1">
-              ⚠ Ya existe un curso registrado con este nombre en este año lectivo.
-            </p>
-          </div>
-          <div class="modal-field">
-            <label class="modal-label">Año Lectivo</label>
-            <input v-model="form.academic_year" type="text" class="app-input bg-slate-100 dark:bg-slate-800/80 cursor-not-allowed" readonly>
-          </div>
-          <div class="modal-field">
-            <label class="modal-label">Nivel</label>
-            <select v-model="form.level" class="app-input">
-              <option v-for="opt in LEVEL_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-          </div>
-          <div class="modal-field">
-            <label class="modal-label">Itinerario</label>
-            <select v-model="form.track" class="app-input">
-              <option v-for="opt in TRACK_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button @click="closeModal" :disabled="courseSaving" class="app-btn app-btn-ghost">Cancelar</button>
-          <button @click="saveCourse" :disabled="courseSaving || isDuplicateCourseName" class="app-btn app-btn-primary disabled:opacity-50">
-            <svg v-if="!courseSaving" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-            {{ courseSaving ? 'Guardando...' : 'Guardar' }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- Create/Edit Course Modal Component -->
+    <CourseFormModal
+      :show="showModal"
+      :editing-course="editingCourse"
+      :form="form"
+      :course-saving="courseSaving"
+      :course-save-error="courseSaveError"
+      :is-duplicate-course-name="isDuplicateCourseName"
+      :level-options="LEVEL_OPTIONS"
+      :track-options="TRACK_OPTIONS"
+      @close="closeModal"
+      @save="saveCourse"
+      @clear-error="courseSaveError = ''"
+    />
 
     <!-- Students Modal -->
     <div v-if="showStudentsModal" class="modal-container" role="dialog" aria-modal="true">
@@ -1771,117 +1653,25 @@ const saveCourseSubjects = async () => {
       </div>
     </div>
 
-    <!-- Assign Subjects Modal -->
-    <div v-if="showSubjectsModal" class="modal-container" role="dialog" aria-modal="true">
-      <div class="modal-backdrop" @click="showSubjectsModal = false"></div>
-      <div class="modal-panel modal-panel-lg">
-        <div class="modal-header modal-header-accent">
-          <h3 class="modal-title" style="color:#fff">Asignar Materias - {{ managingCourse?.name }}</h3>
-          <p class="modal-subtitle">Selecciona las materias que forman parte de la malla de este curso.</p>
-        </div>
-        <div class="modal-body" style="max-height:55vh;overflow-y:auto">
-          <!-- Selection Controls Bar -->
-          <div v-if="allSubjects.length > 0" class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-200 dark:border-slate-800">
-            <span class="text-xs font-semibold text-slate-600 dark:text-slate-400">
-              {{ selectedCourseSubjects.size }} de {{ allSubjects.length }} materias seleccionadas
-            </span>
-            <div class="flex items-center gap-2">
-              <button 
-                type="button" 
-                @click="selectAllSubjects" 
-                class="px-2.5 py-1 text-xs font-medium text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 rounded-lg hover:bg-teal-100 transition-colors"
-              >
-                Seleccionar Todas
-              </button>
-              <button 
-                type="button" 
-                @click="deselectAllSubjects" 
-                class="px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 transition-colors"
-              >
-                Deseleccionar
-              </button>
-            </div>
-          </div>
-
-          <p v-if="subjectsMessage" class="text-sm mb-3 font-medium" :class="subjectsMessage.includes('Error') ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'">
-            {{ subjectsMessage }}
-          </p>
-
-          <div v-if="subjectsLoading" class="text-center py-8">
-            <span class="app-spinner mr-2"></span>
-            <span class="text-sm text-slate-500">Cargando asignaturas disponibles...</span>
-          </div>
-
-          <div v-else-if="allSubjects.length === 0" class="text-center py-6 px-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
-            <div class="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300 mx-auto flex items-center justify-center text-xl font-bold">
-              📚
-            </div>
-            <div>
-              <p class="text-sm font-bold text-slate-800 dark:text-slate-200">No hay asignaturas registradas en la institución</p>
-              <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Puedes generar las 8 materias base del currículo ecuatoriano en un clic o gestionarlas en la sección de Asignaturas.
-              </p>
-            </div>
-            <div class="pt-2">
-              <button 
-                type="button" 
-                @click="createDefaultSubjectsForInstitution" 
-                :disabled="creatingBaseSubjects"
-                class="app-btn app-btn-primary text-xs font-bold px-4 py-2"
-              >
-                <span v-if="creatingBaseSubjects" class="app-spinner w-3.5 h-3.5 mr-1.5"></span>
-                <span>{{ creatingBaseSubjects ? 'Creando materias...' : '⚡ Crear 8 Asignaturas Base Automáticas' }}</span>
-              </button>
-            </div>
-          </div>
-
-          <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div 
-              v-for="subject in allSubjects" 
-              :key="subject.id"
-              class="flex flex-col p-3 rounded-xl border border-slate-200 dark:border-slate-800 transition-all shadow-sm"
-              :class="{ 'bg-teal-50/80 dark:bg-teal-950/40 border-teal-300 dark:border-teal-800/80 ring-1 ring-teal-500/20': selectedCourseSubjects.has(subject.id), 'hover:bg-slate-50 dark:hover:bg-slate-800/60': !selectedCourseSubjects.has(subject.id) }"
-            >
-              <label class="flex items-center gap-3 cursor-pointer select-none">
-                <input 
-                  type="checkbox" 
-                  :checked="selectedCourseSubjects.has(subject.id)" 
-                  @change="toggleSubject(subject.id)"
-                  class="h-4 w-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500 cursor-pointer"
-                >
-                <div class="flex-1 min-w-0">
-                  <span class="text-sm font-semibold text-slate-900 dark:text-slate-100 block truncate">{{ subject.name }}</span>
-                  <span v-if="subject.is_project_subject" class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                    Interdisciplinario
-                  </span>
-                </div>
-              </label>
-
-              <!-- Asignación de Docente -->
-              <div v-if="selectedCourseSubjects.has(subject.id)" class="mt-2.5 pt-2 border-t border-teal-200/80 dark:border-teal-800/60 flex items-center gap-2">
-                <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">Docente:</span>
-                <select 
-                  v-model="courseSubjectTeachers[subject.id]"
-                  class="text-xs py-1 px-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 flex-1 focus:ring-1 focus:ring-teal-500 shadow-sm"
-                >
-                  <option :value="null">-- Sin docente asignado --</option>
-                  <option v-for="t in institutionTeachers" :key="t.id" :value="t.id">
-                    {{ t.full_name || t.email }}
-                  </option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button @click="showSubjectsModal = false" class="app-btn app-btn-ghost">Cancelar</button>
-          <button @click="saveCourseSubjects" :disabled="subjectsSaving || subjectsLoading" class="app-btn app-btn-primary flex items-center gap-1.5">
-            <span v-if="subjectsSaving" class="app-spinner w-3.5 h-3.5"></span>
-            <span>{{ subjectsSaving ? 'Guardando...' : 'Guardar Materias' }}</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- Assign Subjects Modal Component -->
+    <CourseSubjectManagerModal
+      :show="showSubjectsModal"
+      :managing-course="managingCourse"
+      :all-subjects="allSubjects"
+      :institution-teachers="institutionTeachers"
+      :course-subject-teachers="courseSubjectTeachers"
+      :selected-course-subjects="selectedCourseSubjects"
+      :subjects-loading="subjectsLoading"
+      :subjects-saving="subjectsSaving"
+      :subjects-message="subjectsMessage"
+      :creating-base-subjects="creatingBaseSubjects"
+      @close="showSubjectsModal = false"
+      @save="saveCourseSubjects"
+      @toggle-subject="toggleSubject"
+      @select-all="selectAllSubjects"
+      @deselect-all="deselectAllSubjects"
+      @create-default-subjects="createDefaultSubjectsForInstitution"
+    />
 
     <!-- Confirm Modal -->
     <div v-if="confirmModal.show" class="modal-container" style="z-index:70" role="dialog" aria-modal="true">

@@ -22,7 +22,7 @@ export function useAcademicYearsQuery() {
         .select('*')
         .order('start_year', { ascending: false })
       
-      query = query.or(`school_id.eq.${schoolId.value},school_id.is.null`)
+      query = query.eq('school_id', schoolId.value)
       const { data, error } = await query
       if (error) throw new Error(error.message)
       return data || []
@@ -42,7 +42,7 @@ export function useQuartersQuery() {
         .select('id, name, is_active, is_locked')
         .order('name')
       
-      query = query.or(`school_id.eq.${schoolId.value},school_id.is.null`)
+      query = query.eq('school_id', schoolId.value)
       const { data, error } = await query
       if (error) throw new Error(error.message)
       return data || []
@@ -74,7 +74,7 @@ export function useCoursesQuery(academicYearRef) {
         .select('id, name, academic_year, level, track, tutor_name, created_at')
         .order('name')
       
-      query = query.or(`school_id.eq.${schoolId.value},school_id.is.null`)
+      query = query.eq('school_id', schoolId.value)
       
       if (yearVal.value) {
         query = query.eq('academic_year', yearVal.value)
@@ -87,7 +87,7 @@ export function useCoursesQuery(academicYearRef) {
           .from('courses')
           .select('id, name, academic_year, level, track, created_at')
           .order('name')
-        fallbackQuery = fallbackQuery.or(`school_id.eq.${schoolId.value},school_id.is.null`)
+        fallbackQuery = fallbackQuery.eq('school_id', schoolId.value)
         if (yearVal.value) {
           fallbackQuery = fallbackQuery.eq('academic_year', yearVal.value)
         }
@@ -102,10 +102,13 @@ export function useCoursesQuery(academicYearRef) {
       const isAdmin = isInstitutionAdmin(authStore.accessContext)
 
       if (!isAdmin && userId) {
-        const { data: assignedLinks } = await supabase
+        const { data: assignedLinks, error: assignedLinksError } = await supabase
           .from('course_subjects')
           .select('course_id')
+          .eq('school_id', schoolId.value)
           .eq('teacher_id', userId)
+
+        if (assignedLinksError) throw new Error(assignedLinksError.message)
 
         const assignedCourseIds = new Set((assignedLinks || []).map(l => l.course_id))
         result = result.filter(c => assignedCourseIds.has(c.id))
@@ -136,6 +139,7 @@ export function useInstitutionConfigQuery() {
 
 export function useStudentsQuery(searchTermRef, pageRef, pageSize = 50) {
   const schoolId = useActiveSchool()
+  const authStore = useAuthStore()
   const termVal = computed(() => {
     const raw = unref(searchTermRef)
     return (typeof raw === 'string' ? raw : '').trim()
@@ -167,16 +171,19 @@ export function useStudentsQuery(searchTermRef, pageRef, pageSize = 50) {
         .order('full_name', { ascending: true })
         .range(from, to)
 
-      query = query.or(`school_id.eq.${schoolId.value},school_id.is.null`)
+      query = query.eq('school_id', schoolId.value)
 
       const userIds = [authStore.user?.id, authStore.profile?.id].filter(Boolean)
       const isAdmin = isInstitutionAdmin(authStore.accessContext)
 
       if (!isAdmin && userIds.length > 0) {
-        const { data: assignedLinks } = await supabase
+        const { data: assignedLinks, error: assignedLinksError } = await supabase
           .from('course_subjects')
           .select('course_id')
+          .eq('school_id', schoolId.value)
           .in('teacher_id', userIds)
+
+        if (assignedLinksError) throw new Error(assignedLinksError.message)
 
         const assignedCourseIds = Array.from(new Set((assignedLinks || []).map(l => l.course_id).filter(Boolean)))
         if (assignedCourseIds.length === 0) {
@@ -208,7 +215,7 @@ export function useSubjectsQuery() {
         .select('*')
         .order('name', { ascending: true })
       
-      query = query.or(`school_id.eq.${schoolId.value},school_id.is.null`)
+      query = query.eq('school_id', schoolId.value)
       const { data, error } = await query
       if (error) throw new Error(error.message)
       return data || []

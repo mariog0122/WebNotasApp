@@ -23,6 +23,8 @@ describe('Módulo de Planificación Educativa con IA (Currículo Ecuador)', () =
   const wizardSource = readFileSync(resolve(__dirname, '../src/components/planning/PlanningWizardModal.vue'), 'utf8')
   const viewerSource = readFileSync(resolve(__dirname, '../src/components/planning/PlanningDocumentViewer.vue'), 'utf8')
   const mainViewSource = readFileSync(resolve(__dirname, '../src/views/AIPlanning.vue'), 'utf8')
+  const composableSource = readFileSync(resolve(__dirname, '../src/composables/useAIPlanning.js'), 'utf8')
+  const hardeningMigrationSource = readFileSync(resolve(__dirname, '../../supabase/migrations/20260916025157_harden_ai_planning_authorization.sql'), 'utf8')
 
   it('verifies Ecuadorian educational catalog structure and query filters', () => {
     expect(EDUCATIONAL_REGIMES).toHaveLength(2)
@@ -126,7 +128,7 @@ describe('Módulo de Planificación Educativa con IA (Currículo Ecuador)', () =
   it('registers /planificacion-ia route in router and nav item in Sidebar', () => {
     expect(routerSource).toContain("path: '/planificacion-ia'")
     expect(routerSource).toContain("name: 'planificacion-ia'")
-    expect(sidebarSource).toContain("name: 'Planificación IA'")
+    expect(sidebarSource).toContain("name: 'Planificación Curricular IA'")
     expect(sidebarSource).toContain("path: '/planificacion-ia'")
     expect(sidebarSource).toContain("ai-planning")
   })
@@ -168,6 +170,27 @@ describe('Módulo de Planificación Educativa con IA (Currículo Ecuador)', () =
     expect(mainViewSource).toContain('PlanningPaywallBanner')
   })
 
+  it('fails closed when module access cannot be verified and never invents institutional records', () => {
+    expect(composableSource).toMatch(/module_enabled:\s*false/)
+    expect(composableSource).toContain("if (error) throw error")
+    expect(composableSource).toContain(".eq('school_id', schoolId)")
+    expect(composableSource).not.toContain("id: 'demo-c1'")
+    expect(composableSource).not.toContain("id: 'st-1'")
+    expect(composableSource).not.toContain('Alvarado Mendoza Carlos Andrés')
+    expect(mainViewSource).toContain(':disabled="!canGeneratePlan"')
+    expect(mainViewSource).toContain('moduleAccess.is_demo')
+  })
+
+  it('authorizes planning against the selected tenant and validates linked academic records', () => {
+    expect(hardeningMigrationSource).toContain("private.has_intelligence_permission(p_school_id, 'grades.read')")
+    expect(hardeningMigrationSource).toContain("coalesce(v_feature_enabled, false)")
+    expect(hardeningMigrationSource).toContain("'has_api_key'")
+    expect(hardeningMigrationSource).toContain("'is_demo'")
+    expect(hardeningMigrationSource).toContain('PLANNING_COURSE_TENANT_MISMATCH')
+    expect(hardeningMigrationSource).toContain('SUPPORT_STUDENT_TENANT_MISMATCH')
+    expect(hardeningMigrationSource).not.toMatch(/or\s+school_id\s+is\s+null/i)
+  })
+
   it('verifies support for Gemini 3.7 Flash, 2.5 Flash, 2.5 Flash-Lite, 2.5 Pro and OpenAI in AI modal and types', () => {
     const modalSource = readFileSync(resolve(__dirname, '../src/components/planning/InstitutionAISettingsModal.vue'), 'utf8')
     const typesSource = readFileSync(resolve(__dirname, '../src/lib/ai/types.js'), 'utf8')
@@ -178,7 +201,9 @@ describe('Módulo de Planificación Educativa con IA (Currículo Ecuador)', () =
     expect(modalSource).toContain('gemini-2.5-flash')
     expect(modalSource).toContain('gemini-2.5-flash-lite')
     expect(modalSource).toContain('gemini-2.5-pro')
-    expect(modalSource).toContain('gpt-5.6-luna')
+    expect(modalSource).toContain('gpt-5-nano')
+    expect(modalSource).toContain('gpt-5-mini')
+    expect(modalSource).toContain('gpt-5')
     expect(modalSource).toContain('Automático — recomendado')
     expect(modalSource).toContain('Alta calidad — Gemini 3.7 Flash')
     expect(modalSource).toContain('Equilibrado — Gemini 2.5 Flash')
@@ -202,6 +227,9 @@ describe('Módulo de Planificación Educativa con IA (Currículo Ecuador)', () =
     expect(typesSource).toContain('gemini-2.5-flash')
     expect(typesSource).toContain('gemini-2.5-flash-lite')
     expect(typesSource).toContain('gemini-2.5-pro')
-    expect(typesSource).toContain('gpt-5.6-luna')
+    expect(typesSource).toContain('gpt-5-nano')
+    expect(typesSource).toContain('gpt-5-mini')
+    expect(typesSource).toContain('gpt-5')
+    expect(typesSource).not.toContain('gpt-5.6-luna')
   })
 })

@@ -5,6 +5,10 @@ import { useAuthStore } from '../stores/auth'
 import { useNetwork } from '../composables/useNetwork'
 import { normalizeStoragePath, resolvePrivateImageUrl, uploadPrivateImage, validateImageFile } from '../lib/storageUtils'
 import { isInstitutionAdmin } from '../lib/permissions'
+import { resolveBillingProofUrl, uploadBillingProof } from '../lib/billingProofs'
+import { getMfaStatus, enrollTotpFactor, verifyAndActivateFactor, unenrollFactor } from '../lib/mfa'
+import { translateError } from '../lib/errorDictionary'
+import { ShieldCheck, ShieldAlert, QrCode, Copy, Smartphone, KeyRound, Check, Trash2, X } from 'lucide-vue-next'
 
 import { toast } from 'vue-sonner'
 
@@ -40,29 +44,47 @@ const isRectorOrAdmin = computed(() => {
 
 const tenantSubscription = ref(null)
 const studentCount = ref(0)
+const subscriptionError = ref('')
 
 const uploadingProof = ref(false)
 const proofUrl = ref('')
 const proofFile = ref(null)
 
 const fetchSubscription = async () => {
-  if (!authStore.activeSchoolId) return
+  subscriptionError.value = ''
+  tenantSubscription.value = null
+  proofUrl.value = ''
   try {
     const schoolId = authStore.activeSchoolId || authStore.profile?.school_id || profile.value?.school_id
     if (!schoolId) return
 
-    const { count } = await supabase.from('students').select('*', { count: 'exact', head: true }).eq('school_id', schoolId)
-    studentCount.value = count || 0
+    const [studentsResult, subscriptionResult, limitResult, schoolResult, billingResult] = await Promise.all([
+      supabase.from('students').select('*', { count: 'exact', head: true }).eq('school_id', schoolId),
+      supabase
+        .from('subscriptions')
+        .select('*, plans(name, code, monthly_price, annual_price, student_limit, trial_days)')
+        .eq('school_id', schoolId)
+        .maybeSingle(),
+      supabase.from('tenant_limits').select('*').eq('school_id', schoolId).maybeSingle(),
+      supabase.from('schools').select('name, status').eq('id', schoolId).maybeSingle(),
+      supabase
+        .from('tenant_billing_profiles')
+        .select('latest_receipt_url')
+        .eq('school_id', schoolId)
+        .maybeSingle(),
+    ])
+    const failedResult = [studentsResult, subscriptionResult, limitResult, schoolResult, billingResult]
+      .find(result => result.error)
+    if (failedResult?.error) throw failedResult.error
 
-    const { data: sub } = await supabase
-      .from('subscriptions')
-      .select('*, plans(name, code, monthly_price, annual_price, student_limit, trial_days)')
-      .eq('school_id', schoolId)
-      .maybeSingle()
-    const { data: limit } = await supabase.from('tenant_limits').select('*').eq('school_id', schoolId).maybeSingle()
-    const { data: school } = await supabase.from('schools').select('name, status').eq('id', schoolId).maybeSingle()
+    const { count } = studentsResult
+    const sub = subscriptionResult.data
+    const limit = limitResult.data
+    const school = schoolResult.data
+    const billing = billingResult.data
+    studentCount.value = count ?? 0
 
-    const status = sub?.status || school?.status || 'trial'
+    const status = sub?.status || school?.status || 'unconfigured'
     const isTrial = status === 'trial'
     const effectiveDate = isTrial ? (sub?.trial_ends_at || sub?.next_billing_date) : sub?.next_billing_date
 
@@ -76,30 +98,29 @@ const fetchSubscription = async () => {
       daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
     }
 
-    const priceVal = sub?.agreed_price ?? (sub?.billing_cycle === 'yearly' ? sub?.plans?.annual_price : sub?.plans?.monthly_price) ?? 89
+    const priceVal = sub
+      ? (sub.agreed_price ?? (sub.billing_cycle === 'yearly' ? sub.plans?.annual_price : sub.plans?.monthly_price) ?? null)
+      : null
 
     tenantSubscription.value = {
-      plan_name: sub?.plans?.name || 'Plan Institucional Estándar',
+      plan_name: sub?.plans?.name || (sub ? 'Plan sin catálogo asociado' : 'Sin plan asignado'),
       price: priceVal,
-      billing_cycle: sub?.billing_cycle || 'monthly',
+      billing_cycle: sub?.billing_cycle || null,
       status: status,
       is_trial: isTrial,
       days_remaining: daysRemaining,
       renewal_date: renewalDateStr,
       raw_renewal_date: effectiveDate,
-      max_students: limit?.max_students || sub?.plans?.student_limit || 500
+      max_students: limit?.max_students ?? sub?.plans?.student_limit ?? null,
     }
 
-    const { data: billing } = await supabase
-      .from('tenant_billing_profiles')
-      .select('latest_receipt_url')
-      .eq('school_id', schoolId)
-      .maybeSingle()
     if (billing?.latest_receipt_url) {
-      proofUrl.value = billing.latest_receipt_url
+      proofUrl.value = await resolveBillingProofUrl(supabase, billing.latest_receipt_url).catch(() => '')
     }
   } catch (err) {
     console.error('Error fetching subscription in Profile:', err)
+    tenantSubscription.value = null
+    subscriptionError.value = `No se pudo cargar la suscripción: ${translateError(err)}`
   }
 }
 
@@ -111,6 +132,7 @@ const onProofFileChange = (e) => {
 }
 
 const uploadProof = async () => {
+  if (uploadingProof.value) return
   if (!proofFile.value) {
     toast.error('Selecciona una foto o imagen del comprobante de pago.')
     return
@@ -123,42 +145,19 @@ const uploadProof = async () => {
 
   uploadingProof.value = true
   try {
-    const fileExt = proofFile.value.name.split('.').pop()
-    const filePath = `receipts/${targetSchoolId}_${Date.now()}.${fileExt}`
-    
-    const { error: uploadErr } = await supabase.storage
-      .from('billing-proofs')
-      .upload(filePath, proofFile.value, { upsert: true })
+    const filePath = await uploadBillingProof(supabase, targetSchoolId, proofFile.value)
 
-    if (uploadErr) throw uploadErr
-
-    const { data: publicUrlData } = supabase.storage
-      .from('billing-proofs')
-      .getPublicUrl(filePath)
-
-    const publicUrl = publicUrlData?.publicUrl || filePath
-
-    // 1. Invocar RPC canónico
     const { data: rpcRes, error: rpcErr } = await supabase.rpc('upload_tenant_payment_proof', {
       p_school_id: targetSchoolId,
-      p_receipt_url: publicUrl,
+      p_receipt_url: filePath,
       p_notes: 'Comprobante subido por usuario contratante'
     })
 
     if (rpcErr || !rpcRes?.success) {
-      // 2. Fallback de inserción/actualización directa
-      const { error: upsertErr } = await supabase
-        .from('tenant_billing_profiles')
-        .upsert({
-          school_id: targetSchoolId,
-          latest_receipt_url: publicUrl,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'school_id' })
-
-      if (upsertErr) throw (rpcErr || upsertErr)
+      throw (rpcErr || new Error(rpcRes?.message || 'No se pudo registrar el comprobante.'))
     }
 
-    proofUrl.value = publicUrl
+    proofUrl.value = await resolveBillingProofUrl(supabase, filePath)
     toast.success('¡Foto de comprobante de pago cargada exitosamente!')
     proofFile.value = null
   } catch (err) {
@@ -197,6 +196,7 @@ const SPECIALIZATION_OPTIONS = [
 onMounted(async () => {
   await fetchProfile()
   await fetchSubscription()
+  await loadMfaStatus()
 })
 
 const fetchProfile = async () => {
@@ -327,6 +327,112 @@ const removePhoto = () => {
   photoPreview.value = ''
   newPhotoUrl.value = ''
 }
+
+// ==========================================
+// ESTADO Y MÉTODOS 2FA / MFA (TOTP)
+// ==========================================
+const mfaLoading = ref(false)
+const mfaEnrolled = ref(false)
+const mfaFactors = ref([])
+const showEnrollModal = ref(false)
+const showUnenrollModal = ref(false)
+
+const enrollData = ref({
+  factorId: '',
+  qrCode: '',
+  secret: '',
+  uri: '',
+})
+const verificationCode = ref('')
+const verifyingCode = ref(false)
+const unenrolling = ref(false)
+const copiedSecret = ref(false)
+
+const loadMfaStatus = async () => {
+  mfaLoading.value = true
+  try {
+    const status = await getMfaStatus()
+    mfaEnrolled.value = status.isEnrolled
+    mfaFactors.value = status.verifiedFactors || []
+  } catch (err) {
+    console.error('Error al consultar estado MFA:', err)
+  } finally {
+    mfaLoading.value = false
+  }
+}
+
+const startEnrollment = async () => {
+  mfaLoading.value = true
+  verificationCode.value = ''
+  try {
+    const res = await enrollTotpFactor({ issuer: 'LOGREVA' })
+    enrollData.value = res
+    showEnrollModal.value = true
+  } catch (err) {
+    toast.error('No se pudo iniciar la configuración 2FA', {
+      description: err?.message || 'Inténtalo nuevamente en unos momentos.'
+    })
+  } finally {
+    mfaLoading.value = false
+  }
+}
+
+const copySecretToClipboard = async () => {
+  if (!enrollData.value.secret) return
+  try {
+    await navigator.clipboard.writeText(enrollData.value.secret)
+    copiedSecret.value = true
+    toast.success('Clave copiada al portapapeles')
+    setTimeout(() => {
+      copiedSecret.value = false
+    }, 3000)
+  } catch {
+    toast.info('Clave secreta', { description: enrollData.value.secret })
+  }
+}
+
+const confirmEnrollment = async () => {
+  const code = verificationCode.value.trim().replace(/\s+/g, '')
+  if (!code || code.length !== 6) {
+    toast.warning('Código inválido', { description: 'Ingresa los 6 dígitos que muestra tu app autenticadora.' })
+    return
+  }
+
+  verifyingCode.value = true
+  try {
+    await verifyAndActivateFactor({ factorId: enrollData.value.factorId, code })
+    toast.success('¡Autenticación en Dos Pasos activada!', {
+      description: 'Tu cuenta ahora está protegida con verificación TOTP.'
+    })
+    showEnrollModal.value = false
+    verificationCode.value = ''
+    enrollData.value = { factorId: '', qrCode: '', secret: '', uri: '' }
+    await loadMfaStatus()
+  } catch (err) {
+    toast.error('Código incorrecto', {
+      description: 'El código no coincide o ha expirado. Verifica la hora de tu celular e inténtalo nuevamente.'
+    })
+  } finally {
+    verifyingCode.value = false
+  }
+}
+
+const confirmUnenroll = async () => {
+  const factor = mfaFactors.value[0]
+  if (!factor?.id) return
+
+  unenrolling.value = true
+  try {
+    await unenrollFactor({ factorId: factor.id })
+    toast.success('2FA desactivado', { description: 'Se ha eliminado el factor de autenticación.' })
+    showUnenrollModal.value = false
+    await loadMfaStatus()
+  } catch (err) {
+    toast.error('Error al desactivar 2FA', { description: err?.message || 'Inténtalo nuevamente.' })
+  } finally {
+    unenrolling.value = false
+  }
+}
 </script>
 
 <template>
@@ -455,7 +561,13 @@ const removePhoto = () => {
             </div>
 
             <!-- SUSCRIPCIÓN E INFORMACIÓN DE PLAN (Rector / Administrador Institucional únicamente) -->
-            <div v-if="isRectorOrAdmin && tenantSubscription" class="pt-6 border-t border-slate-200 dark:border-slate-800">
+            <div v-if="isRectorOrAdmin && subscriptionError" class="pt-6 border-t border-slate-200 dark:border-slate-800">
+              <div class="rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 p-4">
+                <p class="text-sm text-rose-700 dark:text-rose-300">{{ subscriptionError }}</p>
+              </div>
+            </div>
+
+            <div v-else-if="isRectorOrAdmin && tenantSubscription" class="pt-6 border-t border-slate-200 dark:border-slate-800">
               <div class="flex items-center justify-between mb-4">
                 <div>
                   <h3 class="text-lg font-bold text-slate-900 dark:text-white">Suscripción & Plan Institucional</h3>
@@ -476,15 +588,16 @@ const removePhoto = () => {
                   <div>
                     <span class="text-xs text-slate-400 font-medium block">Plan Contratado</span>
                     <strong class="text-slate-900 dark:text-white text-sm block font-bold">{{ tenantSubscription.plan_name }}</strong>
-                    <span class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
+                    <span v-if="tenantSubscription.price !== null" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
                       ${{ tenantSubscription.price }} USD / {{ tenantSubscription.billing_cycle === 'yearly' ? 'año' : 'mes' }}
                     </span>
+                    <span v-else class="text-xs text-slate-500 dark:text-slate-400">Precio pendiente de configuración</span>
                   </div>
 
                   <div>
                     <span class="text-xs text-slate-400 font-medium block">Uso de Estudiantes</span>
-                    <strong class="text-slate-900 dark:text-white text-sm block font-bold">{{ studentCount }} / {{ tenantSubscription.max_students }}</strong>
-                    <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full mt-1.5 overflow-hidden">
+                    <strong class="text-slate-900 dark:text-white text-sm block font-bold">{{ studentCount }} / {{ tenantSubscription.max_students ?? 'Sin límite asignado' }}</strong>
+                    <div v-if="tenantSubscription.max_students > 0" class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full mt-1.5 overflow-hidden">
                       <div class="bg-indigo-600 h-full rounded-full" :style="{ width: Math.min(100, (studentCount / tenantSubscription.max_students) * 100) + '%' }"></div>
                     </div>
                   </div>
@@ -497,9 +610,10 @@ const removePhoto = () => {
                     <span v-if="tenantSubscription.is_trial && tenantSubscription.days_remaining !== null" :class="tenantSubscription.days_remaining <= 3 ? 'text-rose-500 font-bold' : 'text-sky-500 font-semibold'" class="text-xs">
                       {{ tenantSubscription.days_remaining > 0 ? `${tenantSubscription.days_remaining} días restantes` : 'Prueba finalizada' }}
                     </span>
-                    <span v-else class="text-xs text-slate-500 dark:text-slate-400">
+                    <span v-else-if="tenantSubscription.billing_cycle" class="text-xs text-slate-500 dark:text-slate-400">
                       Ciclo {{ tenantSubscription.billing_cycle === 'yearly' ? 'Anual' : 'Mensual' }}
                     </span>
+                    <span v-else class="text-xs text-slate-500 dark:text-slate-400">Ciclo pendiente de configuración</span>
                   </div>
                 </div>
 
@@ -576,6 +690,218 @@ const removePhoto = () => {
               </button>
             </div>
           </form>
+        </div>
+
+        <!-- TARJETA DE SEGURIDAD 2FA (TOTP) -->
+        <div class="mt-8 app-card p-8 md:p-10 shadow-sm rounded-2xl border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+            <div class="flex items-start gap-3">
+              <div class="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                <ShieldCheck class="w-6 h-6" />
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  Seguridad y Autenticación en Dos Pasos (2FA)
+                  <span
+                    v-if="mfaEnrolled"
+                    class="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+                  >
+                    ACTIVO
+                  </span>
+                  <span
+                    v-else
+                    class="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
+                  >
+                    NO CONFIGURADO
+                  </span>
+                </h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Protege tu cuenta institucional agregando un segundo paso de verificación mediante Google Authenticator, Microsoft Authenticator o Authy.
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <button
+                v-if="!mfaEnrolled"
+                type="button"
+                @click="startEnrollment"
+                :disabled="mfaLoading"
+                class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2"
+              >
+                <Smartphone class="w-4 h-4" />
+                <span>Configurar 2FA</span>
+              </button>
+              <button
+                v-else
+                type="button"
+                @click="showUnenrollModal = true"
+                class="px-4 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl text-sm font-semibold transition-all flex items-center gap-2"
+              >
+                <Trash2 class="w-4 h-4" />
+                <span>Desactivar 2FA</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-500 dark:text-slate-400">
+            <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 flex items-start gap-3">
+              <div class="text-indigo-500 font-bold text-base">1</div>
+              <div>
+                <p class="font-bold text-slate-800 dark:text-slate-200 text-sm">Mayor Protección</p>
+                <p class="mt-0.5">Evita accesos no autorizados aunque tu contraseña se vea comprometida.</p>
+              </div>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 flex items-start gap-3">
+              <div class="text-indigo-500 font-bold text-base">2</div>
+              <div>
+                <p class="font-bold text-slate-800 dark:text-slate-200 text-sm">Estándar TOTP</p>
+                <p class="mt-0.5">Compatible con cualquier aplicación estándar RFC 6238 en tu celular o tablet.</p>
+              </div>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 flex items-start gap-3">
+              <div class="text-indigo-500 font-bold text-base">3</div>
+              <div>
+                <p class="font-bold text-slate-800 dark:text-slate-200 text-sm">Auditoría y Confianza</p>
+                <p class="mt-0.5">Cumple con las mejores prácticas de ciberseguridad para datos educativos.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL DE ENROLAMIENTO 2FA -->
+        <div
+          v-if="showEnrollModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Configurar Autenticación en Dos Pasos"
+        >
+          <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-6 sm:p-8 relative space-y-6">
+            <button
+              type="button"
+              @click="showEnrollModal = false"
+              class="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+              aria-label="Cerrar modal"
+            >
+              <X class="w-5 h-5" />
+            </button>
+
+            <div class="text-center space-y-2">
+              <div class="inline-flex p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400">
+                <QrCode class="w-8 h-8" />
+              </div>
+              <h3 class="text-xl font-bold text-slate-900 dark:text-white">Configurar Autenticador</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                Escanea el código QR con Google Authenticator, Microsoft Authenticator o Authy.
+              </p>
+            </div>
+
+            <!-- Visualización del QR (SVG provisto por GoTrue) -->
+            <div class="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex flex-col items-center">
+              <div
+                v-if="enrollData.qrCode"
+                class="w-48 h-48 bg-white p-2 rounded-xl shadow-inner flex items-center justify-center [&>svg]:w-full [&>svg]:h-full"
+                v-html="enrollData.qrCode"
+              ></div>
+              <div v-else class="w-48 h-48 flex items-center justify-center text-slate-400 text-xs">
+                Generando código...
+              </div>
+
+              <!-- Clave secreta manual -->
+              <div class="mt-4 w-full">
+                <p class="text-[11px] text-slate-400 text-center mb-1">¿No puedes escanear? Ingresa la clave manualmente:</p>
+                <div class="flex items-center gap-2 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <span class="font-mono text-xs text-slate-700 dark:text-slate-300 flex-1 truncate select-all px-1">
+                    {{ enrollData.secret }}
+                  </span>
+                  <button
+                    type="button"
+                    @click="copySecretToClipboard"
+                    class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1 transition-colors"
+                  >
+                    <Check v-if="copiedSecret" class="w-3.5 h-3.5 text-emerald-600" />
+                    <Copy v-else class="w-3.5 h-3.5" />
+                    <span>{{ copiedSecret ? 'Copiado' : 'Copiar' }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Paso de confirmación con código de 6 dígitos -->
+            <form @submit.prevent="confirmEnrollment" class="space-y-4">
+              <div>
+                <label for="verify-mfa-code" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 text-center">
+                  Ingresa el código de 6 dígitos que muestra tu app:
+                </label>
+                <input
+                  id="verify-mfa-code"
+                  v-model="verificationCode"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="6"
+                  required
+                  placeholder="000000"
+                  class="app-input text-center font-mono tracking-[0.25em] text-lg font-bold"
+                  autofocus
+                />
+              </div>
+
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  @click="showEnrollModal = false"
+                  class="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  :disabled="verifyingCode || verificationCode.trim().length < 6"
+                  class="flex-1 px-4 py-2.5 text-sm font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 transition-colors"
+                >
+                  {{ verifyingCode ? 'Verificando...' : 'Activar 2FA' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- MODAL DESACTIVAR 2FA -->
+        <div
+          v-if="showUnenrollModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirmar desactivación de 2FA"
+        >
+          <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-6 text-center space-y-4">
+            <div class="inline-flex p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400">
+              <ShieldAlert class="w-8 h-8" />
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">¿Desactivar Verificación 2FA?</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+              Tu cuenta ya no requerirá el código temporal de tu autenticador para iniciar sesión. Podrás volver a configurarlo en cualquier momento.
+            </p>
+            <div class="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                @click="showUnenrollModal = false"
+                class="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                Mantener 2FA
+              </button>
+              <button
+                type="button"
+                @click="confirmUnenroll"
+                :disabled="unenrolling"
+                class="flex-1 px-4 py-2.5 text-sm font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 transition-colors"
+              >
+                {{ unenrolling ? 'Desactivando...' : 'Sí, desactivar' }}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </main>

@@ -78,7 +78,9 @@ describe('DECE Digital Signature & Physical Printing Module', () => {
     const signResult = signAlertPayload(alertMock, readResult.privateKey, readResult.certInfo)
     expect(signResult.success).toBe(true)
     expect(signResult.signatureData).toBeDefined()
-    expect(signResult.signatureData.is_valid).toBe(true)
+    expect(signResult.signatureData.local_signature_valid).toBe(true)
+    expect(signResult.signatureData.is_valid).toBe(false)
+    expect(signResult.signatureData.verification_status).toBe('pending_server_verification')
     expect(signResult.signatureData.algorithm).toBe('SHA256withRSA')
     expect(signResult.signatureData.signer_name).toBe('Lic. Maria Perez - Psicologa DECE')
     expect(signResult.signatureData.signature_hex).toBeDefined()
@@ -103,7 +105,8 @@ describe('DECE Digital Signature & Physical Printing Module', () => {
     // Print modal contains official sections and physical signature blocks
     expect(printModalSource).toContain('ACTA DE NOTIFICACIÓN Y CITACIÓN A REPRESENTANTE LEGAL')
     expect(printModalSource).toContain('window.print()')
-    expect(printModalSource).toContain('Documento Firmado Electrónicamente')
+    expect(printModalSource).toContain('Firma digital registrada · pendiente de verificación oficial')
+    expect(printModalSource).not.toContain('Documento Firmado Electrónicamente')
     expect(printModalSource).toContain('REPRESENTANTE LEGAL')
     expect(printModalSource).toContain('DOCENTE TUTOR')
     expect(printModalSource).toContain('CONSEJERÍA ESTUDIANTIL')
@@ -115,5 +118,35 @@ describe('DECE Digital Signature & Physical Printing Module', () => {
     expect(signModalSource).toContain('readPkcs12Certificate')
     expect(signModalSource).toContain('signAlertPayload')
     expect(signModalSource).toContain('Huella SHA-256')
+    expect(signModalSource).toContain('verificación oficial pendiente')
+  })
+
+  it('uses tenant-scoped RPCs, dedicated permissions and blocks direct wellbeing writes', () => {
+    const alertsSource = fs.readFileSync(path.resolve(__dirname, '../src/views/Alerts.vue'), 'utf-8')
+    const routerSource = fs.readFileSync(path.resolve(__dirname, '../src/router/index.js'), 'utf-8')
+    const sidebarSource = fs.readFileSync(path.resolve(__dirname, '../src/components/Sidebar.vue'), 'utf-8')
+    const migrationSource = fs.readFileSync(
+      path.resolve(__dirname, '../../supabase/migrations/20260916030023_harden_student_wellbeing_authorization.sql'),
+      'utf-8',
+    )
+
+    expect(alertsSource).toContain("rpc('create_student_wellbeing_case'")
+    expect(alertsSource).toContain("rpc('update_student_wellbeing_case'")
+    expect(alertsSource).toContain("rpc('mark_student_wellbeing_convoked'")
+    expect(alertsSource).toContain("rpc('register_student_wellbeing_signature'")
+    expect(alertsSource).not.toContain('school_id.is.null')
+    expect(alertsSource).not.toMatch(/\.from\('student_alerts'\)[\s\S]{0,120}\.(?:insert|update|delete)\(/)
+
+    expect(routerSource).toMatch(/path: '\/alerts'[\s\S]*?permission: 'wellbeing\.read'/)
+    expect(sidebarSource).toContain("can('wellbeing.read')")
+
+    for (const permission of ['wellbeing.read', 'wellbeing.create', 'wellbeing.manage', 'wellbeing.sign']) {
+      expect(migrationSource).toContain(permission)
+    }
+    expect(migrationSource).toContain('create_student_wellbeing_case')
+    expect(migrationSource).toContain('update_student_wellbeing_case')
+    expect(migrationSource).toContain('mark_student_wellbeing_convoked')
+    expect(migrationSource).toContain('register_student_wellbeing_signature')
+    expect(migrationSource).toContain('revoke insert, update, delete on public.student_alerts')
   })
 })

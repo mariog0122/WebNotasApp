@@ -8,8 +8,7 @@ import {
   AlertCircle, 
   ThumbsDown, 
   Edit3, 
-  Loader2,
-  CheckCircle2
+  Loader2
 } from 'lucide-vue-next'
 import { AIPrivacySanitizer } from '../../lib/ai/AIPrivacySanitizer'
 
@@ -45,16 +44,21 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false
+  },
+  onSubmitFeedback: {
+    type: Function,
+    required: true
   }
 })
 
-const emit = defineEmits(['close', 'submit'])
+const emit = defineEmits(['close'])
 
 const rating = ref(props.initialRating)
 const selectedCategory = ref('pedagogical')
 const selectedTags = ref([])
 const commentText = ref('')
-const submittedSuccess = ref(false)
+const submitting = ref(false)
+const submissionError = ref('')
 
 const quickCategories = [
   { id: 'error_conceptual', label: 'Error conceptual', category: 'factual_error' },
@@ -86,13 +90,17 @@ const livePrivacyPreview = computed(() => {
   return AIPrivacySanitizer.redactPII(commentText.value, props.knownStudentNames)
 })
 
-const onSubmit = () => {
+const onSubmit = async () => {
+  if (submitting.value || props.loading) return
+  submitting.value = true
+  submissionError.value = ''
   const sanitization = AIPrivacySanitizer.sanitizeFeedbackPayload(
     { comment: commentText.value },
     props.knownStudentNames
   )
 
-  emit('submit', {
+  try {
+    await props.onSubmitFeedback({
     targetType: props.targetType,
     targetId: props.targetId,
     sectionKey: props.sectionKey,
@@ -101,13 +109,13 @@ const onSubmit = () => {
     tags: selectedTags.value,
     comment: sanitization.sanitizedComment,
     piiRedactedCount: sanitization.piiRedactedCount
-  })
-
-  submittedSuccess.value = true
-  setTimeout(() => {
-    submittedSuccess.value = false
+    })
     emit('close')
-  }, 1200)
+  } catch {
+    submissionError.value = 'No se pudo enviar la retroalimentación. Inténtalo nuevamente.'
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -201,6 +209,7 @@ const onSubmit = () => {
         </div>
 
         <!-- Acciones -->
+        <p v-if="submissionError" role="alert" class="text-xs text-red-600 dark:text-red-400">{{ submissionError }}</p>
         <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
           <button
             @click="emit('close')"
@@ -212,14 +221,13 @@ const onSubmit = () => {
 
           <button
             @click="onSubmit"
-            :disabled="loading || submittedSuccess"
+            :disabled="loading || submitting"
             type="button"
             class="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition-all cursor-pointer disabled:opacity-50"
           >
-            <Loader2 v-if="loading" class="w-3.5 h-3.5 animate-spin" />
-            <CheckCircle2 v-else-if="submittedSuccess" class="w-3.5 h-3.5 text-emerald-300" />
+            <Loader2 v-if="loading || submitting" class="w-3.5 h-3.5 animate-spin" />
             <Send v-else class="w-3.5 h-3.5" />
-            <span>{{ submittedSuccess ? '¡Enviado!' : 'Enviar Retroalimentación' }}</span>
+            <span>{{ submitting ? 'Enviando...' : 'Enviar Retroalimentación' }}</span>
           </button>
         </div>
 

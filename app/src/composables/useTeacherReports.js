@@ -6,6 +6,7 @@ import { isInstitutionAdmin } from '../lib/permissions'
 import { translateError } from '../lib/errorDictionary'
 import { toast } from 'vue-sonner'
 import { normalizeStoragePath, resolvePrivateImageUrl } from '../lib/storageUtils'
+import { institutionalDateKey } from '../lib/civilDate'
 import { 
   REPORT_TEMPLATES, 
   REPORT_STATUSES, 
@@ -41,7 +42,6 @@ export function useTeacherReports() {
   // Modals state
   const showEditorModal = ref(false)
   const showPrintModal = ref(false)
-  const showDigitalSignModal = ref(false)
   const activeReport = ref(null)
 
   // Form State
@@ -83,6 +83,11 @@ export function useTeacherReports() {
 
   const isAdmin = computed(() => isInstitutionAdmin(authStore.accessContext))
   const isYearLocked = computed(() => academicYearStore.isLocked)
+  const requireActiveSchoolId = () => {
+    const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
+    if (!schoolId) throw new Error('Selecciona una institución antes de gestionar informes docentes.')
+    return schoolId
+  }
 
   // Summary Metrics
   const stats = computed(() => {
@@ -98,15 +103,17 @@ export function useTeacherReports() {
 
   // Data Fetching
   const fetchInstitutionConfig = async () => {
-    const sId = authStore.activeSchoolId || authStore.profile?.school_id
-    if (!sId) return
-    const { data } = await supabase
-      .from('system_config')
-      .select('key, value')
-      .eq('school_id', sId)
-      .in('key', ['institution_name', 'institution_logo_url', 'institution_tutor_name', 'institution_rector_name', 'academic_periods'])
+    const sId = requireActiveSchoolId()
+    const [{ data, error }, { data: school, error: schoolError }] = await Promise.all([
+      supabase.from('system_config').select('key, value').eq('school_id', sId)
+        .in('key', ['institution_name', 'institution_logo_url', 'institution_tutor_name', 'institution_rector_name', 'academic_periods']),
+      supabase.from('schools').select('timezone').eq('id', sId).maybeSingle(),
+    ])
+    if (error) throw error
+    if (schoolError) throw schoolError
 
     const map = Object.fromEntries((data || []).map(i => [i.key, i.value]))
+    map.timezone = school?.timezone
     map.institution_logo_url = await resolvePrivateImageUrl(
       supabase,
       'institution-assets',
@@ -116,24 +123,25 @@ export function useTeacherReports() {
   }
 
   const fetchCourses = async () => {
-    const sId = authStore.activeSchoolId || authStore.profile?.school_id
-    let query = supabase.from('courses').select('id, name, level, track, academic_year').order('name')
-    if (sId) {
-      query = query.or(`school_id.eq.${sId},school_id.is.null`)
-    }
+    courses.value = []
+    const sId = requireActiveSchoolId()
+    let query = supabase.from('courses').select('id, name, level, track, academic_year').eq('school_id', sId).order('name')
     const yearName = academicYearStore.selectedYearName
     if (yearName) {
       query = query.eq('academic_year', yearName)
     }
-    const { data } = await query
+    const { data, error } = await query
+    if (error) throw error
     let filteredCourses = data || []
 
     const userIds = [authStore.user?.id, authStore.profile?.id].filter(Boolean)
     if (!isAdmin.value && userIds.length > 0) {
-      const { data: assignedLinks } = await supabase
+      const { data: assignedLinks, error: assignmentsError } = await supabase
         .from('course_subjects')
         .select('course_id')
+        .eq('school_id', sId)
         .in('teacher_id', userIds)
+      if (assignmentsError) throw assignmentsError
 
       const assignedCourseIds = new Set((assignedLinks || []).map(l => l.course_id).filter(Boolean))
       filteredCourses = filteredCourses.filter(c => assignedCourseIds.has(c.id))
@@ -143,53 +151,51 @@ export function useTeacherReports() {
   }
 
   const fetchQuarters = async () => {
-    const sId = authStore.activeSchoolId || authStore.profile?.school_id
-    let query = supabase.from('quarters').select('id, name, is_active, is_locked').order('created_at')
-    if (sId) {
-      query = query.or(`school_id.eq.${sId},school_id.is.null`)
-    }
-    const { data } = await query
+    quarters.value = []
+    const sId = requireActiveSchoolId()
+    const { data, error } = await supabase.from('quarters')
+      .select('id, name, is_active, is_locked')
+      .eq('school_id', sId)
+      .order('created_at')
+    if (error) throw error
     quarters.value = (data || []).filter(q => q.name !== 'test_q')
   }
 
   const fetchStudentsForCourse = async (courseId) => {
+    availableStudents.value = []
     if (!courseId) {
-      availableStudents.value = []
       return
     }
-    const sId = authStore.activeSchoolId || authStore.profile?.school_id
-    let query = supabase
+    const sId = requireActiveSchoolId()
+    const { data, error } = await supabase
       .from('students')
       .select('id, full_name, student_cedula, representative_name, representative_cedula, representative_phone, student_address, course_id')
+      .eq('school_id', sId)
       .eq('course_id', courseId)
       .order('full_name')
-    if (sId) {
-      query = query.or(`school_id.eq.${sId},school_id.is.null`)
-    }
-    const { data } = await query
+    if (error) throw error
     availableStudents.value = data || []
   }
 
   const fetchSubjectsForCourse = async (courseId) => {
+    availableSubjects.value = []
     if (!courseId) {
-      availableSubjects.value = []
       return
     }
-    const sId = authStore.activeSchoolId || authStore.profile?.school_id
+    const sId = requireActiveSchoolId()
     let query = supabase
       .from('course_subjects')
       .select('id, subject_id, teacher_id, subjects(id, name)')
+      .eq('school_id', sId)
       .eq('course_id', courseId)
-    if (sId) {
-      query = query.or(`school_id.eq.${sId},school_id.is.null`)
-    }
 
     const userIds = [authStore.user?.id, authStore.profile?.id].filter(Boolean)
     if (!isAdmin.value && userIds.length > 0) {
       query = query.in('teacher_id', userIds)
     }
 
-    const { data } = await query
+    const { data, error } = await query
+    if (error) throw error
     availableSubjects.value = (data || []).map(cs => ({
       course_subject_id: cs.id,
       id: cs.subject_id,
@@ -200,7 +206,7 @@ export function useTeacherReports() {
   const fetchReports = async () => {
     loading.value = true
     try {
-      const sId = authStore.activeSchoolId || authStore.profile?.school_id
+      const sId = requireActiveSchoolId()
       const userIds = [authStore.user?.id, authStore.profile?.id].filter(Boolean)
       const from = (page.value - 1) * pageSize
       const to = from + pageSize - 1
@@ -222,9 +228,7 @@ export function useTeacherReports() {
         .order('created_at', { ascending: false })
         .range(from, to)
 
-      if (sId) {
-        query = query.or(`school_id.eq.${sId},school_id.is.null`)
-      }
+      query = query.eq('school_id', sId)
 
       if (!isAdmin.value && userIds.length > 0) {
         query = query.in('teacher_id', userIds)
@@ -246,7 +250,7 @@ export function useTeacherReports() {
         query = query.eq('quarter_id', selectedQuarterFilter.value)
       }
 
-      const term = (searchQuery.value || '').trim()
+      const term = (searchQuery.value || '').replace(/[,().%]/g, ' ').trim().slice(0, 80)
       if (term) {
         query = query.or(`title.ilike.%${term}%,reason.ilike.%${term}%`)
       }
@@ -257,6 +261,8 @@ export function useTeacherReports() {
       reports.value = data || []
       totalCount.value = count || 0
     } catch (err) {
+      reports.value = []
+      totalCount.value = 0
       console.error('Error fetching teacher reports:', err)
       toast.error('Error al cargar informes docentes', { description: translateError(err) })
     } finally {
@@ -275,10 +281,17 @@ export function useTeacherReports() {
     formData.course_name = foundCourse?.name || ''
     formData.academic_year = foundCourse?.academic_year || academicYearStore.selectedYearName || ''
 
-    await Promise.all([
-      fetchStudentsForCourse(courseId),
-      fetchSubjectsForCourse(courseId)
-    ])
+    try {
+      await Promise.all([
+        fetchStudentsForCourse(courseId),
+        fetchSubjectsForCourse(courseId)
+      ])
+    } catch (err) {
+      availableStudents.value = []
+      availableSubjects.value = []
+      console.error('Error loading teacher report course data:', err)
+      toast.error('No se pudieron cargar los datos del curso', { description: translateError(err) })
+    }
   }
 
   const onStudentSelected = (studentId) => {
@@ -340,7 +353,7 @@ export function useTeacherReports() {
       recipient_name: '',
       status: 'borrador',
       priority: 'normal',
-      citation_date: new Date().toISOString().split('T')[0],
+      citation_date: institutionalDateKey(new Date(), institutionConfig.value.timezone),
       citation_time: '08:00',
       citation_location: 'Instalaciones del plantel educativo',
       reason: cfg.defaultReason,
@@ -426,11 +439,6 @@ export function useTeacherReports() {
     showPrintModal.value = true
   }
 
-  const openDigitalSignModal = (report) => {
-    activeReport.value = report
-    showDigitalSignModal.value = true
-  }
-
   const saveReport = async (asSent = false) => {
     if (!formData.course_id || !formData.student_id) {
       toast.error('Debes seleccionar el curso y el estudiante.')
@@ -468,26 +476,8 @@ export function useTeacherReports() {
         signature_data: formData.signature_data || null,
       }
 
-      // Try RPC first for atomic transaction
-      const { data, error } = await supabase.rpc('save_teacher_report', { p_report: payload })
-      if (error) {
-        // Direct table fallback
-        const sId = authStore.activeSchoolId || authStore.profile?.school_id
-        if (formData.id) {
-          const { error: updErr } = await supabase.from('teacher_reports').update({
-            ...payload,
-            updated_at: new Date().toISOString()
-          }).eq('id', formData.id)
-          if (updErr) throw updErr
-        } else {
-          const { error: insErr } = await supabase.from('teacher_reports').insert([{
-            ...payload,
-            school_id: sId,
-            teacher_id: authStore.user?.id
-          }])
-          if (insErr) throw insErr
-        }
-      }
+      const { error } = await supabase.rpc('save_teacher_report', { p_report: payload })
+      if (error) throw error
 
       toast.success(asSent ? 'Informe enviado exitosamente' : 'Informe guardado como borrador')
       showEditorModal.value = false
@@ -505,7 +495,7 @@ export function useTeacherReports() {
   const deleteReport = async (reportId) => {
     if (!confirm('¿Estás seguro de eliminar este informe o citación?')) return
     try {
-      const { error } = await supabase.from('teacher_reports').delete().eq('id', reportId)
+      const { error } = await supabase.rpc('delete_teacher_report', { p_report_id: reportId })
       if (error) throw error
       toast.success('Informe eliminado')
       await fetchReports()
@@ -516,10 +506,10 @@ export function useTeacherReports() {
 
   const updateStatus = async (reportId, newStatus) => {
     try {
-      const { error } = await supabase
-        .from('teacher_reports')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', reportId)
+      const { error } = await supabase.rpc('set_teacher_report_status', {
+        p_report_id: reportId,
+        p_status: newStatus,
+      })
       if (error) throw error
       toast.success(`Estado actualizado a: ${REPORT_STATUSES[newStatus]?.label || newStatus}`)
       await fetchReports()
@@ -568,16 +558,24 @@ export function useTeacherReports() {
   })
 
   watch(() => academicYearStore.selectedYearName, () => {
-    fetchCourses()
-    fetchReports()
+    fetchCourses().catch(err => {
+      console.error('Error refreshing teacher report courses:', err)
+      toast.error('No se pudieron actualizar los cursos', { description: translateError(err) })
+    })
+    void fetchReports()
   })
 
   onMounted(async () => {
-    await Promise.all([
-      fetchInstitutionConfig(),
-      fetchCourses(),
-      fetchQuarters()
-    ])
+    try {
+      await Promise.all([
+        fetchInstitutionConfig(),
+        fetchCourses(),
+        fetchQuarters()
+      ])
+    } catch (err) {
+      console.error('Error initializing teacher reports:', err)
+      toast.error('No se pudo completar la información del módulo', { description: translateError(err) })
+    }
     await fetchReports()
   })
 
@@ -606,7 +604,6 @@ export function useTeacherReports() {
     // Modals
     showEditorModal,
     showPrintModal,
-    showDigitalSignModal,
     activeReport,
     formData,
     // Actions
@@ -620,7 +617,6 @@ export function useTeacherReports() {
     openCreateModal,
     openEditModal,
     openPrintModal,
-    openDigitalSignModal,
     saveReport,
     deleteReport,
     updateStatus,

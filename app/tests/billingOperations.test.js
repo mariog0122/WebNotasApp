@@ -7,9 +7,13 @@ describe('auditable billing operations', () => {
       new URL('../src/views/superadmin/TenantsTab.vue', import.meta.url),
       'utf8',
     )
+    const statusSource = readFileSync(
+      new URL('../src/lib/superadminTenantStatus.js', import.meta.url),
+      'utf8',
+    )
 
     expect(source).toContain("rpc('record_manual_payment'")
-    expect(source).toContain("rpc('set_tenant_status'")
+    expect(statusSource).toContain("rpc('set_tenant_status'")
     expect(source).not.toMatch(/from\('schools'\)\.update/)
     expect(source).not.toMatch(/from\('tenant_status_logs'\)\.insert/)
   })

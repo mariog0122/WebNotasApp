@@ -43,6 +43,8 @@ const app = createApp(App)
 
 installErrorTelemetry(app, supabase, {
   release: import.meta.env.VITE_APP_RELEASE || 'unknown',
+  sentryDsn: import.meta.env.VITE_SENTRY_DSN || null,
+  environment: import.meta.env.MODE || 'production',
 })
 
 app.use(createPinia())

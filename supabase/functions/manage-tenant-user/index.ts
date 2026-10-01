@@ -1,5 +1,7 @@
 // @ts-ignore: Deno npm specifier resolution in IDE
 import { createClient } from 'npm:@supabase/supabase-js@2.49.8'
+import { reportEdgeFunctionError } from '../_shared/telemetry.ts'
+import { canDeleteTenantUser } from './authorization.ts'
 
 declare const Deno: {
   serve: (handler: (req: Request) => Promise<Response> | Response) => void
@@ -32,6 +34,7 @@ type ManageUserRequest = {
   lastName?: string
   email?: string
   password?: string
+  phone?: string
   schoolId?: string
   role?: string
 }
@@ -64,11 +67,15 @@ Deno.serve(async (req: Request) => {
   })
 
   let createdUserId: string | null = null
+  let callerUserId: string | null = null
+  let telemetrySchoolId: string | null = null
+  let telemetryAction = 'unknown'
 
   try {
     const token = authorization.replace(/^Bearer\s+/i, '')
     const { data: userData, error: userError } = await callerClient.auth.getUser(token)
     if (userError || !userData.user) return respond({ success: false, message: 'Sesión no válida.' }, 401)
+    callerUserId = userData.user.id
 
     const [{ data: callerProfile, error: profileError }, { data: callerMemberships }] = await Promise.all([
       adminClient
@@ -87,27 +94,36 @@ Deno.serve(async (req: Request) => {
       return respond({ success: false, message: 'Acceso denegado.' }, 403)
     }
 
-    const { data: isPlatformAdmin } = await callerClient.rpc('is_platform_admin')
+    const { data: canAdministerPlatform } = await callerClient.rpc('has_platform_role', {
+      p_roles: ['platform_owner', 'platform_admin'],
+    })
     const { data: canManageTenantUsers } = await callerClient.rpc('has_tenant_permission', {
       perm_code: 'users.manage',
     })
 
     const body = (await req.json()) as ManageUserRequest
     const targetSchoolId = body.schoolId?.trim() || callerProfile.school_id
+    telemetrySchoolId = targetSchoolId || null
+    telemetryAction = body.action || 'unknown'
 
     const activeMemberships: TenantMembershipItem[] = (callerMemberships as unknown as TenantMembershipItem[]) || []
     const isMemberOfTarget = activeMemberships.some((m: TenantMembershipItem) => m.school_id === targetSchoolId)
-    const isOwnSchool = Boolean(targetSchoolId && (targetSchoolId === callerProfile.school_id || isMemberOfTarget))
+    const isPrimarySchool = Boolean(targetSchoolId && targetSchoolId === callerProfile.school_id)
+    const isOwnSchool = Boolean(targetSchoolId && (isPrimarySchool || isMemberOfTarget))
 
     const targetMembership = activeMemberships.find((m: TenantMembershipItem) => m.school_id === targetSchoolId)
     const membershipRoleName = (targetMembership?.tenant_roles as { name?: string } | undefined)?.name
 
-    const isSchoolAdmin =
-      ['admin', 'school_admin', 'rector'].includes(callerProfile.role) ||
-      (membershipRoleName ? ['school_admin', 'rector', 'admin'].includes(membershipRoleName) : false)
+    const isPrimarySchoolAdmin = isPrimarySchool
+      && ['admin', 'school_admin', 'rector'].includes(callerProfile.role)
+    const isTargetMembershipAdmin = membershipRoleName
+      ? ['school_admin', 'rector', 'admin'].includes(membershipRoleName)
+      : false
+    const hasPrimarySchoolManagePermission = isPrimarySchool && canManageTenantUsers === true
 
     const isAuthorized =
-      isPlatformAdmin === true || (isOwnSchool && (isSchoolAdmin || canManageTenantUsers === true))
+      canAdministerPlatform === true
+      || (isOwnSchool && (isPrimarySchoolAdmin || isTargetMembershipAdmin || hasPrimarySchoolManagePermission))
 
     if (!isAuthorized || !targetSchoolId) {
       return respond({ success: false, message: 'Acceso denegado para esta institución.' }, 403)
@@ -168,7 +184,7 @@ Deno.serve(async (req: Request) => {
         .maybeSingle()
 
       if (existingProfile) {
-        return respond({ success: false, message: 'El correo electrónico ya pertenece a un usuario registrado.' }, 409)
+        return respond({ success: false, message: 'Este correo ya está registrado en otra institución. Ingresa un correo electrónico diferente.' }, 409)
       }
 
       const [{ data: school, error: schoolError }, { data: tenantRole, error: tenantRoleError }] =
@@ -185,7 +201,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const schoolName = school?.name || 'Institución Educativa'
-      const loginUrl = 'https://sandybrown-alpaca-347737.hostingersite.com/login?reason=access'
+      const loginUrl = Deno.env.get('PLATFORM_LOGIN_URL') || 'https://sandybrown-alpaca-347737.hostingersite.com/login?reason=access'
 
       // Creación directa en Supabase Auth con contraseña confirmada
       const { data: created, error: createError } = await adminClient.auth.admin.createUser({
@@ -281,10 +297,11 @@ Deno.serve(async (req: Request) => {
 
         // Envío A: Hostinger Mailer direct HTTP API (.site domain)
         try {
-          await fetch('https://sandybrown-alpaca-347737.hostingersite.com/api/send-email.php', {
+          const mailerEndpoint = Deno.env.get('MAILER_API_URL') || 'https://sandybrown-alpaca-347737.hostingersite.com/api/send-email.php'
+          await fetch(mailerEndpoint, {
             method: 'POST',
             headers: {
-              'Authorization': 'Bearer LOGREVA_MAILER_SECRET_2026',
+              'Authorization': `Bearer ${Deno.env.get('LOGREVA_MAILER_SECRET') || ''}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -332,16 +349,42 @@ Deno.serve(async (req: Request) => {
         return respond({ success: false, code: 'SELF_DELETE_FORBIDDEN', message: 'No puedes eliminar tu propia cuenta.' }, 409)
       }
 
-      const [{ data: targetProfile, error: targetError }, { data: platformRole, error: platformError }] =
+      const [
+        { data: targetProfile, error: targetError },
+        { data: platformRole, error: platformError },
+        { data: targetMemberships, error: targetMembershipsError },
+      ] =
         await Promise.all([
           adminClient.from('profiles').select('id, email, full_name, role, school_id').eq('id', targetUserId).maybeSingle(),
           adminClient.from('user_platform_roles').select('user_id').eq('user_id', targetUserId).maybeSingle(),
+          adminClient
+            .from('tenant_memberships')
+            .select('school_id')
+            .eq('user_id', targetUserId)
+            .eq('is_active', true),
         ])
 
       if (targetError || !targetProfile) return respond({ success: false, message: 'Usuario no encontrado.' }, 404)
       if (platformError) throw platformError
+      if (targetMembershipsError) throw targetMembershipsError
       if (platformRole) {
         return respond({ success: false, message: 'Las cuentas de plataforma no se eliminan desde este módulo.' }, 409)
+      }
+      if (!canDeleteTenantUser({
+        isPlatformAdmin: canAdministerPlatform === true,
+        requestedSchoolId: targetSchoolId,
+        targetUserSchoolId: targetProfile.school_id,
+      })) {
+        return respond({ success: false, message: 'Acceso denegado para esta institución.' }, 403)
+      }
+      const hasOtherActiveMembership = (targetMemberships || []).some(
+        (membership: { school_id?: string }) => membership.school_id !== targetSchoolId,
+      )
+      if (canAdministerPlatform !== true && hasOtherActiveMembership) {
+        return respond({
+          success: false,
+          message: 'El usuario mantiene acceso a otra institución y debe ser gestionado por un administrador de plataforma.',
+        }, 409)
       }
 
       const { error: deleteError } = await adminClient.auth.admin.deleteUser(targetUserId)
@@ -369,15 +412,20 @@ Deno.serve(async (req: Request) => {
     const rawMsg = error instanceof Error ? error.message : String(error || '')
     console.error('manage-tenant-user failed:', rawMsg)
 
+    await reportEdgeFunctionError(adminClient, 'manage-tenant-user', new Error('MANAGE_TENANT_USER_FAILED'), {
+      schoolId: telemetrySchoolId,
+      userId: callerUserId,
+      statusCode: 500,
+      metadata: { action: telemetryAction },
+    })
+
     let clientMsg = 'No fue posible completar la operación de usuario.'
     if (rawMsg.includes('already been registered') || rawMsg.includes('already exists') || rawMsg.includes('duplicate key')) {
-      clientMsg = 'Este correo electrónico ya se encuentra registrado en el sistema.'
+      clientMsg = 'Este correo ya está registrado en otra institución. Ingresa un correo electrónico diferente.'
     } else if (rawMsg.includes('Password') || rawMsg.includes('password')) {
       clientMsg = 'La contraseña debe cumplir con los requisitos mínimos de seguridad (al menos 8 caracteres).'
-    } else if (rawMsg) {
-      clientMsg = rawMsg
     }
 
-    return respond({ success: false, message: clientMsg }, 400)
+    return respond({ success: false, message: clientMsg }, 500)
   }
 })

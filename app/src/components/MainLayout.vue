@@ -3,6 +3,7 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import Sidebar from './Sidebar.vue'
 import ErrorBoundary from './ErrorBoundary.vue'
+import LogrevaFloatingCopilot from './copilot/LogrevaFloatingCopilot.vue'
 import { useUIStore } from '../stores/ui'
 import { useAcademicYearStore } from '../stores/academicYear'
 import { Menu, ChevronLeft, Calendar } from 'lucide-vue-next'
@@ -69,7 +70,7 @@ onUnmounted(() => {
           </button>
           
           <h2 class="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight truncate max-w-[200px] sm:max-w-none">
-            {{ uiStore.pageTitle || ($route.name ? $route.name.charAt(0).toUpperCase() + $route.name.slice(1) : 'Panel') }}
+            {{ uiStore.pageTitle || $route.meta?.title || ($route.name ? $route.name.charAt(0).toUpperCase() + $route.name.slice(1) : 'Panel') }}
           </h2>
         </div>
         
@@ -134,6 +135,9 @@ onUnmounted(() => {
         </div>
       </main>
     </div>
+
+    <!-- Copiloto Global Flotante Asistente Logreva -->
+    <LogrevaFloatingCopilot />
   </div>
 </template>
 

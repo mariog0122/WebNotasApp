@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.49.8'
+import { reportEdgeFunctionError } from '../_shared/telemetry.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,11 +42,14 @@ Deno.serve(async (req) => {
   })
 
   let invitedUserId: string | null = null
+  let callerUserId: string | null = null
+  let telemetrySchoolId: string | null = null
 
   try {
     const token = authorization.replace(/^Bearer\s+/i, '')
     const { data: userData, error: userError } = await callerClient.auth.getUser(token)
     if (userError || !userData.user) return respond({ success: false, message: 'Sesión no válida.' }, 401)
+    callerUserId = userData.user.id
 
     const body = (await req.json()) as InviteRequest
     const fullName = body.fullName?.trim() ?? ''
@@ -62,7 +66,9 @@ Deno.serve(async (req) => {
       return respond({ success: false, message: 'Acceso denegado.' }, 403)
     }
 
-    const { data: isPlatformAdmin } = await callerClient.rpc('is_platform_admin')
+    const { data: canAdministerPlatform } = await callerClient.rpc('has_platform_role', {
+      p_roles: ['platform_owner', 'platform_admin'],
+    })
     const { data: canInviteTenantUsers } = await callerClient.rpc('has_tenant_permission', {
       perm_code: 'users.invite',
     })
@@ -71,10 +77,11 @@ Deno.serve(async (req) => {
     })
 
     const targetSchoolId = body.schoolId?.trim() || callerProfile.school_id
+    telemetrySchoolId = targetSchoolId || null
     const isOwnTenant = Boolean(targetSchoolId && targetSchoolId === callerProfile.school_id)
     const isSchoolAdmin = ['admin', 'school_admin', 'rector'].includes(callerProfile.role)
 
-    const isAuthorized = isPlatformAdmin === true || (isOwnTenant && (isSchoolAdmin || canInviteTenantUsers === true || canManageTenantUsers === true))
+    const isAuthorized = canAdministerPlatform === true || (isOwnTenant && (isSchoolAdmin || canInviteTenantUsers === true || canManageTenantUsers === true))
 
     if (!targetSchoolId || !isAuthorized) {
       return respond({ success: false, message: 'Acceso denegado para esta institución.' }, 403)
@@ -110,7 +117,7 @@ Deno.serve(async (req) => {
 
     if (existingProfile) {
       if (existingProfile.school_id !== targetSchoolId || existingProfile.role !== 'teacher') {
-        return respond({ success: false, message: 'El correo ya pertenece a otro usuario o institución.' }, 409)
+        return respond({ success: false, message: 'Este correo ya está registrado en otra institución. Ingresa un correo electrónico diferente.' }, 409)
       }
       teacherUserId = existingProfile.id
     } else {
@@ -168,6 +175,11 @@ Deno.serve(async (req) => {
   } catch (error) {
     if (invitedUserId) await adminClient.auth.admin.deleteUser(invitedUserId).catch(() => undefined)
     console.error('invite-tenant-user failed', error instanceof Error ? error.message : 'unknown')
+    await reportEdgeFunctionError(adminClient, 'invite-tenant-user', new Error('TENANT_USER_INVITE_FAILED'), {
+      schoolId: telemetrySchoolId,
+      userId: callerUserId,
+      statusCode: 500,
+    })
     return respond({ success: false, message: 'No fue posible invitar al docente.' }, 500)
   }
 })

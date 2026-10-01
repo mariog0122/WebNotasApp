@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { ThumbsUp, ThumbsDown, Edit3, Check } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -18,16 +18,26 @@ const props = defineProps({
   size: {
     type: String,
     default: 'sm' // 'sm' | 'xs'
+  },
+  onSubmitFeedback: {
+    type: Function,
+    required: true
   }
 })
 
-const emit = defineEmits(['feedback-submitted', 'open-modal'])
+const emit = defineEmits(['open-modal'])
 
 const submittedPositive = ref(false)
+const submitting = ref(false)
+watch(() => [props.targetId, props.sectionKey], () => { submittedPositive.value = false })
 
-const onPositiveClick = () => {
-  submittedPositive.value = true
-  emit('feedback-submitted', {
+const onPositiveClick = async () => {
+  if (submittedPositive.value || submitting.value) return
+  submitting.value = true
+  const targetId = props.targetId
+  const sectionKey = props.sectionKey
+  try {
+    await props.onSubmitFeedback({
     targetType: props.targetType,
     targetId: props.targetId,
     sectionKey: props.sectionKey,
@@ -35,7 +45,13 @@ const onPositiveClick = () => {
     category: 'pedagogical',
     tags: ['util', 'buena_calidad'],
     comment: 'Planificación útil y pertinente.'
-  })
+    })
+    if (props.targetId === targetId && props.sectionKey === sectionKey) submittedPositive.value = true
+  } catch {
+    // The parent reports the persistence error; keep this action available for retry.
+  } finally {
+    submitting.value = false
+  }
 }
 
 const onNegativeClick = () => {
@@ -65,7 +81,7 @@ const onCorrectionClick = () => {
     <button
       @click="onPositiveClick"
       type="button"
-      :disabled="submittedPositive"
+      :disabled="submittedPositive || submitting"
       :class="[
         'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer',
         submittedPositive

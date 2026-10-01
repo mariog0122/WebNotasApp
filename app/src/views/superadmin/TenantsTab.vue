@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { supabase } from '../../lib/supabase'
+import { billingProofPath, resolveBillingProofUrl, uploadBillingProof, isPdfBillingProof } from '../../lib/billingProofs'
 import { 
   Search, Filter, Building2, MoreVertical,
   Sliders, Shield, Ban, CheckCircle, RefreshCw, X, AlertCircle, Save, DollarSign, FileText, LogIn, Trash2, Download, Upload, Database, FileSpreadsheet, Eye, Sparkles, CheckCheck
@@ -10,6 +11,8 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { downloadInstitutionsTemplate } from '../../lib/exportUtils'
 import { auditReceiptWithAI, getLocalCurrentDateTimeString } from '../../lib/receiptAiAuditor'
+import { createTenantStatusManager, tenantStatusSuccessMessage } from '../../lib/superadminTenantStatus'
+import { tenantService } from '../../services/tenantService'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -46,6 +49,8 @@ const tenantLimits = ref({
 const usageStats = ref(null)
 
 const showSuspendModal = ref(false)
+const statusActionTarget = ref(null)
+const statusChangingTenantId = ref(null)
 const suspendReasonOption = ref('Pago vencido')
 const suspendObservation = ref('')
 const notifyAdminCheck = ref(true)
@@ -79,6 +84,7 @@ const paymentExpectedAmount = computed(() => {
 })
 
 const savingAction = ref(false)
+const tenantStatusManager = createTenantStatusManager(supabase)
 
 const openTenantWorkspace = async (tenant) => {
   if (!authStore.setActiveSchoolId(tenant.id)) {
@@ -170,7 +176,7 @@ const loadTenants = async () => {
       })
     }
 
-    tenants.value = schools.map(s => {
+    tenants.value = await Promise.all(schools.map(async s => {
       const profs = profilesMap.get(s.id) || []
       const admin = profs.find(p => p.role === 'admin' || p.role === 'superadmin') || profs[0]
       const userCount = profs.length
@@ -207,14 +213,15 @@ const loadTenants = async () => {
         daysRemaining,
         implementationFee: sub?.plans?.implementation_fee || 0,
         implementationFeeStatus: billing?.implementation_fee_status || 'pending',
-        latestReceiptUrl: receiptUrl,
+        latestReceiptPath: receiptUrl ? billingProofPath(receiptUrl) : '',
+        latestReceiptUrl: receiptUrl ? await resolveBillingProofUrl(supabase, receiptUrl).catch(() => '') : '',
         userCount,
         studentCount,
         maxStudents,
         nextBilling: nextBillingFormatted,
         nextBillingRaw: rawDate
       }
-    })
+    }))
   } catch (err) {
     toast.error('Excepción cargando instituciones: ' + err.message)
   } finally {
@@ -259,21 +266,10 @@ const openFeaturesModal = async (tenant) => {
   }
 
   try {
-    const { data, error } = await supabase.from('tenant_features').select('*').eq('school_id', tenant.id)
-    if (!error && data && data.length > 0) {
-      data.forEach(f => { feats[f.feature_key] = f.enabled })
-    } else {
-      // Fallback a system_config si la tabla tenant_features no existe aún en DB
-      const { data: cfg } = await supabase.from('system_config').select('value').eq('school_id', tenant.id).eq('key', 'enabled_features').maybeSingle()
-      if (cfg && cfg.value) {
-        try {
-          const parsed = typeof cfg.value === 'string' ? JSON.parse(cfg.value) : cfg.value
-          Object.assign(feats, parsed)
-        } catch (e) {}
-      }
-    }
+    const loaded = await tenantService.fetchFeatures(tenant.id)
+    Object.assign(feats, loaded)
   } catch (e) {
-    console.warn('Fallback a system_config para tenant_features:', e)
+    console.warn('[TenantsTab] Error cargando módulos:', e)
   }
 
   tenantFeatures.value = feats
@@ -282,23 +278,7 @@ const openFeaturesModal = async (tenant) => {
 const saveFeatures = async () => {
   savingAction.value = true
   try {
-    const updates = Object.keys(tenantFeatures.value).map(key => ({
-      school_id: selectedTenant.value.id,
-      feature_key: key,
-      enabled: tenantFeatures.value[key]
-    }))
-
-    const { error } = await supabase.from('tenant_features').upsert(updates)
-    if (error) {
-      // Si la tabla tenant_features no existe en Postgres, guardar en system_config de forma transparente
-      const { error: cfgErr } = await supabase.from('system_config').upsert({
-        school_id: selectedTenant.value.id,
-        key: 'enabled_features',
-        value: JSON.stringify(tenantFeatures.value)
-      })
-      if (cfgErr) throw cfgErr
-    }
-
+    await tenantService.saveFeatures(selectedTenant.value.id, tenantFeatures.value)
     toast.success('Módulos actualizados exitosamente para ' + selectedTenant.value.name)
     showFeaturesModal.value = false
   } catch (err) {
@@ -315,17 +295,9 @@ const openLimitsModal = async (tenant) => {
   showLimitsModal.value = true
   
   try {
-    const { data: lim, error } = await supabase.from('tenant_limits').select('*').eq('school_id', tenant.id).maybeSingle()
-    if (!error && lim) {
+    const lim = await tenantService.fetchLimits(tenant.id)
+    if (lim) {
       tenantLimits.value = { ...tenantLimits.value, ...lim }
-    } else {
-      const { data: cfg } = await supabase.from('system_config').select('value').eq('school_id', tenant.id).eq('key', 'tenant_limits').maybeSingle()
-      if (cfg && cfg.value) {
-        try {
-          const parsed = typeof cfg.value === 'string' ? JSON.parse(cfg.value) : cfg.value
-          Object.assign(tenantLimits.value, parsed)
-        } catch (e) {}
-      }
     }
 
     // Consultar conteos reales de la base de datos
@@ -353,20 +325,7 @@ const openLimitsModal = async (tenant) => {
 const saveLimits = async () => {
   savingAction.value = true
   try {
-    const { error } = await supabase.from('tenant_limits').upsert({
-      school_id: selectedTenant.value.id,
-      ...tenantLimits.value,
-      updated_at: new Date().toISOString()
-    })
-    if (error) {
-      const { error: cfgErr } = await supabase.from('system_config').upsert({
-        school_id: selectedTenant.value.id,
-        key: 'tenant_limits',
-        value: JSON.stringify(tenantLimits.value)
-      })
-      if (cfgErr) throw cfgErr
-    }
-
+    await tenantService.saveLimits(selectedTenant.value.id, tenantLimits.value)
     toast.success('Límites actualizados exitosamente')
     showLimitsModal.value = false
   } catch (err) {
@@ -378,10 +337,16 @@ const saveLimits = async () => {
 
 // SUSPENDER / REACTIVAR
 const openSuspendModal = (tenant) => {
-  selectedTenant.value = tenant
+  statusActionTarget.value = tenant
   suspendReasonOption.value = 'Pago vencido'
   suspendObservation.value = ''
   showSuspendModal.value = true
+}
+
+const closeSuspendModal = () => {
+  if (statusChangingTenantId.value) return
+  showSuspendModal.value = false
+  statusActionTarget.value = null
 }
 
 const openPaymentModal = (tenant) => {
@@ -396,6 +361,7 @@ const openPaymentModal = (tenant) => {
     paidAt: getLocalCurrentDateTimeString(),
     notes: '',
     receiptUrl: tenant.latestReceiptUrl || '',
+    receiptPath: tenant.latestReceiptPath || '',
     uploadingReceipt: false
   }
   showPaymentModal.value = true
@@ -458,14 +424,9 @@ const onModalReceiptFileChange = async (e) => {
   paymentForm.value.uploadingReceipt = true
   aiAuditResult.value = null
   try {
-    const fileExt = file.name.split('.').pop()
-    const filePath = `receipts/${selectedTenant.value.id}_${Date.now()}.${fileExt}`
-    const { error: uploadErr } = await supabase.storage.from('billing-proofs').upload(filePath, file, { upsert: true })
-    if (uploadErr) throw uploadErr
-
-    const { data: publicUrlData } = supabase.storage.from('billing-proofs').getPublicUrl(filePath)
-    const publicUrl = publicUrlData?.publicUrl || filePath
-    paymentForm.value.receiptUrl = publicUrl
+    const filePath = await uploadBillingProof(supabase, selectedTenant.value.id, file)
+    paymentForm.value.receiptPath = filePath
+    paymentForm.value.receiptUrl = await resolveBillingProofUrl(supabase, filePath)
     toast.success('¡Foto del comprobante adjuntada correctamente!')
   } catch (err) {
     toast.error('Error al subir imagen de comprobante: ' + err.message)
@@ -550,7 +511,7 @@ const recordPayment = async () => {
 
   savingAction.value = true
   try {
-    const receiptUrl = paymentForm.value.receiptUrl || selectedTenant.value.latestReceiptUrl || null
+    const receiptUrl = paymentForm.value.receiptPath || selectedTenant.value.latestReceiptPath || null
     const paidAtIso = new Date(paymentForm.value.paidAt).toISOString()
     const amountVal = paymentExpectedAmount.value
 
@@ -576,30 +537,38 @@ const recordPayment = async () => {
   }
 }
 
-const executeStatusChange = async (newStatus) => {
-  savingAction.value = true
+const executeStatusChange = async (newStatus, targetTenant) => {
+  if (!targetTenant?.id) {
+    toast.error('No se pudo identificar la institución sobre la que se ejecutó la acción.')
+    return false
+  }
+  if (statusChangingTenantId.value) return false
+
+  statusChangingTenantId.value = targetTenant.id
   try {
     const reasonText = newStatus === 'suspended' ? suspendReasonOption.value : 'Reactivación manual autorizada'
     const observation = newStatus === 'suspended'
       ? suspendObservation.value
       : 'Reactivado por SuperAdmin fuera del flujo de cobro.'
 
-    const { error: rpcError } = await supabase.rpc('set_tenant_status', {
-      p_school_id: selectedTenant.value.id,
-      p_new_status: newStatus,
-      p_reason: reasonText,
-      p_observation: observation
+    const result = await tenantStatusManager.changeStatus({
+      targetInstitutionId: targetTenant.id,
+      newStatus,
+      reason: reasonText,
+      observation
     })
 
-    if (rpcError) throw rpcError
-
-    toast.success(`Estado actualizado a "${newStatus}" para ${selectedTenant.value.name}`)
+    if (result.skipped) return false
+    toast.success(tenantStatusSuccessMessage(newStatus, targetTenant.name, result.changed !== false))
     showSuspendModal.value = false
+    statusActionTarget.value = null
     await loadTenants()
+    return true
   } catch (err) {
-    toast.error('Error actualizando estado: ' + (err.message || 'Verifique permisos'))
+    toast.error(err.message || 'No se pudo cambiar el estado de la institución. Intenta nuevamente.')
+    return false
   } finally {
-    savingAction.value = false
+    statusChangingTenantId.value = null
   }
 }
 
@@ -622,6 +591,8 @@ const generateTenantBackupData = async (schoolId, schoolName) => {
     billingProfileRes,
     invoicesRes,
     paymentsRes,
+    academicYearsRes,
+    tenantLimitsRes,
   ] = await Promise.all([
     supabase.from('schools').select('*').eq('id', schoolId).maybeSingle(),
     supabase.from('system_config').select('*').eq('school_id', schoolId),
@@ -630,19 +601,49 @@ const generateTenantBackupData = async (schoolId, schoolName) => {
     supabase.from('courses').select('*').eq('school_id', schoolId),
     supabase.from('subjects').select('*').eq('school_id', schoolId),
     supabase.from('students').select('*').eq('school_id', schoolId),
-    supabase.from('quarters').select('*'),
+    supabase.from('quarters').select('*').eq('school_id', schoolId),
     supabase.from('grade_definitions').select('*').eq('school_id', schoolId),
     supabase.from('student_alerts').select('*').eq('school_id', schoolId),
     supabase.from('subscriptions').select('*').eq('school_id', schoolId),
     supabase.from('tenant_billing_profiles').select('*').eq('school_id', schoolId),
     supabase.from('invoices').select('*').eq('school_id', schoolId),
     supabase.from('payments').select('*').eq('school_id', schoolId),
+    supabase.from('academic_years').select('*').eq('school_id', schoolId),
+    supabase.from('tenant_limits').select('*').eq('school_id', schoolId).maybeSingle(),
   ])
+
+  const backupQueries = {
+    institución: schoolRes,
+    configuración: configRes,
+    perfiles: profilesRes,
+    membresías: membershipsRes,
+    cursos: coursesRes,
+    materias: subjectsRes,
+    estudiantes: studentsRes,
+    períodos: quartersRes,
+    definiciones: gradeDefsRes,
+    alertas: alertsRes,
+    suscripciones: subsRes,
+    facturación: billingProfileRes,
+    facturas: invoicesRes,
+    pagos: paymentsRes,
+    años_lectivos: academicYearsRes,
+    límites: tenantLimitsRes,
+  }
+  for (const [label, result] of Object.entries(backupQueries)) {
+    if (result.error) throw new Error(`No se pudo respaldar ${label}: ${result.error.message}`)
+  }
+  if (!schoolRes.data) throw new Error('La institución ya no existe o no está disponible.')
 
   const courseIds = (coursesRes.data || []).map(c => c.id)
   let courseSubjectsData = []
   if (courseIds.length > 0) {
-    const { data: csData } = await supabase.from('course_subjects').select('*').in('course_id', courseIds)
+    const { data: csData, error: csError } = await supabase
+      .from('course_subjects')
+      .select('*')
+      .eq('school_id', schoolId)
+      .in('course_id', courseIds)
+    if (csError) throw new Error(`No se pudieron respaldar las asignaciones: ${csError.message}`)
     if (csData) courseSubjectsData = csData
   }
 
@@ -660,6 +661,9 @@ const generateTenantBackupData = async (schoolId, schoolName) => {
         supabase.from('qualitative_grades').select('*').in('student_id', chunk),
         supabase.from('supplementary_exams').select('*').in('student_id', chunk),
       ])
+      if (gRes.error) throw new Error(`No se pudieron respaldar las calificaciones: ${gRes.error.message}`)
+      if (qgRes.error) throw new Error(`No se pudieron respaldar las calificaciones cualitativas: ${qgRes.error.message}`)
+      if (seRes.error) throw new Error(`No se pudieron respaldar los exámenes supletorios: ${seRes.error.message}`)
       if (gRes.data) gradesData.push(...gRes.data)
       if (qgRes.data) qualGradesData.push(...qgRes.data)
       if (seRes.data) suppExamsData.push(...seRes.data)
@@ -699,6 +703,8 @@ const generateTenantBackupData = async (schoolId, schoolName) => {
       billing_profiles: billingProfileRes.data || [],
       invoices: invoicesRes.data || [],
       payments: paymentsRes.data || [],
+      academic_years: academicYearsRes.data || [],
+      tenant_limits: tenantLimitsRes.data || null,
     }
   }
 }
@@ -756,14 +762,8 @@ const executeDeleteTenant = async () => {
       p_school_id: deleteTenantTarget.value.id
     })
 
-    if (error) {
-      const { error: directErr } = await supabase
-        .from('schools')
-        .delete()
-        .eq('id', deleteTenantTarget.value.id)
-
-      if (directErr) throw directErr
-    }
+    if (error) throw error
+    if (!data?.success) throw new Error('La función segura rechazó la eliminación de la institución.')
 
     toast.success(data?.message || `La institución "${deleteTenantTarget.value.name}" fue eliminada correctamente.`)
     showDeleteModal.value = false
@@ -815,6 +815,10 @@ const onRestoreFileChange = async (event) => {
     restoreErrors.value = ['Por favor selecciona un archivo en formato JSON (.json).']
     return
   }
+  if (file.size > 25 * 1024 * 1024) {
+    restoreErrors.value = ['El respaldo supera el límite seguro de 25 MB.']
+    return
+  }
 
   try {
     const text = await file.text()
@@ -831,6 +835,35 @@ const onRestoreFileChange = async (event) => {
     const configArr = isFullBackup ? (parsed.data.system_config || []) : (parsed.system_config || [])
     const quartersArr = isFullBackup ? (parsed.data.quarters || []) : (parsed.quarters || [])
     const profilesArr = isFullBackup ? (parsed.data.user_profiles || []) : (parsed.user_profiles || [])
+    const academicYearsArr = isFullBackup ? (parsed.data.academic_years || []) : (parsed.academic_years || [])
+    const supplementaryArr = isFullBackup ? (parsed.data.supplementary_exams || []) : (parsed.supplementary_exams || [])
+    const tenantLimitsObj = isFullBackup ? (parsed.data.tenant_limits || null) : (parsed.tenant_limits || null)
+    if (tenantLimitsObj !== null && (typeof tenantLimitsObj !== 'object' || Array.isArray(tenantLimitsObj))) {
+      throw new Error('La sección tenant_limits no contiene un objeto válido.')
+    }
+
+    const sections = {
+      courses: coursesArr,
+      students: studentsArr,
+      subjects: subjectsArr,
+      grades_numeric: gradesNum,
+      grades_qualitative: gradesQual,
+      system_config: configArr,
+      quarters: quartersArr,
+      user_profiles: profilesArr,
+      academic_years: academicYearsArr,
+      supplementary_exams: supplementaryArr,
+      tenant_limits: tenantLimitsObj,
+    }
+    for (const [name, rows] of Object.entries(sections)) {
+      if (!Array.isArray(rows)) throw new Error(`La sección ${name} no contiene una lista válida.`)
+    }
+
+    const courseSubjectsArr = isFullBackup ? (parsed.data.course_subjects || []) : (parsed.course_subjects || [])
+    const gradeDefinitionsArr = isFullBackup ? (parsed.data.grade_definitions || []) : (parsed.grade_definitions || [])
+    if (!Array.isArray(courseSubjectsArr) || !Array.isArray(gradeDefinitionsArr)) {
+      throw new Error('Las relaciones académicas del respaldo no tienen un formato válido.')
+    }
 
     restoreData.value = {
       school: schoolObj,
@@ -839,11 +872,13 @@ const onRestoreFileChange = async (event) => {
       subjects: subjectsArr,
       grades_numeric: gradesNum,
       grades_qualitative: gradesQual,
-      course_subjects: isFullBackup ? (parsed.data.course_subjects || []) : (parsed.course_subjects || []),
-      grade_definitions: isFullBackup ? (parsed.data.grade_definitions || []) : (parsed.grade_definitions || []),
+      course_subjects: courseSubjectsArr,
+      grade_definitions: gradeDefinitionsArr,
       quarters: quartersArr,
       system_config: configArr,
-      user_profiles: profilesArr
+      user_profiles: profilesArr,
+      academic_years: academicYearsArr,
+      supplementary_exams: supplementaryArr,
     }
 
     restoreNewSchoolName.value = schoolObj.name || parsed.school_name || 'Institución Restaurada'
@@ -856,7 +891,9 @@ const onRestoreFileChange = async (event) => {
       subjectsCount: subjectsArr.length,
       gradesCount: gradesNum.length + gradesQual.length,
       quartersCount: quartersArr.length,
-      configCount: configArr.length
+      configCount: configArr.length,
+      academicYearsCount: academicYearsArr.length,
+      supplementaryCount: supplementaryArr.length,
     }
   } catch (err) {
     restoreErrors.value = ['Error al procesar el archivo JSON: ' + err.message]
@@ -867,220 +904,40 @@ const executeJsonRestore = async () => {
   if (!restoreData.value) return
   restoring.value = true
   try {
-    let targetSchoolId = null
-
-    if (restoreTargetOption.value === 'new_school') {
-      const schoolPayload = {
-        name: restoreNewSchoolName.value || 'Institución Restaurada',
-        code: restoreNewSchoolAmie.value || `REST-${Date.now().toString().slice(-4)}`,
-        status: 'active',
-        plan: 'starter'
-      }
-      const { data: newSchool, error: schoolErr } = await supabase
-        .from('schools')
-        .insert(schoolPayload)
-        .select()
-        .single()
-      if (schoolErr) throw schoolErr
-      targetSchoolId = newSchool.id
-    } else {
-      targetSchoolId = restoreTargetTenantId.value
-      if (!targetSchoolId) throw new Error('Selecciona una institución destino para restaurar.')
+    const creatingSchool = restoreTargetOption.value === 'new_school'
+    const targetSchoolId = creatingSchool ? null : restoreTargetTenantId.value
+    if (!creatingSchool && !targetSchoolId) {
+      throw new Error('Selecciona una institución destino para restaurar.')
     }
 
-    const { system_config, courses, subjects, course_subjects, students, quarters, grade_definitions, grades_numeric, grades_qualitative } = restoreData.value
+    const schoolName = (restoreNewSchoolName.value || 'Institución Restaurada').trim()
+    const schoolCode = (restoreNewSchoolAmie.value || `REST-${Date.now().toString().slice(-6)}`).trim()
+    const { data, error } = await supabase.rpc('restore_tenant_academic_backup', {
+      p_backup: restoreData.value,
+      p_target_school_id: targetSchoolId,
+      p_new_school_name: creatingSchool ? schoolName : null,
+      p_new_school_code: creatingSchool ? schoolCode : null
+    })
 
-    // 1. Restore system config
-    if (system_config && system_config.length > 0) {
-      const configRows = system_config.map(cfg => ({
-        school_id: targetSchoolId,
-        key: cfg.key,
-        value: cfg.value
-      }))
-      await supabase.from('system_config').upsert(configRows, { onConflict: 'school_id, key' })
+    if (error) throw error
+    if (!data?.success || !data?.school_id) {
+      throw new Error('La base de datos no confirmó la restauración académica completa.')
     }
 
-    // 2. Restore Quarters
-    const quarterIdMap = new Map()
-    if (quarters && quarters.length > 0) {
-      for (const q of quarters) {
-        const { data: insertedQ } = await supabase
-          .from('quarters')
-          .insert({
-            school_id: targetSchoolId,
-            name: q.name,
-            code: q.code || q.name,
-            is_active: q.is_active ?? true
-          })
-          .select()
-          .single()
-        if (insertedQ) quarterIdMap.set(q.id, insertedQ.id)
-      }
-    }
-
-    // 3. Restore Subjects
-    const subjectIdMap = new Map()
-    if (subjects && subjects.length > 0) {
-      for (const s of subjects) {
-        const { data: insertedS } = await supabase
-          .from('subjects')
-          .insert({
-            school_id: targetSchoolId,
-            name: s.name
-          })
-          .select()
-          .single()
-        if (insertedS) subjectIdMap.set(s.id, insertedS.id)
-      }
-    }
-
-    // 4. Restore Courses
-    const courseIdMap = new Map()
-    if (courses && courses.length > 0) {
-      for (const c of courses) {
-        const { data: insertedC } = await supabase
-          .from('courses')
-          .insert({
-            school_id: targetSchoolId,
-            name: c.name,
-            academic_year: c.academic_year || '2026-2027',
-            level: c.level || 'MEDIA',
-            track: c.track || 'BASICA'
-          })
-          .select()
-          .single()
-        if (insertedC) courseIdMap.set(c.id, insertedC.id)
-      }
-    }
-
-    // 5. Restore Course Subjects
-    const courseSubjectIdMap = new Map()
-    if (course_subjects && course_subjects.length > 0) {
-      for (const cs of course_subjects) {
-        const mappedCourseId = courseIdMap.get(cs.course_id)
-        const mappedSubjectId = subjectIdMap.get(cs.subject_id)
-        if (mappedCourseId && mappedSubjectId) {
-          const { data: insertedCS } = await supabase
-            .from('course_subjects')
-            .insert({
-              school_id: targetSchoolId,
-              course_id: mappedCourseId,
-              subject_id: mappedSubjectId
-            })
-            .select()
-            .single()
-          if (insertedCS) courseSubjectIdMap.set(cs.id, insertedCS.id)
-        }
-      }
-    }
-
-    // 6. Restore Students
-    const studentIdMap = new Map()
-    if (students && students.length > 0) {
-      for (const st of students) {
-        const mappedCourseId = courseIdMap.get(st.course_id)
-        const { data: insertedSt } = await supabase
-          .from('students')
-          .insert({
-            school_id: targetSchoolId,
-            course_id: mappedCourseId || null,
-            full_name: st.full_name,
-            student_cedula: st.student_cedula || null,
-            student_birthdate: st.student_birthdate || null,
-            student_phone: st.student_phone || '',
-            student_address: st.student_address || '',
-            representative_name: st.representative_name || '',
-            representative_cedula: st.representative_cedula || '',
-            representative_phone: st.representative_phone || '',
-            representative_alt_phone: st.representative_alt_phone || ''
-          })
-          .select()
-          .single()
-        if (insertedSt) studentIdMap.set(st.id, insertedSt.id)
-      }
-    }
-
-    // 7. Restore Grade Definitions
-    const gradeDefIdMap = new Map()
-    if (grade_definitions && grade_definitions.length > 0) {
-      for (const gd of grade_definitions) {
-        const mappedCSId = courseSubjectIdMap.get(gd.course_subject_id)
-        const mappedQId = quarterIdMap.get(gd.quarter_id)
-        if (mappedCSId) {
-          const { data: insertedGD } = await supabase
-            .from('grade_definitions')
-            .insert({
-              school_id: targetSchoolId,
-              course_subject_id: mappedCSId,
-              quarter_id: mappedQId || null,
-              name: gd.name,
-              category: gd.category,
-              weight: gd.weight || 1,
-              order_num: gd.order_num || 1
-            })
-            .select()
-            .single()
-          if (insertedGD) gradeDefIdMap.set(gd.id, insertedGD.id)
-        }
-      }
-    }
-
-    // 8. Restore Grades Numeric
-    if (grades_numeric && grades_numeric.length > 0) {
-      const gradesToInsert = []
-      for (const g of grades_numeric) {
-        const mappedStudentId = studentIdMap.get(g.student_id)
-        const mappedDefId = gradeDefIdMap.get(g.grade_definition_id)
-        if (mappedStudentId && mappedDefId) {
-          gradesToInsert.push({
-            student_id: mappedStudentId,
-            grade_definition_id: mappedDefId,
-            score: g.score
-          })
-        }
-      }
-      if (gradesToInsert.length > 0) {
-        await supabase.from('grades').insert(gradesToInsert)
-      }
-    }
-
-    // 9. Restore Qualitative Grades
-    if (grades_qualitative && grades_qualitative.length > 0) {
-      const qualGradesToInsert = []
-      for (const qg of grades_qualitative) {
-        const mappedStudentId = studentIdMap.get(qg.student_id)
-        const mappedCSId = courseSubjectIdMap.get(qg.course_subject_id)
-        const mappedQId = quarterIdMap.get(qg.quarter_id)
-        if (mappedStudentId && mappedCSId) {
-          qualGradesToInsert.push({
-            school_id: targetSchoolId,
-            student_id: mappedStudentId,
-            course_subject_id: mappedCSId,
-            quarter_id: mappedQId || null,
-            grade_definition_id: gradeDefIdMap.get(qg.grade_definition_id) || null,
-            scale_value: qg.scale_value,
-            numeric_equivalent: qg.numeric_equivalent
-          })
-        }
-      }
-      if (qualGradesToInsert.length > 0) {
-        await supabase.from('qualitative_grades').insert(qualGradesToInsert)
-      }
-    }
-
-    toast.success('¡Base de datos JSON restaurada exitosamente!')
+    toast.success('Restauración académica completada', {
+      description: `${Number(data.courses) || 0} cursos, ${Number(data.students) || 0} estudiantes y ${Number(data.grades) || 0} calificaciones restaurados.`
+    })
     showRestoreJsonModal.value = false
     restoreFile.value = null
     restoreData.value = null
     restoreSummary.value = null
     await loadTenants()
   } catch (err) {
-    toast.error('Error restaurando base de datos: ' + err.message)
+    toast.error('Error restaurando datos académicos: ' + (err.message || 'Error desconocido'))
   } finally {
     restoring.value = false
   }
 }
-
 onMounted(() => {
   loadTenants()
 })
@@ -1132,9 +989,9 @@ onMounted(() => {
           type="button" 
           @click="openRestoreJsonModal" 
           class="px-3.5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-600/20"
-          title="Importar o restaurar base de datos institucional desde archivo JSON"
+          title="Restaurar datos académicos institucionales desde un respaldo JSON"
         >
-          <Database class="w-4 h-4 text-indigo-200" /> Importar / Restaurar JSON
+          <Database class="w-4 h-4 text-indigo-200" /> Restaurar Respaldo JSON
         </button>
       </div>
     </div>
@@ -1321,12 +1178,14 @@ onMounted(() => {
 
                   <button 
                     v-else
-                    @click="executeStatusChange('active')"
-                    title="Reactivar Institución"
+                    @click="executeStatusChange('active', t)"
+                    :disabled="statusChangingTenantId !== null"
+                    :title="statusChangingTenantId === t.id ? 'Reactivando institución...' : 'Reactivar Institución'"
                     aria-label="Reactivar institución"
-                    class="p-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 dark:text-emerald-300 dark:border-emerald-800/50 transition-colors cursor-pointer"
+                    class="p-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 dark:text-emerald-300 dark:border-emerald-800/50 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-wait"
                   >
-                    <CheckCircle class="w-4 h-4" />
+                    <RefreshCw v-if="statusChangingTenantId === t.id" class="w-4 h-4 animate-spin" />
+                    <CheckCircle v-else class="w-4 h-4" />
                   </button>
 
                   <button 
@@ -1669,7 +1528,7 @@ onMounted(() => {
                 <div v-if="paymentForm.receiptUrl" class="space-y-2">
                   <div class="relative group rounded-lg overflow-hidden border border-indigo-200 dark:border-indigo-900/60 bg-white dark:bg-slate-900 max-h-40 flex items-center justify-center p-1">
                     <img 
-                      v-if="!paymentForm.receiptUrl.toLowerCase().endsWith('.pdf')"
+                      v-if="!isPdfBillingProof(paymentForm.receiptPath || paymentForm.receiptUrl)"
                       :src="paymentForm.receiptUrl" 
                       alt="Comprobante" 
                       class="max-h-36 w-auto object-contain rounded" 
@@ -1819,7 +1678,7 @@ onMounted(() => {
 
         <div class="bg-slate-50 dark:bg-slate-950 rounded-xl p-3 border border-slate-200 dark:border-slate-800 flex items-center justify-center min-h-[250px] max-h-[65vh] overflow-hidden">
           <img 
-            v-if="viewingReceiptTenant?.latestReceiptUrl && !viewingReceiptTenant?.latestReceiptUrl.toLowerCase().endsWith('.pdf')"
+            v-if="viewingReceiptTenant?.latestReceiptUrl && !isPdfBillingProof(viewingReceiptTenant.latestReceiptPath || viewingReceiptTenant.latestReceiptUrl)"
             :src="viewingReceiptTenant?.latestReceiptUrl" 
             alt="Comprobante de pago" 
             class="max-h-[60vh] max-w-full object-contain rounded-lg shadow-md" 
@@ -1868,11 +1727,11 @@ onMounted(() => {
           <h3 id="suspend-dialog-title" class="font-bold text-lg text-rose-600 dark:text-rose-400 flex items-center gap-2">
             <Ban class="w-5 h-5" /> Suspender Institución
           </h3>
-          <button @click="showSuspendModal = false" aria-label="Cerrar suspensión" class="text-slate-400 hover:text-slate-700 dark:hover:text-white"><X class="w-5 h-5" /></button>
+          <button @click="closeSuspendModal" :disabled="statusChangingTenantId !== null" aria-label="Cerrar suspensión" class="text-slate-400 hover:text-slate-700 dark:hover:text-white disabled:opacity-50"><X class="w-5 h-5" /></button>
         </div>
 
         <p class="text-sm text-slate-600 dark:text-slate-300">
-          Al suspender a <strong class="text-slate-900 dark:text-white">{{ selectedTenant?.name }}</strong>, se bloqueará el acceso a todos sus rectores y docentes. Los datos se mantendrán intactos.
+          Al suspender a <strong class="text-slate-900 dark:text-white">{{ statusActionTarget?.name }}</strong>, se bloqueará el acceso a todos sus rectores y docentes. Los datos se mantendrán intactos.
         </p>
 
         <div>
@@ -1891,9 +1750,9 @@ onMounted(() => {
         </div>
 
         <div class="flex justify-end gap-3 pt-2">
-          <button @click="showSuspendModal = false" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
-          <button @click="executeStatusChange('suspended')" :disabled="savingAction" class="px-4 py-2 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20">
-            Confirmar Suspensión
+          <button @click="closeSuspendModal" :disabled="statusChangingTenantId !== null" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">Cancelar</button>
+          <button @click="executeStatusChange('suspended', statusActionTarget)" :disabled="statusChangingTenantId !== null" class="px-4 py-2 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20 disabled:opacity-50 disabled:cursor-wait">
+            {{ statusChangingTenantId ? 'Suspendiendo...' : 'Confirmar Suspensión' }}
           </button>
         </div>
       </div>
@@ -1970,7 +1829,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Modal para Importar / Restaurar Base de Datos JSON -->
+    <!-- Modal para restaurar datos académicos desde JSON -->
     <div v-if="showRestoreJsonModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
       <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[90vh]">
         <!-- Header -->
@@ -1980,8 +1839,8 @@ onMounted(() => {
               <Database class="w-6 h-6" />
             </div>
             <div>
-              <h3 class="text-lg font-bold text-slate-900 dark:text-white">Importar / Restaurar Base de Datos (JSON)</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Restaura respaldos completos de instituciones o bases de datos exportadas en JSON.</p>
+              <h3 class="text-lg font-bold text-slate-900 dark:text-white">Restaurar Respaldo Académico (JSON)</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Restaura configuración, años lectivos, cursos, estudiantes y calificaciones en una sola transacción.</p>
             </div>
           </div>
           <button @click="showRestoreJsonModal = false" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800">
@@ -2059,7 +1918,7 @@ onMounted(() => {
                   <input type="radio" value="existing_school" v-model="restoreTargetOption" class="text-indigo-600 focus:ring-indigo-500" />
                   <div>
                     <strong class="block text-slate-900 dark:text-white">Restaurar en Existente</strong>
-                    <span class="text-[10px] text-slate-500 dark:text-slate-400">Sobrescribe o añade a colegio existente</span>
+                    <span class="text-[10px] text-slate-500 dark:text-slate-400">Solo se permite si no contiene datos académicos</span>
                   </div>
                 </label>
               </div>
@@ -2102,7 +1961,7 @@ onMounted(() => {
             class="px-5 py-2.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl flex items-center gap-2 transition disabled:opacity-50 shadow-lg shadow-indigo-600/30 cursor-pointer"
           >
             <Upload class="w-4 h-4" />
-            {{ restoring ? 'Restaurando Base de Datos...' : 'Iniciar Restauración JSON' }}
+            {{ restoring ? 'Restaurando Datos Académicos...' : 'Iniciar Restauración Académica' }}
           </button>
         </div>
       </div>

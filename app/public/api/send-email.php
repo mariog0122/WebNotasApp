@@ -10,6 +10,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Método no permitido.']);
+    exit;
+}
+
 $input = json_decode(file_get_contents('php://input'), true);
 
 if (!$input || empty($input['to']) || empty($input['subject']) || empty($input['html'])) {
@@ -19,9 +25,15 @@ if (!$input || empty($input['to']) || empty($input['subject']) || empty($input['
 }
 
 $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
-$secretKey = 'Bearer LOGREVA_MAILER_SECRET_2026';
+$configuredSecret = getenv('LOGREVA_MAILER_SECRET');
+if (!$configuredSecret) {
+    http_response_code(503);
+    echo json_encode(['success' => false, 'message' => 'Servicio de correo no configurado.']);
+    exit;
+}
+$secretKey = 'Bearer ' . $configuredSecret;
 
-if ($authHeader !== $secretKey) {
+if (!hash_equals($secretKey, $authHeader)) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Acceso no autorizado al servicio de correo.']);
     exit;
