@@ -175,7 +175,7 @@ export function useAIPlanning() {
       if (!access.module_enabled) return
 
       const [coursesRes, subjectsRes, plansRes, cfgRes, resRes, suppRes, aiSettingsRes] = await Promise.all([
-        supabase.from('courses').select('id, name, level, parallel, academic_year').eq('school_id', schoolId).order('name'),
+        supabase.from('courses').select('id, name, level, academic_year').eq('school_id', schoolId).order('name'),
         supabase.from('subjects').select('id, name').eq('school_id', schoolId).order('name'),
         supabase.from('lesson_plans').select('*').eq('school_id', schoolId).order('created_at', { ascending: false }),
         supabase.from('system_config').select('key, value').eq('school_id', schoolId),

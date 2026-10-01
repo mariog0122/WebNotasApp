@@ -1471,72 +1471,91 @@ const saveCourseSubjects = async () => {
       <div class="modal-backdrop" @click="closeStudentsModal"></div>
       <div class="modal-panel modal-panel-xl">
         <div class="modal-header modal-header-accent">
-          <h3 class="modal-title" style="color:#fff">Estudiantes - {{ managingStudentsCourse?.name }}</h3>
-          <p class="modal-subtitle">Gestiona los estudiantes de este curso.</p>
+          <div class="flex items-center gap-3">
+            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-inset ring-white/25" aria-hidden="true">
+              <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-4.13a4 4 0 11-8 0 4 4 0 018 0zm6 0a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="modal-title truncate" style="color:#fff">Estudiantes · {{ managingStudentsCourse?.name }}</h3>
+              <p class="modal-subtitle">Gestiona la nómina de este curso.</p>
+            </div>
+            <span v-if="courseStudents.length > 0" class="ml-auto shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-bold text-white ring-1 ring-inset ring-white/25">
+              {{ courseStudents.length }} {{ courseStudents.length === 1 ? 'estudiante' : 'estudiantes' }}
+            </span>
+          </div>
         </div>
         <div class="modal-body" style="max-height:60vh;overflow-y:auto">
-          <div class="flex flex-wrap gap-2 mb-4 items-center justify-between">
-            <div class="flex flex-wrap gap-2 items-center">
-              <button @click="openStudentModal()" class="app-btn app-btn-primary text-sm">+ Nuevo Estudiante</button>
-              <button @click="triggerStudentImport" class="app-btn app-btn-ghost text-sm flex items-center gap-1.5">
-                📥 Subir Estudiantes (.CSV)
+          <div class="flex flex-wrap gap-2.5 mb-5 items-center justify-between">
+            <div class="flex flex-wrap gap-2.5 items-center">
+              <button @click="openStudentModal()" class="app-btn app-btn-primary text-sm h-10 px-4 font-bold">+ Nuevo Estudiante</button>
+              <button
+                @click="triggerStudentImport"
+                class="inline-flex items-center gap-2.5 h-10 pl-3 pr-4 text-sm font-bold rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-md shadow-blue-900/25 ring-1 ring-inset ring-white/15 transition-all hover:-translate-y-px focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                title="Subir un archivo CSV o Excel con la nómina del curso"
+              >
+                <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-white/20" aria-hidden="true">
+                  <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                </span>
+                <span>Importar CSV / Excel</span>
               </button>
-              <input 
-                ref="importFileInput" 
-                type="file" 
-                accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" 
-                @change="onImportFileChange" 
-                class="sr-only" 
+              <input
+                ref="importFileInput"
+                type="file"
+                accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                @change="onImportFileChange"
+                class="sr-only"
                 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)"
               >
             </div>
-            <button 
-              type="button" 
-              @click="downloadStudentsTemplate" 
-              class="px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+            <button
+              type="button"
+              @click="downloadStudentsTemplate"
+              class="inline-flex items-center gap-2 h-10 px-3.5 text-xs sm:text-sm font-semibold rounded-xl border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors shadow-sm cursor-pointer"
               title="Descargar plantilla oficial de estudiantes con formato CSV"
             >
-              📥 Descargar Plantilla CSV
+              <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              <span>Descargar Plantilla CSV</span>
             </button>
           </div>
 
           <!-- Import Preview -->
-          <div v-if="importPreview.length > 0" class="mb-4 p-4 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 rounded-xl shadow-sm">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-sm font-bold text-indigo-950 dark:text-indigo-200">
-                Vista previa: {{ importPreview.length }} estudiantes detectados
+          <div v-if="importPreview.length > 0" class="mb-5 overflow-hidden rounded-2xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/70 dark:bg-indigo-950/40 shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-indigo-100 dark:border-indigo-900/50">
+              <p class="text-sm font-bold text-indigo-950 dark:text-indigo-100">
+                Vista previa · {{ importPreview.length }} estudiantes detectados
               </p>
-              <span class="text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">
-                Listo para procesar
+              <span class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Listo para procesar
               </span>
             </div>
 
-            <div class="max-h-36 overflow-y-auto mb-3 text-xs divide-y divide-indigo-100 dark:divide-indigo-900/50 bg-white/80 dark:bg-slate-900/80 rounded-lg p-2.5 border border-indigo-100 dark:border-indigo-900/40">
-              <div v-for="(stu, idx) in importPreview.slice(0, 8)" :key="idx" class="py-1 flex items-center justify-between gap-2">
-                <span class="font-medium text-slate-800 dark:text-slate-200">{{ idx + 1 }}. {{ stu.full_name }}</span>
-                <span class="text-slate-500 font-mono text-[11px]">{{ stu.student_cedula || 'Sin cédula' }}</span>
+            <div class="max-h-44 overflow-y-auto divide-y divide-indigo-100 dark:divide-indigo-900/40 bg-white/70 dark:bg-slate-900/60 text-xs">
+              <div v-for="(stu, idx) in importPreview.slice(0, 8)" :key="idx" class="flex items-center gap-3 px-4 py-2">
+                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-[10px] font-bold text-indigo-700 dark:text-indigo-200">{{ idx + 1 }}</span>
+                <span class="min-w-0 flex-1 truncate font-semibold text-slate-800 dark:text-slate-100">{{ stu.full_name }}</span>
+                <span class="shrink-0 rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-mono text-[11px] text-slate-600 dark:text-slate-300">{{ stu.student_cedula || 'Sin cédula' }}</span>
               </div>
-              <div v-if="importPreview.length > 8" class="pt-1.5 text-center text-slate-400 font-medium italic">
-                ... y {{ importPreview.length - 8 }} estudiantes más
+              <div v-if="importPreview.length > 8" class="px-4 py-2 text-center text-slate-400 font-medium italic">
+                … y {{ importPreview.length - 8 }} estudiantes más
               </div>
             </div>
 
-            <div v-if="importErrors.length > 0" class="text-xs text-rose-600 dark:text-rose-400 mb-2">
+            <div v-if="importErrors.length > 0" class="px-4 pt-3 text-xs text-rose-600 dark:text-rose-400">
               <p v-for="(err, i) in importErrors" :key="i">⚠ {{ err }}</p>
             </div>
 
-            <div class="flex gap-2">
-              <button @click="importStudentsFromExcel" :disabled="importing" class="app-btn app-btn-primary text-sm flex items-center gap-1.5">
+            <div class="flex flex-wrap items-center gap-2.5 px-4 py-3">
+              <button @click="importStudentsFromExcel" :disabled="importing" class="app-btn app-btn-primary text-sm h-10 px-4 font-bold flex items-center gap-1.5">
                 <span v-if="importing" class="app-spinner w-3.5 h-3.5"></span>
                 <span>{{ importing ? 'Importando...' : 'Confirmar Importación' }}</span>
               </button>
-              <button @click="importFile = null; importPreview = []; importErrors = []; importMessage = ''" class="app-btn app-btn-ghost text-sm">
+              <button @click="importFile = null; importPreview = []; importErrors = []; importMessage = ''" class="app-btn app-btn-ghost text-sm h-10 px-4">
                 Cancelar
               </button>
+              <p v-if="importMessage" class="text-xs font-medium" :class="importMessage.includes('Error') ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'">
+                {{ importMessage }}
+              </p>
             </div>
-            <p v-if="importMessage" class="text-xs mt-2 font-medium" :class="importMessage.includes('Error') ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'">
-              {{ importMessage }}
-            </p>
           </div>
 
           <div v-else-if="importErrors.length > 0" class="mb-4 p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-xl text-xs text-rose-600 dark:text-rose-400 space-y-1">
@@ -1549,26 +1568,32 @@ const saveCourseSubjects = async () => {
             <span class="app-spinner mr-2"></span>
             <span class="text-sm text-slate-500">Cargando estudiantes...</span>
           </div>
-          <table v-else-if="courseStudents.length > 0" class="app-table w-full">
-            <thead>
-              <tr>
-                <th class="text-xs font-semibold text-slate-500 uppercase">Nombre</th>
-                <th class="text-xs font-semibold text-slate-500 uppercase">Cédula</th>
-                <th class="text-right text-xs font-semibold text-slate-500 uppercase">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="student in courseStudents" :key="student.id" class="hover:bg-slate-50">
-                <td class="text-sm font-semibold text-slate-900">{{ student.full_name }}</td>
-                <td class="text-sm text-slate-600">{{ student.student_cedula || '-' }}</td>
-                <td class="text-right text-sm">
-                  <button @click="openStudentModal(student)" class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 mr-3 transition-colors font-semibold">Editar</button>
-                  <button @click="deleteStudent(student.id)" class="text-rose-600 hover:text-rose-800 dark:text-rose-400 dark:hover:text-rose-300 transition-colors font-semibold">Eliminar</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <p v-else class="text-sm text-slate-500 text-center py-6">No hay estudiantes en este curso.</p>
+          <div v-else-if="courseStudents.length > 0" class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/70">
+            <table class="app-table w-full min-w-[420px]">
+              <thead>
+                <tr>
+                  <th class="text-xs font-semibold text-slate-500 uppercase">Nombre</th>
+                  <th class="text-xs font-semibold text-slate-500 uppercase">Cédula</th>
+                  <th class="text-right text-xs font-semibold text-slate-500 uppercase">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="student in courseStudents" :key="student.id" class="hover:bg-slate-50">
+                  <td class="text-sm font-semibold text-slate-900">{{ student.full_name }}</td>
+                  <td class="text-sm text-slate-600 font-mono">{{ student.student_cedula || '-' }}</td>
+                  <td class="text-right text-sm whitespace-nowrap">
+                    <button @click="openStudentModal(student)" class="mr-1.5 rounded-lg px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors">Editar</button>
+                    <button @click="deleteStudent(student.id)" class="rounded-lg px-2.5 py-1 text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors">Eliminar</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 py-10 text-center">
+            <svg class="h-9 w-9 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-4.13a4 4 0 11-8 0 4 4 0 018 0zm6 0a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Aún no hay estudiantes en este curso</p>
+            <p class="text-xs text-slate-500">Agrega uno con "Nuevo Estudiante" o importa la nómina completa.</p>
+          </div>
         </div>
         <div class="modal-footer">
           <button @click="closeStudentsModal" class="app-btn app-btn-ghost">Cerrar</button>
