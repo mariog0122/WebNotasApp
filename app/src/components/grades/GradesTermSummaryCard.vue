@@ -13,7 +13,7 @@ if (!gp) throw new Error('gradesPageInjectionKey no provisto')
   >
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
-        <h2 class="text-lg font-semibold text-slate-900">Resumen del periodo</h2>
+        <h2 class="text-lg font-semibold text-slate-900">Resumen del período</h2>
         <p class="text-sm text-slate-500">
           {{ gp.getCourseName() }} · {{ gp.getQuarterName() }}
         </p>

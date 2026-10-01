@@ -167,3 +167,34 @@ describe('studentUtils.js', () => {
         })
     })
 })
+
+import { pruneSelection } from '../src/lib/studentUtils'
+
+describe('pruneSelection (contador de seleccionados)', () => {
+  const list = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
+
+  it('quita de la selección a los estudiantes eliminados', () => {
+    const result = pruneSelection(new Set(['a', 'b']), [{ id: 'a' }, { id: 'c' }])
+    expect([...result]).toEqual(['a'])
+  })
+
+  it('deja el contador en cero cuando el único seleccionado ya no existe', () => {
+    expect(pruneSelection(new Set(['b']), [{ id: 'a' }, { id: 'c' }]).size).toBe(0)
+  })
+
+  it('conserva el mismo Set cuando no hay cambios y tolera listas vacías', () => {
+    const selected = new Set(['a', 'c'])
+    expect(pruneSelection(selected, list)).toBe(selected)
+    expect(pruneSelection(new Set(), list).size).toBe(0)
+    expect(pruneSelection(new Set(['a']), []).size).toBe(0)
+    expect(pruneSelection(null, list).size).toBe(0)
+  })
+})
+
+describe('Students.vue poda la selección al recargar', () => {
+  it('usa pruneSelection tras cargar la lista', async () => {
+    const { readFileSync } = await import('node:fs')
+    const source = readFileSync(new URL('../src/views/Students.vue', import.meta.url), 'utf8')
+    expect(source).toContain('selectedStudentIds.value = pruneSelection(selectedStudentIds.value, students.value)')
+  })
+})

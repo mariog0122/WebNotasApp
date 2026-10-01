@@ -62,13 +62,11 @@ export const computeSubjectTotal = (definitions, studentGrades, projectAverage, 
     let sum = 0
     let count = 0
     defs.forEach(d => {
-      let val = parseFloat(studentGrades?.[d.id])
-      // Handle project override
-      if (categories.includes('SUMATIVA') && isProjectDefinition(d) && subjectIsProject) {
-        if (projectAverage !== null && projectAverage !== undefined) {
-          val = projectAverage
-        }
-      }
+      const shouldUseProjectAverage = subjectIsProject && isProjectDefinition(d)
+      const projectValue = parseFloat(projectAverage)
+      const val = shouldUseProjectAverage && !isNaN(projectValue)
+        ? projectValue
+        : parseFloat(studentGrades?.[d.id])
       if (!isNaN(val)) {
         sum += val
         count++
@@ -125,16 +123,23 @@ export const computeFinalAnnual = (p, s) => {
 export const computeFinalObservation = (p, s, finalAnnual) => {
   if (p === null || p === undefined || isNaN(p)) return ''
   const sVal = s === null || s === undefined || s === '' || isNaN(s) ? null : parseFloat(s)
-  if (p >= 7 && sVal !== null) return 'DEJE EN BLANCO EL CASILLERO SUPLETORIO'
-  if (p < 5 && sVal !== null) return 'NO PUEDE RENDIR SUPLETORIO;REPRUEBA EL GRADO'
-  if (finalAnnual !== null && finalAnnual < 7) return 'NO PROMOVIDO'
-  if (finalAnnual !== null && finalAnnual >= 7) return 'PROMOVIDO'
-  return ''
+  if (p >= 7) {
+    return sVal !== null ? 'DEJE EN BLANCO EL CASILLERO SUPLETORIO' : 'PROMOVIDO'
+  }
+  if (p < 4.01) {
+    return 'NO PUEDE RENDIR SUPLETORIO;REPRUEBA EL GRADO'
+  }
+  if (sVal === null) {
+    return 'SUPLETORIO'
+  }
+  if (finalAnnual !== null && finalAnnual >= 7) {
+    return 'PROMOVIDO'
+  }
+  return 'NO PROMOVIDO'
 }
 
 export const computeTrimesterObservation = (p) => {
   if (p === null || p === undefined || isNaN(p)) return ''
   if (p >= 7) return 'APROBADO'
-  if (p >= 5) return 'SUPLETORIO'
-  return 'REPROBADO'
+  return 'REQUIERE REFUERZO'
 }

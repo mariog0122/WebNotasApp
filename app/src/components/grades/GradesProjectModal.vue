@@ -44,7 +44,7 @@ const onDialogClose = () => {
       <div class="bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-500 px-5 py-5">
         <h3 id="grades-proj-modal-title" class="text-xl font-bold text-white flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-          Proyecto global del periodo
+          Proyecto global del período
         </h3>
         <p class="text-sm text-white/70 mt-1">Elige en qué asignaturas aplica el proyecto y registra una nota por estudiante y materia.</p>
       </div>

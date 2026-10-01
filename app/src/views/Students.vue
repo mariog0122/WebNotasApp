@@ -5,19 +5,47 @@ import { useNetwork } from '../composables/useNetwork'
 import { computeProjectAverage, computeSubjectTotal, getQuarterOrder, computeTrimesterObservation } from '../lib/reporting'
 import { loadHtml2Pdf } from '../lib/pdf'
 import { translateError } from '../lib/errorDictionary'
+import { normalizeStoragePath, primeSignedUrls, resolvePrivateImageUrl } from '../lib/storageUtils'
+import { useAuthStore } from '../stores/auth'
+import { useAcademicYearStore } from '../stores/academicYear'
+import { hasAccessPermission, isInstitutionAdmin, canManageAcademicYearLock } from '../lib/permissions'
+import AcademicYearBanner from '../components/ui/AcademicYearBanner.vue'
 import { 
     validateStudentForm, 
     isStudentComplete, 
-    getFileExt, 
-    uploadPhoto, 
-    createPhotoPreview 
-} from '../lib/studentUtils'
+    createPhotoPreview, pruneSelection } from '../lib/studentUtils'
+import { saveStudentRecord } from '../lib/studentPersistence'
 
 const searchTerm = ref('')
 const searchDebounce = ref(null)
 const page = ref(1)
 const pageSize = 50
 const { isOnline } = useNetwork()
+const authStore = useAuthStore()
+const academicYearStore = useAcademicYearStore()
+const isYearLocked = computed(() => academicYearStore.isLocked)
+const canManageLock = computed(() => canManageAcademicYearLock(authStore.accessContext, authStore.profile))
+
+const canCreateStudents = computed(() => {
+  if (isYearLocked.value && !canManageLock.value) return false
+  return hasAccessPermission(authStore.accessContext, 'students.create')
+})
+const canUpdateStudents = computed(() => {
+  if (isYearLocked.value && !canManageLock.value) return false
+  return hasAccessPermission(authStore.accessContext, 'students.update')
+})
+const canDeleteStudents = computed(() => {
+  if (isYearLocked.value && !canManageLock.value) return false
+  return hasAccessPermission(authStore.accessContext, 'students.delete')
+})
+
+const rejectUnauthorizedWrite = () => {
+  if (isYearLocked.value && !canManageLock.value) {
+    alert('Este año lectivo está protegido contra modificaciones. Solo el Rector o Administrador puede gestionarlo.')
+    return
+  }
+  alert('Tu rol no tiene permiso para modificar estudiantes.')
+}
 
 // Direct Supabase calls instead of vue-query (fixes caching issues)
 const loading = ref(false)
@@ -33,7 +61,15 @@ const fetchStudents = async () => {
     const term = (searchTerm.value || '').trim()
     const from = (page.value - 1) * pageSize
     const to = from + pageSize - 1
-    
+    const sId = authStore.activeSchoolId || authStore.profile?.school_id
+    if (!sId) {
+      students.value = []
+      totalCount.value = 0
+      return
+    }
+    const userIds = [authStore.user?.id, authStore.profile?.id].filter(Boolean)
+    const isAdmin = isInstitutionAdmin(authStore.accessContext)
+
     let query = supabase
       .from('students')
       .select(`
@@ -41,10 +77,31 @@ const fetchStudents = async () => {
         student_phone, student_address, representative_name, representative_cedula,
         representative_phone, representative_alt_phone, student_photo_url,
         representative_photo_url, created_at,
-        courses (name, level, track)
+        courses (name, level, track, academic_year)
       `, { count: 'exact' })
       .order('full_name', { ascending: true })
       .range(from, to)
+
+    query = query.eq('school_id', sId)
+
+    if (!isAdmin && userIds.length > 0) {
+      const { data: assignedLinks, error: assignedLinksError } = await supabase
+        .from('course_subjects')
+        .select('course_id')
+        .eq('school_id', sId)
+        .in('teacher_id', userIds)
+
+      if (assignedLinksError) throw assignedLinksError
+      
+      const teacherCourseIds = Array.from(new Set((assignedLinks || []).map(l => l.course_id)))
+      if (teacherCourseIds.length === 0) {
+        students.value = []
+        totalCount.value = 0
+        loading.value = false
+        return
+      }
+      query = query.in('course_id', teacherCourseIds)
+    }
 
     if (term) {
       query = query.or(`full_name.ilike.%${term}%,student_cedula.ilike.%${term}%`)
@@ -54,8 +111,21 @@ const fetchStudents = async () => {
     if (error) {
       console.error('Error fetching students:', error.message)
     } else {
-      students.value = data || []
+      await primeSignedUrls(supabase, 'student-photos', (data || []).flatMap((student) => [student.student_photo_url, student.representative_photo_url]))
+      students.value = await Promise.all((data || []).map(async (student) => {
+        const studentPhotoPath = normalizeStoragePath(student.student_photo_url, 'student-photos')
+        const representativePhotoPath = normalizeStoragePath(student.representative_photo_url, 'student-photos')
+        return {
+          ...student,
+          student_photo_storage_path: studentPhotoPath,
+          representative_photo_storage_path: representativePhotoPath,
+          student_photo_url: await resolvePrivateImageUrl(supabase, 'student-photos', studentPhotoPath).catch(() => ''),
+          representative_photo_url: await resolvePrivateImageUrl(supabase, 'student-photos', representativePhotoPath).catch(() => ''),
+        }
+      }))
       totalCount.value = count || 0
+      // Solo cuentan como seleccionados los alumnos que siguen en la lista (tras eliminar, paginar o buscar).
+      selectedStudentIds.value = pruneSelection(selectedStudentIds.value, students.value)
     }
   } catch (e) {
     console.error('Error fetching students:', e)
@@ -64,22 +134,60 @@ const fetchStudents = async () => {
 }
 
 const fetchCourses = async () => {
-  const { data, error } = await supabase
+  const sId = authStore.activeSchoolId || authStore.profile?.school_id
+  if (!sId) {
+    courses.value = []
+    return
+  }
+  let query = supabase
     .from('courses')
     .select('id, name, academic_year, level, track, created_at')
     .order('name')
+  query = query.eq('school_id', sId)
+  const yearName = academicYearStore.selectedYearName
+  if (yearName) {
+    query = query.eq('academic_year', yearName)
+  }
+  const { data, error } = await query
   if (error) {
     console.error('Error fetching courses:', error.message)
   } else {
-    courses.value = data || []
+    let result = data || []
+    const userIds = [authStore.user?.id, authStore.profile?.id].filter(Boolean)
+    const isAdmin = isInstitutionAdmin(authStore.accessContext)
+
+    if (!isAdmin && userIds.length > 0) {
+      const { data: assignedLinks, error: assignedLinksError } = await supabase
+        .from('course_subjects')
+        .select('course_id')
+        .eq('school_id', sId)
+        .in('teacher_id', userIds)
+
+      if (assignedLinksError) throw assignedLinksError
+
+      const assignedCourseIds = new Set((assignedLinks || []).map(l => l.course_id))
+      result = result.filter(c => assignedCourseIds.has(c.id))
+    }
+    courses.value = result
   }
 }
 
+watch(() => academicYearStore.selectedYearName, () => {
+  fetchCourses()
+})
+
 const fetchQuarters = async () => {
-  const { data, error } = await supabase
+  const sId = authStore.activeSchoolId || authStore.profile?.school_id
+  if (!sId) {
+    quarters.value = []
+    return
+  }
+  let query = supabase
     .from('quarters')
     .select('id, name, is_active')
     .order('name')
+  query = query.eq('school_id', sId)
+  const { data, error } = await query
   if (error) {
     console.error('Error fetching quarters:', error.message)
   } else {
@@ -91,12 +199,18 @@ const fetchInstitutionConfig = async () => {
   const { data, error } = await supabase
     .from('system_config')
     .select('key, value')
+    .eq('school_id', authStore.activeSchoolId)
     .in('key', ['institution_name', 'institution_logo_url', 'institution_tutor_name', 'institution_rector_name', 'academic_periods', 'regimen'])
   
   if (error) {
     console.error('Error fetching institution config:', error.message)
   } else {
     const map = Object.fromEntries((data || []).map(item => [item.key, item.value]))
+    map.institution_logo_url = await resolvePrivateImageUrl(
+      supabase,
+      'institution-assets',
+      normalizeStoragePath(map.institution_logo_url, 'institution-assets'),
+    ).catch(() => '')
     configData.value = map || {}
   }
 }
@@ -158,7 +272,10 @@ const form = ref({
   representative_phone: '',
   representative_alt_phone: '',
   student_photo_url: '',
-  representative_photo_url: ''
+  representative_photo_url: '',
+  has_adaptation: false,
+  adaptation_grade: '1',
+  adaptation_details: ''
 })
 
 const toggleStudentSelection = (id) => {
@@ -202,6 +319,7 @@ const executeConfirmAction = async () => {
 }
 
 const deleteSelectedStudents = async () => {
+  if (!canDeleteStudents.value) return rejectUnauthorizedWrite()
   if (!isOnline.value) {
     alert('Acción no permitida: Estás trabajando sin conexión.')
     return
@@ -214,16 +332,21 @@ const deleteSelectedStudents = async () => {
   confirmModal.value = {
     show: true,
     title: 'Eliminar Seleccionados',
-    message: '¿Eliminar estudiantes seleccionados? Esta accion no se puede deshacer y borrara sus calificaciones.',
+    message: '¿Eliminar estudiantes seleccionados? Esta acción no se puede deshacer y borrará sus calificaciones.',
     processing: false,
     action: async () => {
       const ids = Array.from(selectedStudentIds.value)
       try {
-        const chunkSize = 50
-        for (let i = 0; i < ids.length; i += chunkSize) {
-          const chunk = ids.slice(i, i + chunkSize)
-          const { error } = await supabase.from('students').delete().in('id', chunk)
-          if (error) throw error
+        const schoolId = authStore.activeSchoolId
+        if (!schoolId) throw new Error('No hay una institución activa.')
+        const { data, error } = await supabase.rpc('delete_students_batch', {
+          p_school_id: schoolId,
+          p_student_ids: ids,
+          p_delete_all: false
+        })
+        if (error) throw error
+        if (!data?.success || Number(data.deleted_count) !== ids.length) {
+          throw new Error('La base de datos no confirmó la eliminación completa de los estudiantes.')
         }
         selectedStudentIds.value = new Set()
         await fetchStudents()
@@ -241,6 +364,7 @@ const deleteSelectedStudents = async () => {
 }
 
 const deleteAllStudents = async () => {
+  if (!canDeleteStudents.value) return rejectUnauthorizedWrite()
   if (!isOnline.value) {
     alert('Acción no permitida: Estás trabajando sin conexión.')
     return
@@ -248,15 +372,21 @@ const deleteAllStudents = async () => {
   confirmModal.value = {
     show: true,
     title: 'Eliminar Todos',
-    message: '¿Eliminar TODOS los estudiantes del sistema? Esta accion no se puede deshacer y borrara por completo las calificaciones.',
+    message: '¿Eliminar TODOS los estudiantes de la institución? Esta acción no se puede deshacer y borrará por completo las calificaciones.',
     processing: false,
     action: async () => {
       try {
-        const { error } = await supabase
-          .from('students')
-          .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000')
+        const schoolId = authStore.activeSchoolId
+        if (!schoolId) throw new Error('No hay una institución activa.')
+        const { data, error } = await supabase.rpc('delete_students_batch', {
+          p_school_id: schoolId,
+          p_student_ids: [],
+          p_delete_all: true
+        })
         if (error) throw error
+        if (!data?.success) {
+          throw new Error('La base de datos no confirmó la eliminación de los estudiantes.')
+        }
         selectedStudentIds.value = new Set()
         await fetchStudents()
       } catch (error) {
@@ -274,6 +404,9 @@ const deleteAllStudents = async () => {
 
 // fetchCourses is handled by Vue Query
 const openModal = (student = null) => {
+  if (student ? !canUpdateStudents.value : !canCreateStudents.value) {
+    return rejectUnauthorizedWrite()
+  }
   editingStudent.value = student
   if (student) {
     form.value = { 
@@ -287,11 +420,14 @@ const openModal = (student = null) => {
       representative_cedula: student.representative_cedula || '',
       representative_phone: student.representative_phone || '',
       representative_alt_phone: student.representative_alt_phone || '',
-      student_photo_url: student.student_photo_url || '',
-      representative_photo_url: student.representative_photo_url || ''
+      student_photo_url: student.student_photo_storage_path || '',
+      representative_photo_url: student.representative_photo_storage_path || '',
+      has_adaptation: !!student.has_adaptation,
+      adaptation_grade: student.adaptation_grade || '1',
+      adaptation_details: student.adaptation_details || ''
     }
-    studentPhotoPreview.value = form.value.student_photo_url || ''
-    representativePhotoPreview.value = form.value.representative_photo_url || ''
+    studentPhotoPreview.value = student.student_photo_url || ''
+    representativePhotoPreview.value = student.representative_photo_url || ''
   } else {
     form.value = {
       full_name: '',
@@ -305,7 +441,10 @@ const openModal = (student = null) => {
       representative_phone: '',
       representative_alt_phone: '',
       student_photo_url: '',
-      representative_photo_url: ''
+      representative_photo_url: '',
+      has_adaptation: false,
+      adaptation_grade: '1',
+      adaptation_details: ''
     }
     studentPhotoPreview.value = ''
     representativePhotoPreview.value = ''
@@ -328,10 +467,6 @@ const closeModal = () => {
   validationErrors.value = []
 }
 
-const uploadPhotoToStorage = async (file, path) => {
-  return await uploadPhoto(supabase, file, path)
-}
-
 const validateForm = () => {
   const errors = validateStudentForm(form.value)
   validationErrors.value = errors
@@ -351,6 +486,9 @@ const onRepresentativePhotoChange = (event) => {
 }
 
 const saveStudent = async () => {
+  if (editingStudent.value ? !canUpdateStudents.value : !canCreateStudents.value) {
+    return rejectUnauthorizedWrite()
+  }
   if (!isOnline.value) {
     alert('Acción no permitida: Estás trabajando sin conexión.')
     return
@@ -362,7 +500,6 @@ const saveStudent = async () => {
     return
   }
   try {
-    let studentId = editingStudent.value?.id || null
     const basePayload = {
       full_name: form.value.full_name,
       course_id: form.value.course_id,
@@ -375,45 +512,19 @@ const saveStudent = async () => {
       representative_phone: form.value.representative_phone,
       representative_alt_phone: form.value.representative_alt_phone,
       student_photo_url: form.value.student_photo_url,
-      representative_photo_url: form.value.representative_photo_url
+      representative_photo_url: form.value.representative_photo_url,
+      has_adaptation: !!form.value.has_adaptation,
+      adaptation_grade: form.value.has_adaptation ? form.value.adaptation_grade : '1',
+      adaptation_details: form.value.has_adaptation ? form.value.adaptation_details : '',
     }
-
-    if (editingStudent.value) {
-      const { error } = await supabase
-        .from('students')
-        .update(basePayload)
-        .eq('id', editingStudent.value.id)
-      if (error) throw error
-    } else {
-      const { data, error } = await supabase
-        .from('students')
-        .insert(basePayload)
-        .select('id')
-        .single()
-      if (error) throw error
-      studentId = data.id
-    }
-
-    const uploads = {}
-    if (studentPhotoFile.value) {
-      const ext = getFileExt(studentPhotoFile.value)
-      const path = `students/${studentId}/student-${Date.now()}.${ext}`
-      uploads.student_photo_url = await uploadPhotoToStorage(studentPhotoFile.value, path)
-    }
-    if (representativePhotoFile.value) {
-      const ext = getFileExt(representativePhotoFile.value)
-      const path = `students/${studentId}/representative-${Date.now()}.${ext}`
-      uploads.representative_photo_url = await uploadPhotoToStorage(representativePhotoFile.value, path)
-    }
-
-    if (Object.keys(uploads).length > 0) {
-      const { error } = await supabase
-        .from('students')
-        .update(uploads)
-        .eq('id', studentId)
-    
-      if (error) throw error
-    }
+    await saveStudentRecord({
+      client: supabase,
+      schoolId: authStore.activeSchoolId,
+      studentId: editingStudent.value?.id || null,
+      payload: basePayload,
+      studentPhotoFile: studentPhotoFile.value,
+      representativePhotoFile: representativePhotoFile.value,
+    })
 
     await fetchStudents()
     closeModal()
@@ -424,6 +535,7 @@ const saveStudent = async () => {
 }
 
 const deleteStudent = async (id) => {
+  if (!canDeleteStudents.value) return rejectUnauthorizedWrite()
   if (!isOnline.value) {
     alert('Acción no permitida: Estás trabajando sin conexión.')
     return
@@ -431,15 +543,21 @@ const deleteStudent = async (id) => {
   confirmModal.value = {
     show: true,
     title: 'Eliminar Estudiante',
-    message: '¿Estas seguro de eliminar este estudiante? Se borraran permanentemente todas sus calificaciones.',
+    message: '¿Estás seguro de eliminar este estudiante? Se borrarán permanentemente todas sus calificaciones.',
     processing: false,
     action: async () => {
       try {
-        const { error } = await supabase
-          .from('students')
-          .delete()
-          .eq('id', id)
+        const schoolId = authStore.activeSchoolId
+        if (!schoolId) throw new Error('No hay una institución activa.')
+        const { data, error } = await supabase.rpc('delete_students_batch', {
+          p_school_id: schoolId,
+          p_student_ids: [id],
+          p_delete_all: false
+        })
         if (error) throw error
+        if (!data?.success || Number(data.deleted_count) !== 1) {
+          throw new Error('La base de datos no confirmó la eliminación del estudiante.')
+        }
         await fetchStudents()
       } catch (error) {
         confirmModal.value = {
@@ -483,6 +601,8 @@ const loadStudentReport = async () => {
   reportLoading.value = true
   reportError.value = ''
   try {
+    const schoolId = authStore.activeSchoolId || authStore.profile?.school_id
+    if (!schoolId) throw new Error('No hay una institución activa seleccionada.')
     const courseId = reportStudent.value.course_id
     const studentId = reportStudent.value.id
     const level = reportStudent.value?.courses?.level || ''
@@ -491,6 +611,7 @@ const loadStudentReport = async () => {
     const { data: courseSubjects, error: courseSubjectsError } = await supabase
       .from('course_subjects')
       .select('id, subject_id, subjects (name)')
+      .eq('school_id', schoolId)
       .eq('course_id', courseId)
     if (courseSubjectsError) throw courseSubjectsError
 
@@ -736,109 +857,189 @@ onMounted(async () => {
   <div class="app-shell">
     <main class="app-container">
       <div class="px-2 sm:px-0">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <div>
-            <h1 class="app-title">Gestión de Estudiantes</h1>
-            <p class="app-subtitle">Busca por cédula o apellidos y nombre.</p>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button @click="deleteSelectedStudents" class="app-btn app-btn-ghost">
-              Eliminar Seleccionados
-            </button>
-            <button @click="deleteAllStudents" class="app-btn app-btn-ghost">
-              Eliminar Todos
-            </button>
-            <button @click="openModal()" class="app-btn app-btn-primary">
-              + Nuevo Estudiante
-            </button>
-          </div>
+        <!-- Academic Year Banner -->
+        <AcademicYearBanner module-name="Estudiantes" />
+
+        <!-- Header & Buttons -->
+        <div class="mb-4 md:mb-6">
+          <h1 class="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight w-full">
+            Gestión de Estudiantes
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Busca por cédula o apellidos y nombre.
+          </p>
         </div>
 
-        <div class="mb-4 app-card p-4">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div class="flex-1">
-              <label class="block text-xs uppercase tracking-wider text-slate-500 mb-2">Buscar estudiante</label>
+        <div class="app-card p-4 mb-4 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex-1 w-full">
+              <label class="block text-xs uppercase tracking-wider font-semibold text-slate-500 mb-1.5">Buscar estudiante</label>
               <input
                 v-model="searchTerm"
                 type="text"
-                placeholder="Cedula o apellidos y nombre"
-                class="app-input"
+                placeholder="Cédula o apellidos y nombre"
+                class="app-input w-full text-sm h-11"
               />
             </div>
-            <div class="text-xs text-slate-500">
-              Mostrando {{ students.length }} de {{ totalCount }} estudiantes
+            <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+              <button v-if="canCreateStudents" @click="openModal()" class="app-btn app-btn-primary text-xs sm:text-sm h-11 w-full sm:w-auto justify-center font-bold">
+                + Nuevo Estudiante
+              </button>
+              <button v-if="canDeleteStudents && selectedStudentIds.size > 0" @click="deleteSelectedStudents" class="app-btn app-btn-ghost text-xs text-rose-600 dark:text-rose-400 h-11 w-full sm:w-auto justify-center">
+                Eliminar Seleccionados ({{ selectedStudentIds.size }})
+              </button>
             </div>
           </div>
-          <div class="mt-3 flex items-center gap-2 text-xs text-slate-500">
-            <button
-              @click="goToPage(page - 1)"
-              :disabled="page === 1"
-              class="px-2 py-1 rounded border border-slate-200 disabled:opacity-40 hover:bg-slate-100"
-            >
-              Anterior
-            </button>
-            <span>Pagina {{ page }} de {{ totalPages }}</span>
-            <button
-              @click="goToPage(page + 1)"
-              :disabled="page === totalPages"
-              class="px-2 py-1 rounded border border-slate-200 disabled:opacity-40 hover:bg-slate-100"
-            >
-              Siguiente
-            </button>
+
+          <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
+            <div>Mostrando {{ students.length }} de {{ totalCount }} estudiantes</div>
+            <div class="flex items-center gap-2">
+              <button
+                @click="goToPage(page - 1)"
+                :disabled="page === 1"
+                class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium min-h-[36px]"
+              >
+                Anterior
+              </button>
+              <span class="font-semibold text-slate-700 dark:text-slate-300">Página {{ page }} de {{ totalPages }}</span>
+              <button
+                @click="goToPage(page + 1)"
+                :disabled="page === totalPages"
+                class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium min-h-[36px]"
+              >
+                Siguiente
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- Table -->
-        <div class="app-card overflow-hidden">
-          <table class="app-table">
-            <thead>
-              <tr>
-                <th class="w-10">
-                  <input type="checkbox" :checked="isAllStudentsSelected()" @change="toggleAllStudents" class="accent-teal-600" />
-                </th>
-                <th>Nombre Completo</th>
-                <th>Estado</th>
-                <th>Curso Asignado</th>
-                <th class="text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="loading">
-                <td colspan="5" class="text-center py-8">
-                  <span class="app-spinner mr-2"></span>
-                  <span class="text-sm text-slate-500">Cargando...</span>
-                </td>
-              </tr>
-              <tr v-else-if="students.length === 0">
-                <td colspan="5" class="text-center text-sm text-slate-500 py-8">No hay estudiantes registrados.</td>
-              </tr>
-              <tr v-else v-for="student in students" :key="student.id">
-                <td>
-                  <input type="checkbox" :checked="selectedStudentIds.has(student.id)" @change="toggleStudentSelection(student.id)" class="accent-teal-600" />
-                </td>
-                <td class="text-sm font-semibold text-slate-900">{{ student.full_name }}</td>
-                <td class="whitespace-nowrap text-sm">
-                  <span v-if="isStudentComplete(student)" class="app-badge app-badge-ok">Completo</span>
-                  <span v-else class="app-badge app-badge-warn">Pendiente</span>
-                </td>
-                <td class="whitespace-nowrap text-sm text-slate-600">
-                  <span v-if="student.courses" class="app-badge app-badge-info">{{ student.courses.name }}</span>
-                  <span v-else class="text-rose-500 text-xs font-medium">Sin asignar</span>
-                </td>
-                <td class="text-right">
-                  <button @click="openCardModal(student)" class="action-link action-link-teal" title="Ficha">Ficha</button>
-                  <button @click="openModal(student)" class="action-link action-link-slate" title="Editar">Editar</button>
-                  <button @click="deleteStudent(student.id)" class="action-link action-link-rose" title="Eliminar">Eliminar</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- VISTA MÓVIL: Tarjetas de Estudiantes (< 768px) -->
+        <div class="block md:hidden space-y-3 mb-6">
+          <div v-if="loading" class="text-center py-8 text-sm text-slate-500">
+            <span class="app-spinner mr-2"></span> Cargando estudiantes...
+          </div>
+          <div v-else-if="students.length === 0" class="app-card p-6 text-center text-sm text-slate-500">
+            No hay estudiantes registrados.
+          </div>
+          <div 
+            v-else 
+            v-for="student in students" 
+            :key="'mobile-std-'+student.id" 
+            class="app-card p-4 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm rounded-xl space-y-3"
+          >
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-2.5">
+              <label class="flex items-center gap-3 font-bold text-slate-900 dark:text-white text-base cursor-pointer">
+                <input
+                  v-if="canDeleteStudents"
+                  type="checkbox" 
+                  :checked="selectedStudentIds.has(student.id)" 
+                  @change="toggleStudentSelection(student.id)"
+                  class="w-4 h-4 rounded text-teal-600 accent-teal-600" 
+                />
+                <div class="flex items-center gap-2">
+                  <span>{{ student.full_name }}</span>
+                  <span v-if="student.has_adaptation" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                    Adaptación G{{ student.adaptation_grade || '1' }}
+                  </span>
+                </div>
+              </label>
+              <span v-if="isStudentComplete(student)" class="app-badge app-badge-ok text-xs">Completo</span>
+              <span v-else class="app-badge app-badge-warn text-xs">Pendiente</span>
+            </div>
+
+            <div class="text-xs space-y-1">
+              <span class="text-slate-400 font-medium block uppercase tracking-wider text-[10px]">Curso Asignado</span>
+              <span v-if="student.courses" class="app-badge app-badge-info text-xs">{{ student.courses.name }}</span>
+              <span v-else class="text-rose-500 font-medium">Sin asignar</span>
+            </div>
+
+            <div class="pt-2 border-t border-slate-100 dark:border-slate-800/80 grid gap-2" :class="canUpdateStudents && canDeleteStudents ? 'grid-cols-3' : (canUpdateStudents || canDeleteStudents ? 'grid-cols-2' : 'grid-cols-1')">
+              <button
+                v-if="canUpdateStudents"
+                @click="openCardModal(student)" 
+                class="px-2 py-2 text-xs font-semibold bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 rounded-lg hover:bg-teal-100 transition-colors text-center min-h-[44px] flex items-center justify-center"
+              >
+                Ficha
+              </button>
+              <button
+                v-if="canDeleteStudents"
+                @click="openModal(student)" 
+                class="px-2 py-2 text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-lg hover:bg-slate-200 transition-colors text-center min-h-[44px] flex items-center justify-center"
+              >
+                Editar
+              </button>
+              <button 
+                @click="deleteStudent(student.id)" 
+                class="px-2 py-2 text-xs font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 rounded-lg hover:bg-rose-100 transition-colors text-center min-h-[44px] flex items-center justify-center"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISTA DESKTOP: Tabla completa (>= 768px) -->
+        <div class="hidden md:block app-card overflow-hidden">
+          <div class="overflow-x-auto custom-scrollbar-main">
+            <table class="app-table w-full">
+              <thead>
+                <tr>
+                  <th v-if="canDeleteStudents" class="w-10">
+                    <input type="checkbox" :checked="isAllStudentsSelected()" @change="toggleAllStudents" class="accent-teal-600" />
+                  </th>
+                  <th>Nombre Completo</th>
+                  <th>Estado</th>
+                  <th>Curso Asignado</th>
+                  <th class="text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="loading">
+                  <td colspan="5" class="text-center py-8">
+                    <span class="app-spinner mr-2"></span>
+                    <span class="text-sm text-slate-500">Cargando...</span>
+                  </td>
+                </tr>
+                <tr v-else-if="students.length === 0">
+                  <td colspan="5" class="text-center text-sm text-slate-500 py-8">No hay estudiantes registrados.</td>
+                </tr>
+                <tr v-else v-for="student in students" :key="student.id">
+                  <td v-if="canDeleteStudents">
+                    <input type="checkbox" :checked="selectedStudentIds.has(student.id)" @change="toggleStudentSelection(student.id)" class="accent-teal-600" />
+                  </td>
+                  <td class="text-sm font-semibold text-slate-900 dark:text-white">
+                    <div class="flex items-center gap-2">
+                      <span>{{ student.full_name }}</span>
+                      <span v-if="student.has_adaptation" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                        Adaptación G{{ student.adaptation_grade || '1' }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap text-sm">
+                    <span v-if="isStudentComplete(student)" class="app-badge app-badge-ok">Completo</span>
+                    <span v-else class="app-badge app-badge-warn">Pendiente</span>
+                  </td>
+                  <td class="whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">
+                    <span v-if="student.courses" class="app-badge app-badge-info">{{ student.courses.name }}</span>
+                    <span v-else class="text-rose-500 text-xs font-medium">Sin asignar</span>
+                  </td>
+                  <td class="text-right">
+                    <div class="flex items-center justify-end gap-2">
+                      <button @click="openCardModal(student)" class="action-link action-link-teal" title="Ficha">Ficha</button>
+                      <button v-if="canUpdateStudents" @click="openModal(student)" class="action-link action-link-slate" title="Editar">Editar</button>
+                      <button v-if="canDeleteStudents" @click="deleteStudent(student.id)" class="action-link action-link-rose" title="Eliminar">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </main>
 
     <!-- Modal -->
-    <div v-if="showModal" class="modal-container" role="dialog" aria-modal="true">
+    <div v-if="showModal && (editingStudent ? canUpdateStudents : canCreateStudents)" class="modal-container" role="dialog" aria-modal="true">
       <div class="modal-backdrop" @click="closeModal"></div>
       <div class="modal-panel modal-panel-lg" style="max-height:85vh;display:flex;flex-direction:column;">
         <div class="modal-header modal-header-accent shrink-0">
@@ -848,11 +1049,11 @@ onMounted(async () => {
         <div class="modal-body overflow-y-auto flex-1">
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-slate-600">Nombre Completo</label>
+                <label class="modal-label">Nombre Completo</label>
                 <input v-model="form.full_name" type="text" class="app-input mt-1">
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-600">Curso</label>
+                <label class="modal-label">Curso</label>
                 <select v-model="form.course_id" class="app-input mt-1">
                   <option :value="null">Seleccionar Curso</option>
                   <option v-for="course in courses" :key="course.id" :value="course.id">
@@ -863,74 +1064,104 @@ onMounted(async () => {
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-slate-600">Cedula del Estudiante</label>
+                  <label class="modal-label">Cédula del Estudiante</label>
                   <input v-model="form.student_cedula" type="text" class="app-input mt-1">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-slate-600">Fecha de Nacimiento</label>
+                  <label class="modal-label">Fecha de Nacimiento</label>
                   <input v-model="form.student_birthdate" type="date" class="app-input mt-1">
                 </div>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-slate-600">Telefono del Estudiante</label>
+                  <label class="modal-label">Teléfono del Estudiante</label>
                   <input v-model="form.student_phone" type="text" class="app-input mt-1">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-slate-600">Direccion</label>
+                  <label class="modal-label">Dirección</label>
                   <input v-model="form.student_address" type="text" class="app-input mt-1">
                 </div>
               </div>
 
-              <div class="border-t border-slate-200 pt-4">
-                <h4 class="text-sm font-semibold text-slate-700">Datos del Representante</h4>
+              <div class="border-t border-slate-200 dark:border-slate-800 pt-4">
+                <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200">Datos del Representante</h4>
                 <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-sm font-medium text-slate-600">Nombre del Representante</label>
+                    <label class="modal-label">Nombre del Representante</label>
                     <input v-model="form.representative_name" type="text" class="app-input mt-1">
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-slate-600">Cedula del Representante</label>
+                    <label class="modal-label">Cédula del Representante</label>
                     <input v-model="form.representative_cedula" type="text" class="app-input mt-1">
                   </div>
                 </div>
                 <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-sm font-medium text-slate-600">Telefono Principal</label>
+                    <label class="modal-label">Teléfono Principal</label>
                     <input v-model="form.representative_phone" type="text" class="app-input mt-1">
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-slate-600">Telefono Alterno</label>
+                    <label class="modal-label">Teléfono Alterno</label>
                     <input v-model="form.representative_alt_phone" type="text" class="app-input mt-1">
                   </div>
                 </div>
               </div>
 
-              <div class="border-t border-slate-200 pt-4">
-                <h4 class="text-sm font-semibold text-slate-700">Fotos</h4>
+              <div class="border-t border-slate-200 dark:border-slate-800 pt-4">
+                <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200">Fotos</h4>
                 <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-sm font-medium text-slate-600">Foto del Estudiante</label>
-                    <input type="file" accept="image/*" @change="onStudentPhotoChange" class="mt-1 block w-full text-sm text-slate-500" />
+                    <label class="modal-label">Foto del Estudiante</label>
+                    <input type="file" accept="image/*" @change="onStudentPhotoChange" class="mt-1 block w-full text-xs text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-950 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100" />
                     <div v-if="studentPhotoPreview" class="mt-2">
-                      <img :src="studentPhotoPreview" alt="Foto del estudiante" class="h-24 w-24 rounded-md object-cover border border-slate-200" />
+                      <img :src="studentPhotoPreview" alt="Foto del estudiante" class="h-20 w-20 rounded-xl object-cover border border-slate-200 dark:border-slate-700" />
                     </div>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-slate-600">Foto del Representante</label>
-                    <input type="file" accept="image/*" @change="onRepresentativePhotoChange" class="mt-1 block w-full text-sm text-slate-500" />
+                    <label class="modal-label">Foto del Representante</label>
+                    <input type="file" accept="image/*" @change="onRepresentativePhotoChange" class="mt-1 block w-full text-xs text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-950 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100" />
                     <div v-if="representativePhotoPreview" class="mt-2">
-                      <img :src="representativePhotoPreview" alt="Foto del representante" class="h-24 w-24 rounded-md object-cover border border-slate-200" />
+                      <img :src="representativePhotoPreview" alt="Foto del representante" class="h-20 w-20 rounded-xl object-cover border border-slate-200 dark:border-slate-700" />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div v-if="validationErrors.length > 0" class="text-sm text-amber-700 space-y-1">
+              <!-- Adaptación Curricular (NEE / DUA) -->
+              <div class="border-t border-slate-200 dark:border-slate-800 pt-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200">Adaptación Curricular (Inclusión / NEE / DUA)</h4>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Habilita y selecciona el grado de adaptación para incluir automáticamente al estudiante en las planificaciones didácticas del curso.</p>
+                  </div>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" v-model="form.has_adaptation" class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4">
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Activa</span>
+                  </label>
+                </div>
+
+                <div v-if="form.has_adaptation" class="mt-3 space-y-3 p-3.5 rounded-2xl bg-teal-50/60 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60">
+                  <div>
+                    <label class="modal-label font-bold text-teal-900 dark:text-teal-200">Grado de Adaptación Curricular (Normativa MINEDEC)</label>
+                    <select v-model="form.adaptation_grade" class="app-input mt-1 bg-white dark:bg-slate-900 border-teal-300 dark:border-teal-700">
+                      <option value="1">Grado 1 (De Acceso) — Modificación de espacios físicos, recursos, materiales e iluminación</option>
+                      <option value="2">Grado 2 (No Significativa) — Modificación metodológica, tiempos adicionales y dinámicas de evaluación</option>
+                      <option value="3">Grado 3 (Significativa) — Modificación de Destrezas con Criterio de Desempeño (DCD) y Objetivos</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label class="modal-label font-bold text-teal-900 dark:text-teal-200">Especificaciones Pedagógicas y Necesidad Educativa</label>
+                    <textarea v-model="form.adaptation_details" rows="2" placeholder="Ej: TDAH con ritmo de aprendizaje pausado, requiere instrucciones fraccionadas y apoyo visual en evaluaciones..." class="app-input mt-1 bg-white dark:bg-slate-900 border-teal-300 dark:border-teal-700"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="validationErrors.length > 0" class="text-sm text-amber-700 dark:text-amber-300 space-y-1">
                 <div v-for="err in validationErrors" :key="err">{{ err }}</div>
               </div>
-              <div v-if="saveError" class="text-sm text-rose-600">{{ saveError }}</div>
+              <div v-if="saveError" class="text-sm text-rose-600 dark:text-rose-400">{{ saveError }}</div>
             </div>
           </div>
 
@@ -1081,7 +1312,7 @@ onMounted(async () => {
               <div class="text-center border-b border-slate-200 pb-6 mb-6">
                  <div class="flex justify-center mb-4">
                     <div class="h-20 w-20 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
-                       <img v-if="institutionLogoUrl" :src="institutionLogoUrl" class="h-full w-full object-contain" />
+                       <img v-if="institutionLogoUrl" :src="institutionLogoUrl" alt="Logo de la institución" class="h-full w-full object-contain" />
                        <span v-else class="text-xs text-slate-400">Logo</span>
                     </div>
                  </div>
@@ -1092,7 +1323,7 @@ onMounted(async () => {
               <!-- Card Content -->
               <div class="flex flex-col items-center mb-8">
                  <div class="h-32 w-32 rounded-lg bg-slate-100 border border-slate-300 shadow-sm overflow-hidden mb-4 flex items-center justify-center relative">
-                     <img v-if="cardStudent?.student_photo_url" :src="cardStudent.student_photo_url" class="h-full w-full object-cover" />
+                     <img v-if="cardStudent?.student_photo_url" :src="cardStudent.student_photo_url" :alt="`Foto de ${cardStudent?.full_name || 'estudiante'}`" class="h-full w-full object-cover" />
                     <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
@@ -1131,7 +1362,7 @@ onMounted(async () => {
                      <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
                         <div class="col-span-2 flex items-center gap-4 mb-2">
                            <div class="h-16 w-16 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0">
-                              <img v-if="cardStudent?.representative_photo_url" :src="cardStudent.representative_photo_url" class="h-full w-full object-cover" />
+                              <img v-if="cardStudent?.representative_photo_url" :src="cardStudent.representative_photo_url" alt="Foto del representante" class="h-full w-full object-cover" />
                               <svg v-else class="h-full w-full text-slate-300" fill="currentColor" viewBox="0 0 24 24">
                                  <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
                               </svg>
@@ -1151,6 +1382,19 @@ onMounted(async () => {
                         </div>
                      </div>
                  </div>
+
+                  <!-- Adaptación Curricular en Ficha -->
+                  <div v-if="cardStudent?.has_adaptation" class="bg-teal-50/80 p-4 rounded-lg border border-teal-200 text-left space-y-1.5">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-xs font-bold text-teal-900 uppercase tracking-wider">Adaptación Curricular (MINEDEC)</h4>
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-600 text-white">
+                        Grado {{ cardStudent.adaptation_grade || '1' }}
+                      </span>
+                    </div>
+                    <p class="text-xs text-teal-950 leading-relaxed font-medium">
+                      {{ cardStudent.adaptation_details || 'Adaptación curricular activa según informe psicopedagógico.' }}
+                    </p>
+                  </div>
               </div>
 
               <!-- Footer -->
@@ -1242,4 +1486,3 @@ onMounted(async () => {
   }
 }
 </style>
-

@@ -1,0 +1,3511 @@
+{
+  "date": "2026-09-06",
+  "security": [
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+      "detail": "Table \\`public.client_error_events\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "client_error_events",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "rls_enabled_no_policy_public_client_error_events",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+      "detail": "Table \\`public.invoice_payment_allocations\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "invoice_payment_allocations",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "rls_enabled_no_policy_public_invoice_payment_allocations",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+      "detail": "Table \\`public.invoices\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "invoices",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "rls_enabled_no_policy_public_invoices",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+      "detail": "Table \\`public.lesson_plan_versions\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "lesson_plan_versions",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "rls_enabled_no_policy_public_lesson_plan_versions",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+      "detail": "Table \\`public.payment_events\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "payment_events",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "rls_enabled_no_policy_public_payment_events",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+      "detail": "Table \\`public.payment_refunds\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "payment_refunds",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "rls_enabled_no_policy_public_payment_refunds",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+      "detail": "Table \\`public.student_support_events\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "student_support_events",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "rls_enabled_no_policy_public_student_support_events",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "function_search_path_mutable",
+      "title": "Function Search Path Mutable",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects functions where the search_path parameter is not set.",
+      "detail": "Function \\`private.touch_teacher_reports_updated_at\\` has a role mutable search_path",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable",
+      "metadata": {
+        "name": "touch_teacher_reports_updated_at",
+        "type": "function",
+        "schema": "private"
+      },
+      "cache_key": "function_search_path_mutable_private_touch_teacher_reports_updated_at_7829af9a89c92ef9d387240b00f7daef",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "function_search_path_mutable",
+      "title": "Function Search Path Mutable",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects functions where the search_path parameter is not set.",
+      "detail": "Function \\`private.touch_attendance_records_updated_at\\` has a role mutable search_path",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable",
+      "metadata": {
+        "name": "touch_attendance_records_updated_at",
+        "type": "function",
+        "schema": "private"
+      },
+      "cache_key": "function_search_path_mutable_private_touch_attendance_records_updated_at_7829af9a89c92ef9d387240b00f7daef",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "function_search_path_mutable",
+      "title": "Function Search Path Mutable",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects functions where the search_path parameter is not set.",
+      "detail": "Function \\`private.touch_lesson_plans_updated_at\\` has a role mutable search_path",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable",
+      "metadata": {
+        "name": "touch_lesson_plans_updated_at",
+        "type": "function",
+        "schema": "private"
+      },
+      "cache_key": "function_search_path_mutable_private_touch_lesson_plans_updated_at_91a0f0589e0eb5b6dd1e2d9c256f23ea",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.auto_fill_academic_year_fields()` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/auto_fill_academic_year_fields`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "auto_fill_academic_year_fields",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_auto_fill_academic_year_fields_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.check_ai_planning_access(p_school_id uuid)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/check_ai_planning_access`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "check_ai_planning_access",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_check_ai_planning_access_p_school_id uuid",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.check_duplicate_course_name()` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/check_duplicate_course_name`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "check_duplicate_course_name",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_check_duplicate_course_name_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.copy_courses_to_academic_year(p_school_id uuid, p_source_academic_year text, p_target_academic_year text)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/copy_courses_to_academic_year`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "copy_courses_to_academic_year",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid, p_source_academic_year text, p_target_academic_year text",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_copy_courses_to_academic_year_p_school_id uuid, p_source_academic_year text, p_target_academic_year text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.delete_tenant(p_school_id uuid)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/delete_tenant`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "delete_tenant",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_delete_tenant_p_school_id uuid",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.ensure_default_grade_definitions(p_course_subject_id uuid, p_quarter_id uuid)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/ensure_default_grade_definitions`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "ensure_default_grade_definitions",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_course_subject_id uuid, p_quarter_id uuid",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_ensure_default_grade_definitions_p_course_subject_id uuid, p_quarter_id uuid",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.get_my_access_context()` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/get_my_access_context`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "get_my_access_context",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_get_my_access_context_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.get_tenant_usage_stats(p_school_id uuid)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/get_tenant_usage_stats`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "get_tenant_usage_stats",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_get_tenant_usage_stats_p_school_id uuid",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.get_user_school_id()` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/get_user_school_id`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "get_user_school_id",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_get_user_school_id_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.has_platform_role(p_roles text[])` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/has_platform_role`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "has_platform_role",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "p_roles text[]",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_has_platform_role_p_roles text[]",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.is_platform_admin()` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/is_platform_admin`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "is_platform_admin",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_is_platform_admin_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.is_platform_owner()` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/is_platform_owner`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "is_platform_owner",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_is_platform_owner_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.justify_attendance_records(p_student_id uuid, p_dates date[], p_reason text, p_course_id uuid)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/justify_attendance_records`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "justify_attendance_records",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_student_id uuid, p_dates date[], p_reason text, p_course_id uuid",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_justify_attendance_records_p_student_id uuid, p_dates date[], p_reason text, p_course_id uuid",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.record_manual_payment(p_school_id uuid, p_amount numeric, p_provider_reference text, p_external_invoice_number text, p_paid_at timestamp with time zone, p_notes text, p_receipt_url text)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/record_manual_payment`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "record_manual_payment",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid, p_amount numeric, p_provider_reference text, p_external_invoice_number text, p_paid_at timestamp with time zone, p_notes text, p_receipt_url text",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_record_manual_payment_p_school_id uuid, p_amount numeric, p_provider_reference text, p_external_invoice_number text, p_paid_at timestamp with time zone, p_notes text, p_receipt_url text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.save_attendance_batch(p_course_id uuid, p_subject_id uuid, p_date date, p_hour_block text, p_records jsonb)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/save_attendance_batch`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "save_attendance_batch",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_course_id uuid, p_subject_id uuid, p_date date, p_hour_block text, p_records jsonb",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_save_attendance_batch_p_course_id uuid, p_subject_id uuid, p_date date, p_hour_block text, p_records jsonb",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.save_teacher_report(p_report jsonb)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/save_teacher_report`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "save_teacher_report",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_report jsonb",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_save_teacher_report_p_report jsonb",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.set_tenant_status(p_school_id uuid, p_new_status text, p_reason text, p_observation text)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/set_tenant_status`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "set_tenant_status",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid, p_new_status text, p_reason text, p_observation text",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_set_tenant_status_p_school_id uuid, p_new_status text, p_reason text, p_observation text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+      "detail": "Function `public.upload_tenant_payment_proof(p_school_id uuid, p_receipt_url text, p_notes text)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/upload_tenant_payment_proof`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "upload_tenant_payment_proof",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid, p_receipt_url text, p_notes text",
+        "security_definer": true
+      },
+      "cache_key": "anon_security_definer_function_executable_public_upload_tenant_payment_proof_p_school_id uuid, p_receipt_url text, p_notes text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.auto_fill_academic_year_fields()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/auto_fill_academic_year_fields`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "auto_fill_academic_year_fields",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_auto_fill_academic_year_fields_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.can_access_course(target_course_id uuid, permission_code text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/can_access_course`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "can_access_course",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "target_course_id uuid, permission_code text",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_can_access_course_target_course_id uuid, permission_code text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.can_access_private_object(object_bucket text, object_name text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/can_access_private_object`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "can_access_private_object",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "object_bucket text, object_name text",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_can_access_private_object_object_bucket text, object_name text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.can_access_student(target_student_id uuid, permission_code text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/can_access_student`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "can_access_student",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "target_student_id uuid, permission_code text",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_can_access_student_target_student_id uuid, permission_code text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.can_manage_academic_score(target_student_id uuid, target_course_subject_id uuid, target_quarter_id uuid, permission_code text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/can_manage_academic_score`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "can_manage_academic_score",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "target_student_id uuid, target_course_subject_id uuid, target_quarter_id uuid, permission_code text",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_can_manage_academic_score_target_student_id uuid, target_course_subject_id uuid, target_quarter_id uuid, permission_code text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.can_manage_grade(target_student_id uuid, target_course_subject_id uuid, target_grade_definition_id uuid, target_quarter_id uuid, permission_code text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/can_manage_grade`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "can_manage_grade",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "target_student_id uuid, target_course_subject_id uuid, target_grade_definition_id uuid, target_quarter_id uuid, permission_code text",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_can_manage_grade_target_student_id uuid, target_course_subject_id uuid, target_grade_definition_id uuid, target_quarter_id uuid, permission_code text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.can_manage_project_score(target_student_id uuid, target_course_id uuid, target_subject_id uuid, target_quarter_id uuid, permission_code text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/can_manage_project_score`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "can_manage_project_score",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "target_student_id uuid, target_course_id uuid, target_subject_id uuid, target_quarter_id uuid, permission_code text",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_can_manage_project_score_target_student_id uuid, target_course_id uuid, target_subject_id uuid, target_quarter_id uuid, permission_code text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.check_ai_planning_access(p_school_id uuid)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/check_ai_planning_access`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "check_ai_planning_access",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_check_ai_planning_access_p_school_id uuid",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.check_duplicate_course_name()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/check_duplicate_course_name`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "check_duplicate_course_name",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_check_duplicate_course_name_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.copy_courses_to_academic_year(p_school_id uuid, p_source_academic_year text, p_target_academic_year text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/copy_courses_to_academic_year`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "copy_courses_to_academic_year",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid, p_source_academic_year text, p_target_academic_year text",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_copy_courses_to_academic_year_p_school_id uuid, p_source_academic_year text, p_target_academic_year text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.copy_courses_to_academic_year(source_year_id uuid, target_year_id uuid, include_subjects boolean)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/copy_courses_to_academic_year`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "copy_courses_to_academic_year",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "source_year_id uuid, target_year_id uuid, include_subjects boolean",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_copy_courses_to_academic_year_source_year_id uuid, target_year_id uuid, include_subjects boolean",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.delete_tenant(p_school_id uuid)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/delete_tenant`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "delete_tenant",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_delete_tenant_p_school_id uuid",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.ensure_default_grade_definitions(p_course_subject_id uuid, p_quarter_id uuid)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/ensure_default_grade_definitions`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "ensure_default_grade_definitions",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_course_subject_id uuid, p_quarter_id uuid",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_ensure_default_grade_definitions_p_course_subject_id uuid, p_quarter_id uuid",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.get_my_access_context()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/get_my_access_context`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "get_my_access_context",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_get_my_access_context_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.get_my_role()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/get_my_role`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "get_my_role",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_get_my_role_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.get_tenant_usage_stats(p_school_id uuid)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/get_tenant_usage_stats`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "get_tenant_usage_stats",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_get_tenant_usage_stats_p_school_id uuid",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.get_user_school_id()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/get_user_school_id`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "get_user_school_id",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_get_user_school_id_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.has_platform_role(p_roles text[])` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/has_platform_role`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "has_platform_role",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "p_roles text[]",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_has_platform_role_p_roles text[]",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.has_tenant_permission(perm_code text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/has_tenant_permission`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "has_tenant_permission",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "perm_code text",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_has_tenant_permission_perm_code text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.import_students_batch(p_course_id uuid, p_entries jsonb)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/import_students_batch`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "import_students_batch",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_course_id uuid, p_entries jsonb",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_import_students_batch_p_course_id uuid, p_entries jsonb",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.invite_teacher_by_email(teacher_email text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/invite_teacher_by_email`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "invite_teacher_by_email",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "teacher_email text",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_invite_teacher_by_email_teacher_email text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.is_active_tenant_member(target_school_id uuid)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/is_active_tenant_member`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "is_active_tenant_member",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "target_school_id uuid",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_is_active_tenant_member_target_school_id uuid",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.is_admin()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/is_admin`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "is_admin",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_is_admin_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.is_platform_admin()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/is_platform_admin`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "is_platform_admin",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_is_platform_admin_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.is_platform_owner()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/is_platform_owner`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "is_platform_owner",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_is_platform_owner_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.is_school_entitled(p_school_id uuid)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/is_school_entitled`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "is_school_entitled",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "p_school_id uuid",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_is_school_entitled_p_school_id uuid",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.is_superadmin()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/is_superadmin`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "is_superadmin",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_is_superadmin_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.is_teacher()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/is_teacher`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "is_teacher",
+        "schema": "public",
+        "language": "sql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_is_teacher_",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.justify_attendance_records(p_student_id uuid, p_dates date[], p_reason text, p_course_id uuid)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/justify_attendance_records`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "justify_attendance_records",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_student_id uuid, p_dates date[], p_reason text, p_course_id uuid",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_justify_attendance_records_p_student_id uuid, p_dates date[], p_reason text, p_course_id uuid",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.provision_tenant_wizard(p_name text, p_trade_name text, p_code text, p_country text, p_province text, p_city text, p_timezone text, p_admin_name text, p_admin_email text, p_admin_phone text, p_plan_id uuid, p_billing_cycle text, p_price numeric)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/provision_tenant_wizard`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "provision_tenant_wizard",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_name text, p_trade_name text, p_code text, p_country text, p_province text, p_city text, p_timezone text, p_admin_name text, p_admin_email text, p_admin_phone text, p_plan_id uuid, p_billing_cycle text, p_price numeric",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_provision_tenant_wizard_p_name text, p_trade_name text, p_code text, p_country text, p_province text, p_city text, p_timezone text, p_admin_name text, p_admin_email text, p_admin_phone text, p_plan_id uuid, p_billing_cycle text, p_price numeric",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.record_manual_payment(p_school_id uuid, p_amount numeric, p_provider_reference text, p_external_invoice_number text, p_paid_at timestamp with time zone, p_notes text, p_receipt_url text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/record_manual_payment`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "record_manual_payment",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid, p_amount numeric, p_provider_reference text, p_external_invoice_number text, p_paid_at timestamp with time zone, p_notes text, p_receipt_url text",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_record_manual_payment_p_school_id uuid, p_amount numeric, p_provider_reference text, p_external_invoice_number text, p_paid_at timestamp with time zone, p_notes text, p_receipt_url text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.save_attendance_batch(p_course_id uuid, p_subject_id uuid, p_date date, p_hour_block text, p_records jsonb)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/save_attendance_batch`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "save_attendance_batch",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_course_id uuid, p_subject_id uuid, p_date date, p_hour_block text, p_records jsonb",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_save_attendance_batch_p_course_id uuid, p_subject_id uuid, p_date date, p_hour_block text, p_records jsonb",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.save_course_subject_assignments(p_course_id uuid, p_assignments jsonb)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/save_course_subject_assignments`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "save_course_subject_assignments",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_course_id uuid, p_assignments jsonb",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_save_course_subject_assignments_p_course_id uuid, p_assignments jsonb",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.save_grade_batch(p_upserts jsonb, p_deletes jsonb)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/save_grade_batch`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "save_grade_batch",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_upserts jsonb, p_deletes jsonb",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_save_grade_batch_p_upserts jsonb, p_deletes jsonb",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.save_qualitative_grade_batch(p_course_subject_id uuid, p_quarter_id uuid, p_upserts jsonb, p_delete_student_ids jsonb)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/save_qualitative_grade_batch`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "save_qualitative_grade_batch",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_course_subject_id uuid, p_quarter_id uuid, p_upserts jsonb, p_delete_student_ids jsonb",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_save_qualitative_grade_batch_p_course_subject_id uuid, p_quarter_id uuid, p_upserts jsonb, p_delete_student_ids jsonb",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.save_teacher_report(p_report jsonb)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/save_teacher_report`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "save_teacher_report",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_report jsonb",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_save_teacher_report_p_report jsonb",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.set_tenant_status(p_school_id uuid, p_new_status text, p_reason text, p_observation text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/set_tenant_status`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "set_tenant_status",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid, p_new_status text, p_reason text, p_observation text",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_set_tenant_status_p_school_id uuid, p_new_status text, p_reason text, p_observation text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+      "detail": "Function `public.upload_tenant_payment_proof(p_school_id uuid, p_receipt_url text, p_notes text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/upload_tenant_payment_proof`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "upload_tenant_payment_proof",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_school_id uuid, p_receipt_url text, p_notes text",
+        "security_definer": true
+      },
+      "cache_key": "authenticated_security_definer_function_executable_public_upload_tenant_payment_proof_p_school_id uuid, p_receipt_url text, p_notes text",
+      "observed_at": "2026-09-06T18:52:11.406Z"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "title": "Leaked Password Protection Disabled",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Leaked password protection is currently disabled.",
+      "detail": "Supabase Auth prevents the use of compromised passwords by checking against HaveIBeenPwned.org. Enable this feature to enhance security.",
+      "cache_key": "auth_leaked_password_protection",
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection",
+      "metadata": {
+        "type": "auth",
+        "entity": "Auth"
+      }
+    }
+  ],
+  "performance": [
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.attendance_records\\` has a foreign key \\`attendance_records_justified_by_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "attendance_records",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "attendance_records_justified_by_fkey",
+        "fkey_columns": [
+          11
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_attendance_records_attendance_records_justified_by_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.attendance_records\\` has a foreign key \\`attendance_records_quarter_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "attendance_records",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "attendance_records_quarter_id_fkey",
+        "fkey_columns": [
+          15
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_attendance_records_attendance_records_quarter_id_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.attendance_records\\` has a foreign key \\`attendance_records_subject_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "attendance_records",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "attendance_records_subject_id_fkey",
+        "fkey_columns": [
+          4
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_attendance_records_attendance_records_subject_id_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.attendance_records\\` has a foreign key \\`attendance_records_teacher_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "attendance_records",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "attendance_records_teacher_id_fkey",
+        "fkey_columns": [
+          6
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_attendance_records_attendance_records_teacher_id_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.curriculum_items\\` has a foreign key \\`curriculum_items_catalog_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "curriculum_items",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "curriculum_items_catalog_id_fkey",
+        "fkey_columns": [
+          2
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_curriculum_items_curriculum_items_catalog_id_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.lesson_plan_resources\\` has a foreign key \\`lesson_plan_resources_teacher_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "lesson_plan_resources",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "lesson_plan_resources_teacher_id_fkey",
+        "fkey_columns": [
+          4
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_lesson_plan_resources_lesson_plan_resources_teacher_id_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.lesson_plan_versions\\` has a foreign key \\`lesson_plan_versions_created_by_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "lesson_plan_versions",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "lesson_plan_versions_created_by_fkey",
+        "fkey_columns": [
+          6
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_lesson_plan_versions_lesson_plan_versions_created_by_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.lesson_plans\\` has a foreign key \\`lesson_plans_quarter_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "lesson_plans",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "lesson_plans_quarter_id_fkey",
+        "fkey_columns": [
+          7
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_lesson_plans_lesson_plans_quarter_id_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.lesson_plans\\` has a foreign key \\`lesson_plans_subject_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "lesson_plans",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "lesson_plans_subject_id_fkey",
+        "fkey_columns": [
+          5
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_lesson_plans_lesson_plans_subject_id_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.student_support_events\\` has a foreign key \\`student_support_events_created_by_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "student_support_events",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "student_support_events_created_by_fkey",
+        "fkey_columns": [
+          5
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_student_support_events_student_support_events_created_by_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.student_support_events\\` has a foreign key \\`student_support_events_support_plan_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "student_support_events",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "student_support_events_support_plan_id_fkey",
+        "fkey_columns": [
+          2
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_student_support_events_student_support_events_support_plan_id_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.student_support_plans\\` has a foreign key \\`student_support_plans_approved_by_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "student_support_plans",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "student_support_plans_approved_by_fkey",
+        "fkey_columns": [
+          17
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_student_support_plans_student_support_plans_approved_by_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.student_support_plans\\` has a foreign key \\`student_support_plans_course_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "student_support_plans",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "student_support_plans_course_id_fkey",
+        "fkey_columns": [
+          6
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_student_support_plans_student_support_plans_course_id_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.student_support_plans\\` has a foreign key \\`student_support_plans_lesson_plan_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "student_support_plans",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "student_support_plans_lesson_plan_id_fkey",
+        "fkey_columns": [
+          3
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_student_support_plans_student_support_plans_lesson_plan_id_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.student_support_plans\\` has a foreign key \\`student_support_plans_subject_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "student_support_plans",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "student_support_plans_subject_id_fkey",
+        "fkey_columns": [
+          7
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_student_support_plans_student_support_plans_subject_id_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.teacher_reports\\` has a foreign key \\`teacher_reports_quarter_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "teacher_reports",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "teacher_reports_quarter_id_fkey",
+        "fkey_columns": [
+          8
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_teacher_reports_teacher_reports_quarter_id_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "detail": "Table \\`public.teacher_reports\\` has a foreign key \\`teacher_reports_subject_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "metadata": {
+        "name": "teacher_reports",
+        "type": "table",
+        "schema": "public",
+        "fkey_name": "teacher_reports_subject_id_fkey",
+        "fkey_columns": [
+          4
+        ]
+      },
+      "cache_key": "unindexed_foreign_keys_public_teacher_reports_teacher_reports_subject_id_fkey",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.tenant_billing_profiles\\` has a row level security policy \\`Billing profiles insertable by authorized users\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "tenant_billing_profiles",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_tenant_billing_profiles_Billing profiles insertable by authorized users",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.tenant_billing_profiles\\` has a row level security policy \\`Billing profiles updatable by authorized users\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "tenant_billing_profiles",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_tenant_billing_profiles_Billing profiles updatable by authorized users",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.tenant_billing_profiles\\` has a row level security policy \\`Billing profiles readable by authorized users\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "tenant_billing_profiles",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_tenant_billing_profiles_Billing profiles readable by authorized users",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.schools\\` has a row level security policy \\`Superadmins can update schools\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "schools",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_schools_Superadmins can update schools",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.schools\\` has a row level security policy \\`Superadmins can delete schools\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "schools",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_schools_Superadmins can delete schools",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.grade_definitions\\` has a row level security policy \\`grade_definitions_insert\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "grade_definitions",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_grade_definitions_grade_definitions_insert",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.grade_definitions\\` has a row level security policy \\`grade_definitions_update\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "grade_definitions",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_grade_definitions_grade_definitions_update",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.teacher_reports\\` has a row level security policy \\`teacher_reports_select\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "teacher_reports",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_teacher_reports_teacher_reports_select",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.teacher_reports\\` has a row level security policy \\`teacher_reports_insert\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "teacher_reports",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_teacher_reports_teacher_reports_insert",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.teacher_reports\\` has a row level security policy \\`teacher_reports_update\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "teacher_reports",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_teacher_reports_teacher_reports_update",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.teacher_reports\\` has a row level security policy \\`teacher_reports_delete\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "teacher_reports",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_teacher_reports_teacher_reports_delete",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.attendance_records\\` has a row level security policy \\`attendance_records_select\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "attendance_records",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_attendance_records_attendance_records_select",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.attendance_records\\` has a row level security policy \\`attendance_records_insert\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "attendance_records",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_attendance_records_attendance_records_insert",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.attendance_records\\` has a row level security policy \\`attendance_records_update\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "attendance_records",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_attendance_records_attendance_records_update",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.lesson_plans\\` has a row level security policy \\`lesson_plans_select\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "lesson_plans",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_lesson_plans_lesson_plans_select",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.lesson_plans\\` has a row level security policy \\`lesson_plans_insert\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "lesson_plans",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_lesson_plans_lesson_plans_insert",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.lesson_plans\\` has a row level security policy \\`lesson_plans_update\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "lesson_plans",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_lesson_plans_lesson_plans_update",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.lesson_plans\\` has a row level security policy \\`lesson_plans_delete\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "lesson_plans",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_lesson_plans_lesson_plans_delete",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.lesson_plan_resources\\` has a row level security policy \\`lesson_plan_resources_all\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "lesson_plan_resources",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_lesson_plan_resources_lesson_plan_resources_all",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.student_support_plans\\` has a row level security policy \\`student_support_plans_all\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "student_support_plans",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_student_support_plans_student_support_plans_all",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "detail": "Table \\`public.ai_usage_ledger\\` has a row level security policy \\`ai_usage_ledger_select\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "metadata": {
+        "name": "ai_usage_ledger",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "auth_rls_init_plan_public_ai_usage_ledger_ai_usage_ledger_select",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_grades_course_subject_id\\` on table \\`public.grades\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "grades",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_grades_idx_fk_grades_course_subject_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_grades_quarter_id\\` on table \\`public.grades\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "grades",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_grades_idx_fk_grades_quarter_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_profiles_school_id\\` on table \\`public.profiles\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "profiles",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_profiles_idx_fk_profiles_school_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_project_settings_subject_id\\` on table \\`public.project_settings\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "project_settings",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_project_settings_idx_fk_project_settings_subject_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_role_permissions_permission_id\\` on table \\`public.role_permissions\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "role_permissions",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_role_permissions_idx_fk_role_permissions_permission_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_schools_suspended_by\\` on table \\`public.schools\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "schools",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_schools_idx_fk_schools_suspended_by",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`students_full_name_trgm_idx\\` on table \\`public.students\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "students",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_students_students_full_name_trgm_idx",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_project_subject_grades_subject_id\\` on table \\`public.project_subject_grades\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "project_subject_grades",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_project_subject_grades_idx_fk_project_subject_grades_subject_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_student_alerts_quarter_id\\` on table \\`public.student_alerts\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "student_alerts",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_student_alerts_idx_fk_student_alerts_quarter_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_student_alerts_reported_by\\` on table \\`public.student_alerts\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "student_alerts",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_student_alerts_idx_fk_student_alerts_reported_by",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_student_alerts_school_id\\` on table \\`public.student_alerts\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "student_alerts",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_student_alerts_idx_fk_student_alerts_school_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_subscriptions_plan_id\\` on table \\`public.subscriptions\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "subscriptions",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_subscriptions_idx_fk_subscriptions_plan_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`project_subject_grades_student_idx\\` on table \\`public.project_subject_grades\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "project_subject_grades",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_project_subject_grades_project_subject_grades_student_idx",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_academic_years_active\\` on table \\`public.academic_years\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "academic_years",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_academic_years_idx_academic_years_active",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_students_representative_cedula\\` on table \\`public.students\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "students",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_students_idx_students_representative_cedula",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_grades_composite\\` on table \\`public.grades\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "grades",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_grades_idx_grades_composite",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_psg_composite\\` on table \\`public.project_subject_grades\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "project_subject_grades",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_project_subject_grades_idx_psg_composite",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_student_alerts_student_id\\` on table \\`public.student_alerts\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "student_alerts",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_student_alerts_idx_student_alerts_student_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_student_alerts_status\\` on table \\`public.student_alerts\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "student_alerts",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_student_alerts_idx_student_alerts_status",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_student_alerts_alert_type\\` on table \\`public.student_alerts\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "student_alerts",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_student_alerts_idx_student_alerts_alert_type",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_student_alerts_date_occurred\\` on table \\`public.student_alerts\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "student_alerts",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_student_alerts_idx_student_alerts_date_occurred",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_tenant_billing_profiles_implementation_fee_payment_id\\` on table \\`public.tenant_billing_profiles\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "tenant_billing_profiles",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_tenant_billing_profiles_idx_fk_tenant_billing_profiles_implementation_fee_payment_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_tenant_memberships_school_id\\` on table \\`public.tenant_memberships\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "tenant_memberships",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_tenant_memberships_idx_fk_tenant_memberships_school_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_tenant_memberships_tenant_role_id\\` on table \\`public.tenant_memberships\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "tenant_memberships",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_tenant_memberships_idx_fk_tenant_memberships_tenant_role_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_fk_user_platform_roles_platform_role_id\\` on table \\`public.user_platform_roles\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "user_platform_roles",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_user_platform_roles_idx_fk_user_platform_roles_platform_role_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_payment_events_payment\\` on table \\`public.payment_events\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "payment_events",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_payment_events_idx_payment_events_payment",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_client_error_events_received\\` on table \\`public.client_error_events\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "client_error_events",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_client_error_events_idx_client_error_events_received",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_client_error_events_fingerprint_received\\` on table \\`public.client_error_events\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "client_error_events",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_client_error_events_idx_client_error_events_fingerprint_received",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_attendance_records_date\\` on table \\`public.attendance_records\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "attendance_records",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_attendance_records_idx_attendance_records_date",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_academic_years_school_id\\` on table \\`public.academic_years\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "academic_years",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_academic_years_idx_academic_years_school_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_tenant_memberships_user_school\\` on table \\`public.tenant_memberships\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "tenant_memberships",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_tenant_memberships_idx_tenant_memberships_user_school",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_grades_course_subject_id\\` on table \\`public.grades\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "grades",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_grades_idx_grades_course_subject_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_grades_quarter_id\\` on table \\`public.grades\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "grades",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_grades_idx_grades_quarter_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_teacher_reports_student_id\\` on table \\`public.teacher_reports\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "teacher_reports",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_teacher_reports_idx_teacher_reports_student_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_teacher_reports_teacher_id\\` on table \\`public.teacher_reports\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "teacher_reports",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_teacher_reports_idx_teacher_reports_teacher_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_teacher_reports_status\\` on table \\`public.teacher_reports\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "teacher_reports",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_teacher_reports_idx_teacher_reports_status",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_teacher_reports_created_at\\` on table \\`public.teacher_reports\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "teacher_reports",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_teacher_reports_idx_teacher_reports_created_at",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_attendance_records_school_id\\` on table \\`public.attendance_records\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "attendance_records",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_attendance_records_idx_attendance_records_school_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_attendance_records_course_id\\` on table \\`public.attendance_records\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "attendance_records",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_attendance_records_idx_attendance_records_course_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_attendance_records_student_id\\` on table \\`public.attendance_records\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "attendance_records",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_attendance_records_idx_attendance_records_student_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_curriculum_items_filter\\` on table \\`public.curriculum_items\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "curriculum_items",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_curriculum_items_idx_curriculum_items_filter",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_curriculum_items_dcd\\` on table \\`public.curriculum_items\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "curriculum_items",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_curriculum_items_idx_curriculum_items_dcd",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_students_adaptation\\` on table \\`public.students\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "students",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_students_idx_students_adaptation",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_lesson_plans_teacher_id\\` on table \\`public.lesson_plans\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "lesson_plans",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_lesson_plans_idx_lesson_plans_teacher_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_lesson_plans_course_id\\` on table \\`public.lesson_plans\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "lesson_plans",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_lesson_plans_idx_lesson_plans_course_id",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_lesson_plans_status\\` on table \\`public.lesson_plans\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "lesson_plans",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_lesson_plans_idx_lesson_plans_status",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_lesson_plans_created_at\\` on table \\`public.lesson_plans\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "lesson_plans",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_lesson_plans_idx_lesson_plans_created_at",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_lesson_plan_versions_plan\\` on table \\`public.lesson_plan_versions\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "lesson_plan_versions",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_lesson_plan_versions_idx_lesson_plan_versions_plan",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_lesson_plan_resources_plan\\` on table \\`public.lesson_plan_resources\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "lesson_plan_resources",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_lesson_plan_resources_idx_lesson_plan_resources_plan",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_student_support_plans_student\\` on table \\`public.student_support_plans\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "student_support_plans",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_student_support_plans_idx_student_support_plans_student",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_student_support_plans_teacher\\` on table \\`public.student_support_plans\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "student_support_plans",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_student_support_plans_idx_student_support_plans_teacher",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "detail": "Index \\`idx_student_support_plans_status\\` on table \\`public.student_support_plans\\` has not been used",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "metadata": {
+        "name": "student_support_plans",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "unused_index_public_student_support_plans_idx_student_support_plans_status",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "title": "Multiple Permissive Policies",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if multiple permissive row level security policies are present on a table for the same \\`role\\` and \\`action\\` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+      "detail": "Table \\`public.courses\\` has multiple permissive policies for role \\`authenticated\\` for action \\`DELETE\\`. Policies include \\`{courses_delete,courses_delete_policy}\\`",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+      "metadata": {
+        "name": "courses",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "multiple_permissive_policies_public_courses_authenticated_DELETE",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "title": "Multiple Permissive Policies",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if multiple permissive row level security policies are present on a table for the same \\`role\\` and \\`action\\` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+      "detail": "Table \\`public.courses\\` has multiple permissive policies for role \\`authenticated\\` for action \\`INSERT\\`. Policies include \\`{courses_insert,courses_insert_policy}\\`",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+      "metadata": {
+        "name": "courses",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "multiple_permissive_policies_public_courses_authenticated_INSERT",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "title": "Multiple Permissive Policies",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if multiple permissive row level security policies are present on a table for the same \\`role\\` and \\`action\\` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+      "detail": "Table \\`public.courses\\` has multiple permissive policies for role \\`authenticated\\` for action \\`SELECT\\`. Policies include \\`{courses_select,courses_select_policy}\\`",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+      "metadata": {
+        "name": "courses",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "multiple_permissive_policies_public_courses_authenticated_SELECT",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "title": "Multiple Permissive Policies",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if multiple permissive row level security policies are present on a table for the same \\`role\\` and \\`action\\` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+      "detail": "Table \\`public.courses\\` has multiple permissive policies for role \\`authenticated\\` for action \\`UPDATE\\`. Policies include \\`{courses_update,courses_update_policy}\\`",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+      "metadata": {
+        "name": "courses",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "multiple_permissive_policies_public_courses_authenticated_UPDATE",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "title": "Multiple Permissive Policies",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if multiple permissive row level security policies are present on a table for the same \\`role\\` and \\`action\\` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+      "detail": "Table \\`public.institution_ai_settings\\` has multiple permissive policies for role \\`authenticated\\` for action \\`SELECT\\`. Policies include \\`{institution_ai_settings_manage,institution_ai_settings_select}\\`",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+      "metadata": {
+        "name": "institution_ai_settings",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "multiple_permissive_policies_public_institution_ai_settings_authenticated_SELECT",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "title": "Multiple Permissive Policies",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if multiple permissive row level security policies are present on a table for the same \\`role\\` and \\`action\\` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+      "detail": "Table \\`public.schools\\` has multiple permissive policies for role \\`authenticated\\` for action \\`DELETE\\`. Policies include \\`{\"Superadmins can delete schools\",schools_delete}\\`",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+      "metadata": {
+        "name": "schools",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "multiple_permissive_policies_public_schools_authenticated_DELETE",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "title": "Multiple Permissive Policies",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if multiple permissive row level security policies are present on a table for the same \\`role\\` and \\`action\\` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+      "detail": "Table \\`public.schools\\` has multiple permissive policies for role \\`authenticated\\` for action \\`UPDATE\\`. Policies include \\`{\"Superadmins can update schools\",schools_update}\\`",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+      "metadata": {
+        "name": "schools",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "multiple_permissive_policies_public_schools_authenticated_UPDATE",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "title": "Multiple Permissive Policies",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if multiple permissive row level security policies are present on a table for the same \\`role\\` and \\`action\\` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+      "detail": "Table \\`public.tenant_billing_profiles\\` has multiple permissive policies for role \\`authenticated\\` for action \\`INSERT\\`. Policies include \\`{\"Billing profiles insertable by authorized users\",\"Platform billing profiles\"}\\`",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+      "metadata": {
+        "name": "tenant_billing_profiles",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "multiple_permissive_policies_public_tenant_billing_profiles_authenticated_INSERT",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "title": "Multiple Permissive Policies",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if multiple permissive row level security policies are present on a table for the same \\`role\\` and \\`action\\` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+      "detail": "Table \\`public.tenant_billing_profiles\\` has multiple permissive policies for role \\`authenticated\\` for action \\`SELECT\\`. Policies include \\`{\"Billing profiles readable by authorized users\",\"Platform billing profiles\",\"Tenant reads own billing profile\"}\\`",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+      "metadata": {
+        "name": "tenant_billing_profiles",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "multiple_permissive_policies_public_tenant_billing_profiles_authenticated_SELECT",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "title": "Multiple Permissive Policies",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if multiple permissive row level security policies are present on a table for the same \\`role\\` and \\`action\\` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+      "detail": "Table \\`public.tenant_billing_profiles\\` has multiple permissive policies for role \\`authenticated\\` for action \\`UPDATE\\`. Policies include \\`{\"Billing profiles updatable by authorized users\",\"Platform billing profiles\"}\\`",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+      "metadata": {
+        "name": "tenant_billing_profiles",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "multiple_permissive_policies_public_tenant_billing_profiles_authenticated_UPDATE",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "title": "Multiple Permissive Policies",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if multiple permissive row level security policies are present on a table for the same \\`role\\` and \\`action\\` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+      "detail": "Table \\`public.tenant_features\\` has multiple permissive policies for role \\`authenticated\\` for action \\`SELECT\\`. Policies include \\`{tenant_features_all_policy,tenant_features_select_policy}\\`",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+      "metadata": {
+        "name": "tenant_features",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "multiple_permissive_policies_public_tenant_features_authenticated_SELECT",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "title": "Multiple Permissive Policies",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if multiple permissive row level security policies are present on a table for the same \\`role\\` and \\`action\\` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+      "detail": "Table \\`public.tenant_limits\\` has multiple permissive policies for role \\`authenticated\\` for action \\`SELECT\\`. Policies include \\`{\"Platform admins manage tenant limits\",\"Tenant members read own limits\"}\\`",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+      "metadata": {
+        "name": "tenant_limits",
+        "type": "table",
+        "schema": "public"
+      },
+      "cache_key": "multiple_permissive_policies_public_tenant_limits_authenticated_SELECT",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "duplicate_index",
+      "title": "Duplicate Index",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects cases where two ore more identical indexes exist.",
+      "detail": "Table \\`public.courses\\` has identical indexes {idx_courses_school_id,idx_fk_courses_school_id}. Drop all except one of them",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index",
+      "metadata": {
+        "name": "courses",
+        "type": "table",
+        "schema": "public",
+        "indexes": [
+          "idx_courses_school_id",
+          "idx_fk_courses_school_id"
+        ]
+      },
+      "cache_key": "duplicate_index_public_courses_{idx_courses_school_id,idx_fk_courses_school_id}",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "duplicate_index",
+      "title": "Duplicate Index",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects cases where two ore more identical indexes exist.",
+      "detail": "Table \\`public.grades\\` has identical indexes {idx_fk_grades_course_subject_id,idx_grades_course_subject_id}. Drop all except one of them",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index",
+      "metadata": {
+        "name": "grades",
+        "type": "table",
+        "schema": "public",
+        "indexes": [
+          "idx_fk_grades_course_subject_id",
+          "idx_grades_course_subject_id"
+        ]
+      },
+      "cache_key": "duplicate_index_public_grades_{idx_fk_grades_course_subject_id,idx_grades_course_subject_id}",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "duplicate_index",
+      "title": "Duplicate Index",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects cases where two ore more identical indexes exist.",
+      "detail": "Table \\`public.grades\\` has identical indexes {idx_fk_grades_quarter_id,idx_grades_quarter_id}. Drop all except one of them",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index",
+      "metadata": {
+        "name": "grades",
+        "type": "table",
+        "schema": "public",
+        "indexes": [
+          "idx_fk_grades_quarter_id",
+          "idx_grades_quarter_id"
+        ]
+      },
+      "cache_key": "duplicate_index_public_grades_{idx_fk_grades_quarter_id,idx_grades_quarter_id}",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "duplicate_index",
+      "title": "Duplicate Index",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects cases where two ore more identical indexes exist.",
+      "detail": "Table \\`public.grades\\` has identical indexes {idx_grades_composite,idx_grades_student_definition}. Drop all except one of them",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index",
+      "metadata": {
+        "name": "grades",
+        "type": "table",
+        "schema": "public",
+        "indexes": [
+          "idx_grades_composite",
+          "idx_grades_student_definition"
+        ]
+      },
+      "cache_key": "duplicate_index_public_grades_{idx_grades_composite,idx_grades_student_definition}",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    },
+    {
+      "name": "duplicate_index",
+      "title": "Duplicate Index",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects cases where two ore more identical indexes exist.",
+      "detail": "Table \\`public.payments\\` has identical indexes {idx_fk_payments_school_id,idx_payments_school_id}. Drop all except one of them",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index",
+      "metadata": {
+        "name": "payments",
+        "type": "table",
+        "schema": "public",
+        "indexes": [
+          "idx_fk_payments_school_id",
+          "idx_payments_school_id"
+        ]
+      },
+      "cache_key": "duplicate_index_public_payments_{idx_fk_payments_school_id,idx_payments_school_id}",
+      "observed_at": "2026-09-06T20:12:10.878Z"
+    }
+  ]
+}
