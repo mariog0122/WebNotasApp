@@ -687,8 +687,15 @@ const gradeBgClass = (val) => {
       Este curso no tiene asignaturas. Asigna materias en <strong class="text-slate-700">Cursos</strong>.
     </div>
 
-    <div v-else class="text-center py-12 text-slate-500 mt-6 rounded-xl border border-dashed border-slate-200 bg-slate-50/50">
-      Selecciona un curso y un periodo para comenzar.
+    <div
+      v-else
+      class="mt-6 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-900/40"
+    >
+      <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-600 ring-1 ring-inset ring-teal-200 dark:bg-teal-500/10 dark:text-teal-300 dark:ring-teal-500/30" aria-hidden="true">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v11.494m0-11.494C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v11.494C4.168 16.977 5.754 16.5 7.5 16.5s3.332.477 4.5 1.253m0-11.494C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v11.494c-1.168-.776-2.754-1.253-4.5-1.253-1.746 0-3.332.477-4.5 1.253" /></svg>
+      </span>
+      <p class="text-sm font-bold text-slate-800 dark:text-slate-100">Selecciona un curso y un periodo para comenzar</p>
+      <p class="max-w-md text-xs text-slate-500 dark:text-slate-400">Elige el curso y el período en los filtros de arriba para ver sus asignaturas y registrar calificaciones.</p>
     </div>
 
     <!-- MODAL PEGAR DESDE EXCEL -->
