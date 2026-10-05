@@ -3,14 +3,16 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, '')
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
+export const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey)
+
+if (!hasSupabaseConfig) {
   console.error(
     '[WebNotas] Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia app/.env.example a app/.env.local y configura tu proyecto Supabase.'
   )
 }
 
 /** Cliente oficial; misma superficie que usan las vistas (`from`, `auth`, `storage`). */
-const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
+const supabase = createClient(supabaseUrl || 'http://localhost', supabaseAnonKey || 'missing-anon-key', {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

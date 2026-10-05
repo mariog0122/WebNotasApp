@@ -8,6 +8,7 @@ import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import 'vue-sonner/style.css'
 
 import { registerSW } from 'virtual:pwa-register'
+import { hasSupabaseConfig } from './lib/supabase'
 
 const updateSW = registerSW({
   onNeedRefresh() {
@@ -43,7 +44,27 @@ const queryClient = new QueryClient({
   },
 })
 
+function showBootError(title, detail) {
+  const el = document.getElementById('app')
+  if (!el) return
+  el.innerHTML = `<div style="font-family:system-ui,sans-serif;max-width:520px;margin:15vh auto;padding:24px;border:1px solid #fecaca;background:#fef2f2;border-radius:12px;color:#7f1d1d">
+    <h1 style="font-size:18px;margin:0 0 8px">${title}</h1>
+    <p style="margin:0;font-size:14px;line-height:1.5">${detail}</p></div>`
+}
+
+if (!hasSupabaseConfig) {
+  showBootError(
+    'Falta la configuración de Supabase',
+    'Define VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY (app/.env.local) y vuelve a ejecutar <code>npm run build</code>.'
+  )
+  throw new Error('Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY')
+}
+
 const app = createApp(App)
+
+app.config.errorHandler = (err, instance, info) => {
+  console.error('[WebNotas] Error no controlado:', err, info)
+}
 
 app.use(createPinia())
 app.use(router)
@@ -55,6 +76,7 @@ app.use(VueQueryPlugin, {
       queryClient,
       persister,
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week cache
+      buster: __APP_BUILD__, // descarta la caché persistida de versiones anteriores
     })
   }
 })

@@ -104,4 +104,19 @@ router.beforeEach(async (to, from, next) => {
     }
 })
 
+// Tras un nuevo despliegue, los chunks viejos (o el CSS de la ruta) pueden dejar de existir
+// y la navegación falla sin mostrar nada. Se recarga una sola vez para tomar la versión nueva.
+router.onError((error, to) => {
+    const msg = String(error?.message || error)
+    const isChunkError = /dynamically imported module|Importing a module script failed|Unable to preload CSS|error loading dynamically imported/i.test(msg)
+    if (!isChunkError) return
+    const key = 'webnotas-chunk-reload'
+    if (sessionStorage.getItem(key) === to.fullPath) {
+        console.error('[WebNotas] No se pudo cargar el módulo tras recargar:', error)
+        return
+    }
+    sessionStorage.setItem(key, to.fullPath)
+    window.location.assign(to.fullPath)
+})
+
 export default router

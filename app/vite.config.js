@@ -3,6 +3,9 @@ import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  define: {
+    __APP_BUILD__: JSON.stringify(String(Date.now())),
+  },
   test: {
     exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
   },
