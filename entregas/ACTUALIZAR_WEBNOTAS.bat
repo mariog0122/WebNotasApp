@@ -13,13 +13,25 @@ where git >nul 2>nul || (echo [ERROR] Git no esta instalado. Descargalo de https
 where npm >nul 2>nul || (echo [ERROR] Node.js no esta instalado. Descargalo de https://nodejs.org & pause & exit /b 1)
 cd /d "%PROYECTO%" || (echo [ERROR] No se encontro la carpeta: %PROYECTO% & pause & exit /b 1)
 
+rem Windows marca la carpeta como "de otro usuario" (dubious ownership); se autoriza una sola vez.
+set "SEGURA=%CD:\=/%"
+git config --global --get-all safe.directory 2>nul | findstr /x /i /c:"%SEGURA%" >nul || git config --global --add safe.directory "%SEGURA%"
+git rev-parse --is-inside-work-tree >nul 2>nul || (echo [ERROR] Git sigue sin poder abrir la carpeta. Copia este mensaje a Claude. & pause & exit /b 1)
+
 for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD') do set "ANTERIOR=%%b"
 echo Rama actual: %ANTERIOR%
 
 echo.
 echo [1/4] Guardando tus cambios locales (respaldo)...
-git add -A
-git commit -m "Respaldo local antes de actualizar" >nul 2>nul && echo       Cambios guardados en %ANTERIOR%. || echo       No habia cambios pendientes.
+set "PENDIENTES="
+for /f "delims=" %%l in ('git status --porcelain') do set "PENDIENTES=1"
+if defined PENDIENTES (
+  git add -A
+  git commit -q -m "Respaldo local antes de actualizar" || (echo [ERROR] No se pudo guardar el respaldo. & pause & exit /b 1)
+  echo       Cambios guardados en %ANTERIOR%.
+) else (
+  echo       No habia cambios pendientes.
+)
 
 echo.
 echo [2/4] Descargando los cambios de GitHub...
