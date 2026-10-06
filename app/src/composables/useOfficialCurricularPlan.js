@@ -59,6 +59,7 @@ export function useOfficialCurricularPlan({ createGateway, institutionConfig, de
     fechaElaboracion: new Date().toISOString().slice(0, 10),
   })
 
+  const autoFilled = { nivel: '', asignatura: '', area: '' }
   const programs = OFFICIAL_PROGRAMS
   const program = computed(() => programs.find(p => p.id === datos.programa))
   const options = ref({ asignaturas: [], subniveles: [], edades: [] })
@@ -109,9 +110,13 @@ export function useOfficialCurricularPlan({ createGateway, institutionConfig, de
       excluded.clear()
       units.value = []
       Object.keys(unitPlans).forEach(k => delete unitPlans[k])
-      if (!datos.nivel) datos.nivel = curriculum.value.subnivel || program.value.nombre
-      if (!datos.asignatura && selectedOption.value && datos.asignaturaCurricular !== 'todas') datos.asignatura = selectedOption.value.nombre
-      if (!datos.area && selectedOption.value && datos.asignaturaCurricular !== 'todas') datos.area = selectedOption.value.nombre.split('/')[0]
+      // Rellena área/asignatura/nivel con la selección; respeta lo que el docente haya escrito a mano.
+      const named = selectedOption.value && datos.asignaturaCurricular !== 'todas' ? selectedOption.value.nombre : program.value.nombre
+      const next = { nivel: curriculum.value.subnivel || program.value.nombre, asignatura: named, area: named.split('/')[0].split(' (')[0] }
+      for (const field of ['nivel', 'asignatura', 'area']) {
+        if (!datos[field] || datos[field] === autoFilled[field]) datos[field] = next[field]
+        autoFilled[field] = next[field]
+      }
     } catch (err) {
       toast.error(err.message || 'No se pudo cargar el currículo.')
     } finally {

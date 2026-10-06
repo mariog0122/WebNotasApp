@@ -1,7 +1,9 @@
-"""Normaliza los currículos priorizados entregados en JSON (Inicial, Preparatoria, Elemental, Media y
-Adaptaciones para jóvenes/adultos) al formato que usa la app, con validación y registro de correcciones.
+"""Normaliza currículos entregados en JSON (extracción externa) al formato que usa la app, con validación y
+registro de correcciones. Hoy solo se usa para Adaptaciones curriculares de jóvenes y adultos, porque no se
+cuenta con su PDF; Inicial, Preparatoria, Elemental y Media se extraen del PDF oficial (extract_inicial.py y
+extract_priorizado_egb.py), que es la fuente preferida.
 
-Uso: python3 normalize_priorizados.py <carpeta_json_origen> <carpeta_salida>
+Uso: python3 normalize_priorizados.py <carpeta_json_origen> <carpeta_salida> [id ...]   (por defecto: adaptaciones_jovenes_adultos)
 Salida: src/data/curriculos/<id>.json
 
 Los JSON de origen fueron generados por un extractor externo y traen errores sistemáticos. Este script:
@@ -245,9 +247,11 @@ def normalize_inicial(data):
     return ambitos
 
 
-def main(src_dir, out_dir):
+def main(src_dir, out_dir, ids=None):
     src_dir, out_dir = Path(src_dir), Path(out_dir)
     for cid, filename in SOURCES.items():
+        if cid not in (ids or ['adaptaciones_jovenes_adultos']):
+            continue
         path = next(src_dir.glob(f'*{filename}'))
         data = json.loads(path.read_text(encoding='utf-8'))
         base = {
@@ -269,4 +273,4 @@ def main(src_dir, out_dir):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], sys.argv[3:] or None)

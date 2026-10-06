@@ -1,8 +1,9 @@
 /**
  * Catálogo de currículos oficiales del MinEduc.
- * - Alfabetización/Postalfabetización y Primera Infancia: extraídos de los PDF oficiales (scripts/curriculum/extract_*.py).
- * - Inicial, Preparatoria, Elemental, Media y Adaptaciones para jóvenes/adultos: JSON entregados por la institución,
- *   normalizados y validados con scripts/curriculum/normalize_priorizados.py (cada corrección queda en `avisos`).
+ * - Extraídos de los PDF oficiales (scripts/curriculum/extract_*.py): Primera Infancia, Inicial, Preparatoria,
+ *   Elemental, Media, Alfabetización y Postalfabetización. Las erratas del PDF corregidas quedan en `avisos`.
+ * - Adaptaciones para jóvenes/adultos: JSON entregado por la institución (no se tiene su PDF), normalizado y
+ *   validado con scripts/curriculum/normalize_priorizados.py.
  * Ninguna parte de la app ni de la IA puede inventar o modificar códigos y textos curriculares.
  */
 
@@ -83,11 +84,10 @@ export async function getProgramOptions(programId) {
   }
   if (program.tipo === 'inicial') {
     return {
-      asignaturas: [{ id: 'todas', nombre: 'Todos los ámbitos (currículo integrado)', estado: 'completa', avisos: [] },
-        ...data.ambitos.map(a => ({ id: a.id, nombre: a.nombre, estado: 'completa', avisos: a.avisos, total: a.destrezas.length }))],
+      asignaturas: [{ id: 'todas', nombre: 'Todos los ámbitos (currículo integrado)', estado: 'completa', avisos: [], total: data.ambitos.reduce((n, a) => n + a.destrezas.length, 0) },
+        ...data.ambitos.map(a => ({ id: a.id, nombre: a.nombre, estado: 'completa', avisos: a.avisos || [], total: a.destrezas.length }))],
       subniveles: [],
       edades: data.edades,
-      avisos: data.ambitos[0]?.avisos || [],
     }
   }
   if (program.tipo === 'por_ambitos') {
@@ -142,6 +142,7 @@ export async function loadProgram(programId, { edad, asignatura, subnivel } = {}
           codigo_descripcion: c.codigo_descripcion,
           descripcion: c.descripcion,
           nota: c.nota,
+          relacionados: c.relacionados || [],
           asignatura: a.nombre,
           destrezas,
           indicadores,
@@ -164,24 +165,28 @@ export async function loadProgram(programId, { edad, asignatura, subnivel } = {}
   if (program.tipo === 'inicial') {
     const ageId = edad && data.edades.some(e => e.id === edad) ? edad : data.edades[data.edades.length - 1].id
     const ambitos = asignatura && asignatura !== 'todas' ? data.ambitos.filter(a => a.id === asignatura) : data.ambitos
-    const criterios = ambitos.map((ambito, index) => ({
-      codigo: null,
-      ref: `ini.${ambito.id}`,
-      ambito: ambito.nombre,
-      descripcion: ambito.objetivos[0] || ambito.nombre,
-      destrezas: ambito.destrezas.filter(d => d.edad === ageId).map((d, k) => ({ ...d, ref: `ini.${ambito.id}.${index + 1}.${ageId}.${k + 1}` })),
-      indicadores: [],
-    })).filter(c => c.destrezas.length)
+    // Cada objetivo de aprendizaje de un ámbito actúa como "criterio" (Inicial no tiene códigos oficiales).
+    const criterios = []
+    for (const ambito of ambitos) {
+      ambito.objetivos.forEach((objetivo, index) => {
+        const destrezas = ambito.destrezas
+          .filter(d => d.edad === ageId && d.objetivo === objetivo)
+          .map((d, k) => ({ ...d, ref: `ini.${ambito.id}.${index + 1}.${ageId}.${k + 1}` }))
+        if (destrezas.length) {
+          criterios.push({ codigo: null, ref: `ini.${ambito.id}.${index + 1}`, ambito: ambito.nombre, descripcion: objetivo, destrezas, indicadores: [] })
+        }
+      })
+    }
     return {
       program,
       titulo: data.titulo,
       fuente: data.fuente,
-      nota_codigos: 'El currículo de Educación Inicial no asigna códigos a sus destrezas; se identifican por ámbito y edad.',
+      nota_codigos: data.nota_codigos,
       edad: data.edades.find(e => e.id === ageId),
       edades: data.edades,
-      objetivos: ambitos.flatMap(a => a.objetivos.map(o => ({ codigo: null, descripcion: `${a.nombre}: ${o}` }))),
+      objetivos: ambitos.map(a => ({ codigo: null, descripcion: `${a.nombre}: ${a.objetivo_nivel}` })),
       criterios,
-      avisos: ambitos[0]?.avisos || [],
+      avisos: [],
     }
   }
 
@@ -234,7 +239,8 @@ export function formatCriterion(criterio) {
     if (criterio.codigos?.length > 1 && criterio.codigo_descripcion) {
       return `${criterio.codigos.join(' y ')} — ${criterio.codigo_descripcion}. ${criterio.descripcion}`
     }
-    return `${criterio.codigo}. ${criterio.descripcion}`
+    const also = criterio.relacionados?.length ? ` (También evalúan sus destrezas: ${criterio.relacionados.map(r => r.codigo).join(', ')}.)` : ''
+    return `${criterio.codigo}. ${criterio.descripcion}${also}`
   }
   if (criterio.ambito) return `Ámbito ${criterio.ambito} — ${criterio.descripcion}`
   return criterio.asignatura ? `${criterio.asignatura} — ${criterio.descripcion}` : criterio.descripcion

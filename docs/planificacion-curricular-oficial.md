@@ -3,21 +3,20 @@
 Módulo: **Planificación IA → botón "PCA y Microcurricular"**.
 
 ## Fuentes oficiales cargadas
-| Archivo de datos | Documento MinEduc | Contenido |
+| Archivo de datos | Fuente | Extractor |
 |---|---|---|
-| `app/src/data/curriculos/alfabetizacion_postalfabetizacion_2025.json` | Currículo integrado de Alfabetización y Postalfabetización priorizado (2025) | Alfabetización: 12 objetivos, 30 criterios, 120 destrezas, 63 indicadores. Postalfabetización: 12 / 33 / 124 / 75. Inserción Cívica (CAI.JA): 16 destrezas. Inserciones curriculares por destreza (íconos del PDF). |
-| `app/src/data/curriculos/primera_infancia_0_3.json` | Currículo Nacional de Atención y Educación de la Primera Infancia (0-3 años) | 5 ámbitos, 18 objetivos de aprendizaje, destrezas por rango de edad. **El documento oficial no tiene códigos de destreza**: no se inventan. |
+| `alfabetizacion_postalfabetizacion_2025.json` | PDF oficial Alfabetización y Postalfabetización (2025) | `extract_alfabetizacion.py` |
+| `primera_infancia_0_3.json` | PDF oficial Primera Infancia (0-3 años) | `extract_primera_infancia.py` |
+| `inicial.json` | PDF oficial Currículo Priorizado de Inicial | `extract_inicial.py` |
+| `preparatoria.json`, `elemental.json`, `media.json` | PDF oficiales Currículo Priorizado | `extract_priorizado_egb.py` |
+| `adaptaciones_jovenes_adultos.json` | JSON entregado por la institución (**sin PDF todavía**) | `normalize_priorizados.py` |
 
-| `inicial.json`, `preparatoria.json`, `elemental.json`, `media.json`, `adaptaciones_jovenes_adultos.json` | Currículos priorizados entregados en JSON | Normalizados con `app/scripts/curriculum/normalize_priorizados.py`. |
-
-### Calidad de los JSON entregados (corregida automáticamente, sin inventar texto)
-- Bloques con **criterios fusionados**: el extractor externo unió criterios (p. ej. CE.M.3.1 + CE.M.3.2) y solo conservó una descripción.
-  Los códigos del bloque se reconstruyen desde sus indicadores y la app lo avisa en pantalla.
-- Sección de **Cívica (CAI)** pegada a Inglés o Expresión corporal: separada como asignatura propia.
-- Encabezados de tabla como indicadores, números de página pegados al texto y prefijos con error (`L.` → `LL.`, `REF.` → `EF.`): corregidos y registrados en `avisos`.
-- **Inglés de EGB Media** y **Comprensión y expresión artística de Preparatoria** vienen incompletos: quedan bloqueados.
-- **Inicial**: los códigos del archivo (D.IN2…, OBJ.IN2…) no son oficiales y se repetían; se omiten y se planifica por ámbito y edad.
-Para dejarlos 100 % fieles conviene volver a extraerlos de los PDF originales con el mismo método usado en Alfabetización.
+Todos los extractores copian códigos y textos literalmente, leen los íconos de competencias e inserciones de cada
+destreza y asignan cada destreza e indicador a su criterio por la geometría de la tabla. Las erratas del propio PDF
+oficial (p. ej. `L.3.3.1`, `EC.ECA.2.6`, `I.E.ECA.3.5.1`, códigos al final del indicador) se corrigen y quedan
+registradas en `avisos`, visibles en la app con "Ver correcciones aplicadas".
+Inicial y Primera Infancia no tienen códigos oficiales de destreza: se planifican por ámbito, objetivo y edad.
+Adaptaciones (jóvenes y adultos) proviene de un JSON con criterios fusionados: conviene reemplazarlo extrayendo su PDF.
 
 Los textos y códigos se extraen literalmente con `app/scripts/curriculum/extract_*.py` (requiere `pip install pdfplumber`).
 Para agregar otro currículo: crear su extractor, guardar el JSON en `src/data/curriculos/` y registrarlo en `src/lib/curriculum/officialCurricula.js`.

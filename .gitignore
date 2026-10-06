@@ -43,3 +43,6 @@ app/test-results/
 .trae
 .windsurf
 webnotas-next/  
+
+# Python
+__pycache__/

@@ -183,7 +183,7 @@ describe('currículos priorizados entregados en JSON (normalizados)', () => {
             expect(d.descripcion[0]).toBe(d.descripcion[0].toUpperCase())
           }
           for (const i of c.indicadores) {
-            expect(i.codigo).toBeTruthy()
+            if (asig.prefijo !== 'CAI') expect(i.codigo).toBeTruthy()
             expect(i.descripcion).not.toMatch(/^Indicators for the performance criteria$/)
           }
           for (const code of c.codigos) expect(code).toMatch(/^CE\./)
@@ -196,17 +196,33 @@ describe('currículos priorizados entregados en JSON (normalizados)', () => {
     }
   })
 
-  it('reconstruye los criterios fusionados a partir de los indicadores', () => {
+  it('extrae del PDF cada criterio con su propia descripción (sin bloques fusionados)', () => {
     const mat = load('media').asignaturas.find(a => a.nombre === 'Matemática')
-    expect(mat.criterios[0].codigos).toEqual(['CE.M.3.1', 'CE.M.3.2'])
-    expect(mat.criterios[0].codigo_descripcion).toBe('CE.M.3.2')
-    expect(mat.criterios[0].nota).toMatch(/CE\.M\.3\.1/)
+    expect(mat.criterios.map(c => c.codigo).slice(0, 3)).toEqual(['CE.M.3.1', 'CE.M.3.2', 'CE.M.3.3'])
+    expect(mat.criterios[0].descripcion).toMatch(/^Emplea de forma razonada la tecnología/)
+    expect(mat.criterios[0].destrezas[0]).toMatchObject({ codigo: 'M.3.1.1', competencias: expect.arrayContaining(['matematicas', 'socioemocionales']), inserciones: ['socioemocional'] })
+    expect(mat.criterios[0].indicadores.map(i => i.codigo)).toEqual(['I.M.3.1.1', 'I.M.3.1.2'])
+    for (const id of ['media', 'elemental', 'preparatoria']) {
+      for (const asig of load(id).asignaturas) {
+        for (const c of asig.criterios) if (asig.prefijo !== 'CAI') expect(c.indicadores.length, `${id} ${c.codigo}`).toBeGreaterThan(0)
+      }
+    }
   })
 
-  it('bloquea asignaturas incompletas (Inglés de Media) en lugar de planificar con datos rotos', async () => {
-    const ingles = load('media').asignaturas.find(a => a.nombre === 'Inglés')
-    expect(ingles.estado).toBe('incompleta')
-    await expect(loadProgram('media', { asignatura: ingles.id })).rejects.toThrow(/no se puede planificar/)
+  it('recupera Inglés de Media completo y registra las erratas del PDF oficial', () => {
+    const ingles = load('media').asignaturas.find(a => a.nombre.startsWith('Inglés'))
+    expect(ingles.estado).not.toBe('incompleta')
+    expect(ingles.total_destrezas).toBeGreaterThan(40)
+    expect(ingles.criterios.flatMap(c => c.destrezas.map(d => d.codigo))).toContain('EFL.3.1.1')
+    const ll = load('media').asignaturas.find(a => a.nombre === 'Lengua y Literatura')
+    expect(ll.avisos).toContain('El PDF oficial imprime "L.3.3.1"; se usa LL.3.3.1.')
+    expect(ll.criterios[2].indicadores.map(i => i.codigo)).toEqual(['Ref. I.LL.3.3.1', 'Ref. I.LL.3.3.2'])
+  })
+
+  it('bloquea asignaturas marcadas como incompletas en lugar de planificar con datos rotos', async () => {
+    const data = load('adaptaciones_jovenes_adultos')
+    const incompleta = data.asignaturas.find(a => a.estado === 'incompleta')
+    if (incompleta) await expect(loadProgram('adaptaciones_jovenes_adultos', { asignatura: incompleta.id })).rejects.toThrow(/no se puede planificar/)
   })
 
   it('filtra por subnivel en Adaptaciones para jóvenes y adultos', async () => {
@@ -217,11 +233,14 @@ describe('currículos priorizados entregados en JSON (normalizados)', () => {
     expect(curriculum.subnivel).toBe('Bachillerato')
   })
 
-  it('Inicial se planifica por ámbito y edad, sin códigos', async () => {
+  it('Inicial se planifica por ámbito, objetivo de aprendizaje y edad, sin códigos', async () => {
     const curriculum = await loadProgram('inicial', { edad: '3_4' })
-    expect(curriculum.criterios).toHaveLength(8)
+    expect(curriculum.criterios.length).toBeGreaterThan(20)
     expect(curriculum.criterios.every(c => c.destrezas.every(d => d.codigo === null && d.edad === '3_4'))).toBe(true)
-    expect(curriculum.objetivos.some(o => /Objetivo de aprendizaje del ámbito/.test(o.descripcion))).toBe(false)
+    const identidad = curriculum.criterios[0]
+    expect(identidad.ambito).toBe('Identidad y Autonomía')
+    expect(identidad.descripcion).toMatch(/^Desarrollar su identidad/)
+    expect(identidad.destrezas[0]).toMatchObject({ descripcion: expect.stringMatching(/^Comunicar algunos datos de su identidad/), inserciones: ['socioemocional'] })
   })
 
   it('genera la microcurricular de Matemática de Media con los códigos del bloque', async () => {

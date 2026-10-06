@@ -301,8 +301,12 @@ export function buildAnnualTemplateData({ curriculum, datos, units }) {
  */
 function indicatorsCell(fila, index, filas) {
   const { indicadores } = fila.criterio
-  if (!indicadores.length) return formatCriterion(fila.criterio)
   const firstOfCriterion = filas.findIndex(f => f.criterio === fila.criterio) === index
+  if (!indicadores.length) {
+    // Currículos sin indicadores (Inicial, Primera Infancia): el objetivo se escribe una vez por grupo.
+    if (firstOfCriterion) return formatCriterion(fila.criterio)
+    return fila.criterio.ambito ? `Ámbito ${fila.criterio.ambito} (mismo objetivo de aprendizaje).` : 'Mismo criterio que la fila anterior.'
+  }
   if (firstOfCriterion) return indicadores.map(formatIndicator).join('\n')
   return `${indicadores.map(i => i.codigo).join(', ')} (ver ${fila.criterio.codigo})`
 }
