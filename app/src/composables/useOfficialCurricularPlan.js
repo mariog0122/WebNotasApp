@@ -4,7 +4,7 @@
  */
 import { computed, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
-import { OFFICIAL_PROGRAMS, loadProgram } from '../lib/curriculum/officialCurricula'
+import { OFFICIAL_PROGRAMS, getProgramOptions, loadProgram } from '../lib/curriculum/officialCurricula'
 import {
   annualAIInput,
   applyAnnualAI,
@@ -29,8 +29,10 @@ export function useOfficialCurricularPlan({ createGateway, institutionConfig, de
   const unitPlans = reactive({})
 
   const datos = reactive({
-    programa: 'alfabetizacion',
-    edad: '2a_3a',
+    programa: 'elemental',
+    edad: '',
+    asignaturaCurricular: '',
+    subnivel: '',
     unidadEducativa: institutionConfig?.institution_name || '',
     direccion: institutionConfig?.institution_address || '',
     anioLectivo: defaults.anioLectivo || '',
@@ -59,15 +61,57 @@ export function useOfficialCurricularPlan({ createGateway, institutionConfig, de
 
   const programs = OFFICIAL_PROGRAMS
   const program = computed(() => programs.find(p => p.id === datos.programa))
+  const options = ref({ asignaturas: [], subniveles: [], edades: [] })
+  const loadingOptions = ref(false)
+
+  const selectedOption = computed(() => options.value.asignaturas.find(a => a.id === datos.asignaturaCurricular) || null)
+  const needsAsignatura = computed(() => options.value.asignaturas.length > 0)
+  const needsSubnivel = computed(() => {
+    const subs = selectedOption.value?.subniveles || []
+    return subs.length > 1
+  })
+  const canContinue = computed(() => (
+    !loadingOptions.value
+    && (!needsAsignatura.value || (selectedOption.value && selectedOption.value.estado !== 'incompleta'))
+    && (!needsSubnivel.value || Boolean(datos.subnivel))
+    && (!options.value.edades.length || Boolean(datos.edad))
+  ))
+
+  async function loadOptions() {
+    loadingOptions.value = true
+    try {
+      options.value = await getProgramOptions(datos.programa)
+      const firstUsable = options.value.asignaturas.find(a => a.estado !== 'incompleta')
+      datos.asignaturaCurricular = firstUsable?.id || ''
+      datos.edad = options.value.edades.at(-1)?.id || ''
+    } catch (err) {
+      options.value = { asignaturas: [], subniveles: [], edades: [] }
+      toast.error(err.message || 'No se pudo cargar el currículo.')
+    } finally {
+      loadingOptions.value = false
+    }
+  }
+
+  watch(() => datos.programa, loadOptions, { immediate: true })
+  watch(() => datos.asignaturaCurricular, () => {
+    const subs = selectedOption.value?.subniveles || []
+    datos.subnivel = subs.length === 1 ? subs[0] : ''
+  })
 
   async function loadCurriculum() {
     loadingCurriculum.value = true
     try {
-      curriculum.value = await loadProgram(datos.programa, { edad: datos.edad })
+      curriculum.value = await loadProgram(datos.programa, {
+        edad: datos.edad,
+        asignatura: datos.asignaturaCurricular,
+        subnivel: datos.subnivel,
+      })
       excluded.clear()
       units.value = []
       Object.keys(unitPlans).forEach(k => delete unitPlans[k])
-      if (!datos.nivel) datos.nivel = program.value.nombre
+      if (!datos.nivel) datos.nivel = curriculum.value.subnivel || program.value.nombre
+      if (!datos.asignatura && selectedOption.value && datos.asignaturaCurricular !== 'todas') datos.asignatura = selectedOption.value.nombre
+      if (!datos.area && selectedOption.value && datos.asignaturaCurricular !== 'todas') datos.area = selectedOption.value.nombre.split('/')[0]
     } catch (err) {
       toast.error(err.message || 'No se pudo cargar el currículo.')
     } finally {
@@ -75,7 +119,7 @@ export function useOfficialCurricularPlan({ createGateway, institutionConfig, de
     }
   }
 
-  watch(() => [datos.programa, datos.edad], () => { curriculum.value = null })
+  watch(() => [datos.programa, datos.edad, datos.asignaturaCurricular, datos.subnivel], () => { curriculum.value = null })
 
   const selectedCriterios = computed(() => (curriculum.value?.criterios || [])
     .map(c => ({ ...c, destrezas: c.destrezas.filter(d => !excluded.has(d.codigo || d.ref)) }))
@@ -164,6 +208,12 @@ export function useOfficialCurricularPlan({ createGateway, institutionConfig, de
     datos,
     programs,
     program,
+    options,
+    loadingOptions,
+    selectedOption,
+    needsAsignatura,
+    needsSubnivel,
+    canContinue,
     curriculum,
     units,
     unitPlans,

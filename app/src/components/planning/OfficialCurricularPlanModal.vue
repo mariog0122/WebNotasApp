@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { X, FileText, Loader2, Download, Sparkles, ChevronLeft, ChevronRight, BookOpenCheck, Info } from 'lucide-vue-next'
 import { useOfficialCurricularPlan } from '../../composables/useOfficialCurricularPlan'
 import { INSERTION_TYPES, formatCriterion } from '../../lib/curriculum/officialCurricula'
@@ -21,7 +21,16 @@ const plan = useOfficialCurricularPlan({
 const {
   step, datos, programs, program, curriculum, units, unitPlans, excluded, totalSkills, durations, classWeeks,
   loadingCurriculum, generatingAnnual, generatingUnit, exporting,
+  options, loadingOptions, selectedOption, needsAsignatura, needsSubnivel, canContinue,
 } = plan
+
+const programGroups = computed(() => {
+  const groups = {}
+  for (const p of programs) (groups[p.grupo] ||= []).push(p)
+  return groups
+})
+const estadoLabel = { completa: 'Verificada', con_avisos: 'Con correcciones', incompleta: 'Incompleta' }
+const showNotices = ref(false)
 
 const steps = ['Currículo y datos', 'Destrezas y unidades', 'Generar y descargar']
 const annualReady = computed(() => units.value.some(u => u.temas))
@@ -77,24 +86,49 @@ const secondaryBtn = 'inline-flex h-10 items-center gap-2 rounded-xl border bord
         <!-- Paso 1 -->
         <section v-if="step === 1" class="space-y-5">
           <div class="grid gap-4 md:grid-cols-3">
-            <label class="md:col-span-2" :class="label">Currículo oficial
+            <label :class="label">Currículo oficial
               <select v-model="datos.programa" :class="input">
-                <option v-for="p in programs" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+                <optgroup v-for="(list, grupo) in programGroups" :key="grupo" :label="grupo">
+                  <option v-for="p in list" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+                </optgroup>
               </select>
             </label>
-            <label v-if="program?.tipo === 'por_ambitos'" :class="label">Rango de edad
+            <label v-if="needsAsignatura" :class="label">{{ program?.tipo === 'inicial' ? 'Ámbito' : 'Asignatura del currículo' }}
+              <select v-model="datos.asignaturaCurricular" :class="input" :disabled="loadingOptions">
+                <option v-for="a in options.asignaturas" :key="a.id" :value="a.id" :disabled="a.estado === 'incompleta'">
+                  {{ a.nombre }}{{ a.estado === 'incompleta' ? ' (no disponible)' : '' }}
+                </option>
+              </select>
+            </label>
+            <label v-if="needsSubnivel" :class="label">Subnivel
+              <select v-model="datos.subnivel" :class="input">
+                <option value="" disabled>Selecciona…</option>
+                <option v-for="sub in selectedOption?.subniveles || []" :key="sub" :value="sub">{{ options.subniveles.find(s => s.id === sub)?.nombre || sub }}</option>
+              </select>
+            </label>
+            <label v-if="options.edades.length" :class="label">Rango de edad
               <select v-model="datos.edad" :class="input">
-                <option value="0_6m">Hasta 6 meses</option>
-                <option value="6m_1a">De 6 meses a 1 año</option>
-                <option value="1a_2a">De 1 a 2 años</option>
-                <option value="2a_3a">De 2 a 3 años</option>
+                <option v-for="e in options.edades" :key="e.id" :value="e.id">{{ e.nombre }}</option>
               </select>
             </label>
           </div>
-          <p v-if="program?.tipo === 'por_ambitos'" class="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+          <p v-if="program?.tipo === 'por_ambitos' || program?.tipo === 'inicial'" class="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
             <Info class="mt-0.5 h-4 w-4 shrink-0" />
-            El currículo de Primera Infancia no asigna códigos a sus destrezas: se planifican por ámbito, objetivo de aprendizaje y rango de edad, sin inventar códigos.
+            Este currículo no asigna códigos a sus destrezas: se planifica por ámbito y rango de edad, sin inventar códigos.
           </p>
+          <div v-if="selectedOption && selectedOption.id !== 'todas'" class="rounded-xl border p-3 text-xs"
+            :class="selectedOption.estado === 'completa' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300' : selectedOption.estado === 'incompleta' ? 'border-rose-500/30 bg-rose-500/10 text-rose-800 dark:text-rose-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300'">
+            <p class="font-semibold">
+              {{ estadoLabel[selectedOption.estado] }} · {{ selectedOption.total }} destrezas
+              <span v-if="selectedOption.fusionados"> · {{ selectedOption.fusionados }} bloques con criterios fusionados en el archivo fuente</span>
+            </p>
+            <button v-if="selectedOption.avisos?.length" type="button" class="mt-1 underline" @click="showNotices = !showNotices">
+              {{ showNotices ? 'Ocultar' : 'Ver' }} {{ selectedOption.avisos.length }} corrección(es) aplicadas
+            </button>
+            <ul v-if="showNotices" class="mt-2 list-disc space-y-0.5 pl-5">
+              <li v-for="(av, i) in selectedOption.avisos" :key="i">{{ av }}</li>
+            </ul>
+          </div>
 
           <div class="grid gap-4 md:grid-cols-3">
             <label :class="label">Unidad educativa<input v-model="datos.unidadEducativa" :class="input"></label>
@@ -129,8 +163,10 @@ const secondaryBtn = 'inline-flex h-10 items-center gap-2 rounded-xl border bord
               <input v-model.number="datos.numeroUnidades" type="number" min="1" max="12" class="mt-1 h-10 w-24 rounded-xl border border-slate-300 px-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
             </label>
           </div>
-          <div v-for="criterio in curriculum.criterios" :key="criterio.codigo || criterio.ref" class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+          <div v-for="criterio in curriculum.criterios" :key="(criterio.codigo || criterio.ref) + (criterio.asignatura || '')" class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+            <p v-if="criterio.asignatura && curriculum.asignatura === 'Currículo integrado'" class="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ criterio.asignatura }}</p>
             <p class="text-xs font-bold text-slate-800 dark:text-slate-100">{{ formatCriterion(criterio) }}</p>
+            <p v-if="criterio.nota" class="mt-1 text-[11px] text-amber-700 dark:text-amber-400">{{ criterio.nota }}</p>
             <ul class="mt-2 space-y-1.5">
               <li v-for="d in criterio.destrezas" :key="d.codigo || d.ref">
                 <label class="flex cursor-pointer items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
@@ -200,7 +236,7 @@ const secondaryBtn = 'inline-flex h-10 items-center gap-2 rounded-xl border bord
         <button type="button" :class="secondaryBtn" :disabled="step === 1" @click="goBack">
           <ChevronLeft class="h-4 w-4" /> Anterior
         </button>
-        <button v-if="step === 1" type="button" :class="primaryBtn" :disabled="loadingCurriculum" @click="goToSkills">
+        <button v-if="step === 1" type="button" :class="primaryBtn" :disabled="loadingCurriculum || !canContinue" @click="goToSkills">
           <Loader2 v-if="loadingCurriculum" class="h-4 w-4 animate-spin" /> Ver destrezas <ChevronRight class="h-4 w-4" />
         </button>
         <button v-else-if="step === 2" type="button" :class="primaryBtn" :disabled="!totalSkills" @click="goToGenerate">

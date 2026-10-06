@@ -8,6 +8,17 @@ Módulo: **Planificación IA → botón "PCA y Microcurricular"**.
 | `app/src/data/curriculos/alfabetizacion_postalfabetizacion_2025.json` | Currículo integrado de Alfabetización y Postalfabetización priorizado (2025) | Alfabetización: 12 objetivos, 30 criterios, 120 destrezas, 63 indicadores. Postalfabetización: 12 / 33 / 124 / 75. Inserción Cívica (CAI.JA): 16 destrezas. Inserciones curriculares por destreza (íconos del PDF). |
 | `app/src/data/curriculos/primera_infancia_0_3.json` | Currículo Nacional de Atención y Educación de la Primera Infancia (0-3 años) | 5 ámbitos, 18 objetivos de aprendizaje, destrezas por rango de edad. **El documento oficial no tiene códigos de destreza**: no se inventan. |
 
+| `inicial.json`, `preparatoria.json`, `elemental.json`, `media.json`, `adaptaciones_jovenes_adultos.json` | Currículos priorizados entregados en JSON | Normalizados con `app/scripts/curriculum/normalize_priorizados.py`. |
+
+### Calidad de los JSON entregados (corregida automáticamente, sin inventar texto)
+- Bloques con **criterios fusionados**: el extractor externo unió criterios (p. ej. CE.M.3.1 + CE.M.3.2) y solo conservó una descripción.
+  Los códigos del bloque se reconstruyen desde sus indicadores y la app lo avisa en pantalla.
+- Sección de **Cívica (CAI)** pegada a Inglés o Expresión corporal: separada como asignatura propia.
+- Encabezados de tabla como indicadores, números de página pegados al texto y prefijos con error (`L.` → `LL.`, `REF.` → `EF.`): corregidos y registrados en `avisos`.
+- **Inglés de EGB Media** y **Comprensión y expresión artística de Preparatoria** vienen incompletos: quedan bloqueados.
+- **Inicial**: los códigos del archivo (D.IN2…, OBJ.IN2…) no son oficiales y se repetían; se omiten y se planifica por ámbito y edad.
+Para dejarlos 100 % fieles conviene volver a extraerlos de los PDF originales con el mismo método usado en Alfabetización.
+
 Los textos y códigos se extraen literalmente con `app/scripts/curriculum/extract_*.py` (requiere `pip install pdfplumber`).
 Para agregar otro currículo: crear su extractor, guardar el JSON en `src/data/curriculos/` y registrarlo en `src/lib/curriculum/officialCurricula.js`.
 

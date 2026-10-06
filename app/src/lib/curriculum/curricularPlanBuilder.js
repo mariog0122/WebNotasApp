@@ -83,7 +83,7 @@ export function annualAIInput({ curriculum, datos, units }) {
       numero: unit.numero,
       trimestre: unit.trimestre,
       destrezas: unitSkills(unit).map(({ destreza }) => ({ codigo: skillKey(destreza), descripcion: destreza.descripcion })),
-      criterios: unit.criterios.map(c => ({ codigo: c.codigo || c.ref, descripcion: c.descripcion })),
+      criterios: unit.criterios.map(c => ({ codigo: c.codigo || c.ref || '', descripcion: c.descripcion })),
     })),
   }
 }
@@ -256,7 +256,7 @@ export function buildAnnualTemplateData({ curriculum, datos, units }) {
     const evaluacion = unit.criterios.map(criterio => {
       const indicadores = criterio.indicadores.map(i => i.codigo).filter(Boolean)
       // En la PCA basta con los códigos; el texto completo va en la microcurricular.
-      if (!criterio.codigo) return `Ámbito ${criterio.ambito}`
+      if (!criterio.codigo) return criterio.ambito ? `Ámbito ${criterio.ambito}` : formatCriterion(criterio)
       return `${criterio.codigo}${indicadores.length ? ` — ${indicadores.join(', ')}` : ''}`
     }).filter((v, i, all) => all.indexOf(v) === i).join('\n')
     rowsByTrimester[(unit.trimestre || 1) - 1].push({

@@ -168,3 +168,95 @@ describe('servicio education-ai: tareas de planificación curricular', () => {
     expect(body.systemInstruction.parts[0].text).toMatch(/nunca inventes/)
   })
 })
+
+describe('currículos priorizados entregados en JSON (normalizados)', () => {
+  const files = ['preparatoria', 'elemental', 'media', 'adaptaciones_jovenes_adultos']
+  const load = id => JSON.parse(fs.readFileSync(path.resolve(__dirname, `../src/data/curriculos/${id}.json`), 'utf8'))
+
+  it('solo deja códigos oficiales bien formados, sin números de página ni encabezados de tabla', () => {
+    for (const id of files) {
+      for (const asig of load(id).asignaturas) {
+        for (const c of asig.criterios) {
+          for (const d of c.destrezas) {
+            expect(d.codigo, `${id} ${asig.nombre}`).toMatch(/^[A-Z]{1,4}(\.[A-Z]{1,2})?\.\d\.\d+\.\d+$/)
+            expect(d.descripcion).not.toMatch(/\s\d{1,3}$/)
+            expect(d.descripcion[0]).toBe(d.descripcion[0].toUpperCase())
+          }
+          for (const i of c.indicadores) {
+            expect(i.codigo).toBeTruthy()
+            expect(i.descripcion).not.toMatch(/^Indicators for the performance criteria$/)
+          }
+          for (const code of c.codigos) expect(code).toMatch(/^CE\./)
+        }
+        // Cívica (CAI) separada en su propia asignatura.
+        const codes = asig.criterios.flatMap(c => c.destrezas.map(d => d.codigo))
+        if (asig.prefijo !== 'CAI') expect(codes.some(c => c.startsWith('CAI.'))).toBe(false)
+        expect(new Set(codes).size).toBe(codes.length)
+      }
+    }
+  })
+
+  it('reconstruye los criterios fusionados a partir de los indicadores', () => {
+    const mat = load('media').asignaturas.find(a => a.nombre === 'Matemática')
+    expect(mat.criterios[0].codigos).toEqual(['CE.M.3.1', 'CE.M.3.2'])
+    expect(mat.criterios[0].codigo_descripcion).toBe('CE.M.3.2')
+    expect(mat.criterios[0].nota).toMatch(/CE\.M\.3\.1/)
+  })
+
+  it('bloquea asignaturas incompletas (Inglés de Media) en lugar de planificar con datos rotos', async () => {
+    const ingles = load('media').asignaturas.find(a => a.nombre === 'Inglés')
+    expect(ingles.estado).toBe('incompleta')
+    await expect(loadProgram('media', { asignatura: ingles.id })).rejects.toThrow(/no se puede planificar/)
+  })
+
+  it('filtra por subnivel en Adaptaciones para jóvenes y adultos', async () => {
+    const curriculum = await loadProgram('adaptaciones_jovenes_adultos', { asignatura: 'matematica', subnivel: '5' })
+    const codes = curriculum.criterios.flatMap(c => c.destrezas.map(d => d.codigo))
+    expect(codes.length).toBeGreaterThan(5)
+    expect(codes.every(c => c.split('.')[1] === '5')).toBe(true)
+    expect(curriculum.subnivel).toBe('Bachillerato')
+  })
+
+  it('Inicial se planifica por ámbito y edad, sin códigos', async () => {
+    const curriculum = await loadProgram('inicial', { edad: '3_4' })
+    expect(curriculum.criterios).toHaveLength(8)
+    expect(curriculum.criterios.every(c => c.destrezas.every(d => d.codigo === null && d.edad === '3_4'))).toBe(true)
+    expect(curriculum.objetivos.some(o => /Objetivo de aprendizaje del ámbito/.test(o.descripcion))).toBe(false)
+  })
+
+  it('genera la microcurricular de Matemática de Media con los códigos del bloque', async () => {
+    const curriculum = await loadProgram('media', { asignatura: 'matematica' })
+    const units = applyAnnualAI(distributeUnits(curriculum.criterios, 6), {})
+    const unit = applyUnitAI(units[0], {})
+    const text = docText(renderDocx(fs.readFileSync(templatePath('micro.docx')), buildUnitTemplateData({ datos, unit, weekCount: 6 })))
+    expect(text).not.toMatch(/\{\{|\}\}/)
+    expect(text).toContain('M.3.1.1. Generar sucesiones')
+    expect(text).toContain('I.M.3.1.1. Aplica estrategias de cálculo')
+  })
+})
+
+describe('todos los currículos y asignaturas disponibles', () => {
+  it('cargan, se reparten en unidades y caben en los límites del servicio de IA', async () => {
+    const { OFFICIAL_PROGRAMS, getProgramOptions } = await import('../src/lib/curriculum/officialCurricula')
+    let checked = 0
+    for (const program of OFFICIAL_PROGRAMS) {
+      const options = await getProgramOptions(program.id)
+      const asignaturas = options.asignaturas.length ? options.asignaturas.filter(a => a.estado !== 'incompleta') : [null]
+      for (const asig of asignaturas) {
+        const subs = asig?.subniveles?.length > 1 ? asig.subniveles : [undefined]
+        for (const subnivel of subs) {
+          const curriculum = await loadProgram(program.id, { asignatura: asig?.id, subnivel, edad: options.edades.at(-1)?.id })
+          const keys = curriculum.criterios.flatMap(c => c.destrezas.map(d => d.codigo || d.ref))
+          expect(new Set(keys).size, `${program.id} ${asig?.id}`).toBe(keys.length)
+          const units = applyAnnualAI(distributeUnits(curriculum.criterios, 6), {})
+          const annual = annualAIInput({ curriculum, datos, units })
+          expect(new TextEncoder().encode(JSON.stringify({ input: annual })).byteLength, `${program.id} ${asig?.id}`).toBeLessThan(100_000)
+          expect(sanitizeEducationAIInput(annual).ok, `${program.id} ${asig?.id}`).toBe(true)
+          for (const unit of units) expect(sanitizeEducationAIInput(unitAIInput({ curriculum, datos, unit })).ok).toBe(true)
+          checked += 1
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(30)
+  })
+})
