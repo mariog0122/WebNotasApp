@@ -33,5 +33,11 @@ export function isValidEducationAIOutput(action, output) {
       && Array.isArray(output.weekly_plan)
       && Array.isArray(output.family_recommendations)
   }
+  if (action === 'generateAnnualPlan') {
+    return Array.isArray(output.unidades) && output.unidades.length > 0 && output.unidades.every(isRecord)
+  }
+  if (action === 'generateUnitPlan') {
+    return Array.isArray(output.destrezas) && output.destrezas.length > 0 && output.destrezas.every(isRecord)
+  }
   return false
 }

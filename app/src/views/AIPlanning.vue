@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { 
   Sparkles, 
   Plus, 
@@ -31,9 +31,11 @@ import StudentSupportModal from '../components/planning/StudentSupportModal.vue'
 import InstitutionAISettingsModal from '../components/planning/InstitutionAISettingsModal.vue'
 import PlanningOfficialPrintDocument from '../components/planning/PlanningOfficialPrintDocument.vue'
 import PlanningPaywallBanner from '../components/planning/PlanningPaywallBanner.vue'
+import OfficialCurricularPlanModal from '../components/planning/OfficialCurricularPlanModal.vue'
 import { useAIPlanning } from '../composables/useAIPlanning'
 import { isInstitutionAdmin } from '../lib/permissions'
 import { useAuthStore } from '../stores/auth'
+import { useAcademicYearStore } from '../stores/academicYear'
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => isInstitutionAdmin(authStore.accessContext))
@@ -80,8 +82,16 @@ const {
   openPlanViewer,
   deletePlan,
   duplicatePlan,
-  submitFeedback
+  submitFeedback,
+  createAIGateway
 } = useAIPlanning()
+
+const academicYearStore = useAcademicYearStore()
+const showOfficialPlanModal = ref(false)
+const officialPlanDefaults = computed(() => ({
+  anioLectivo: academicYearStore.selectedYearName || '',
+  docente: authStore.profile?.full_name || '',
+}))
 
 const canGeneratePlan = computed(() => (
   moduleAccess.value.module_enabled &&
@@ -172,7 +182,7 @@ const selectClasses = 'h-10 rounded-xl border border-slate-300 bg-white px-3 tex
         </div>
       </div>
 
-      <div class="flex items-center gap-2.5">
+      <div class="flex flex-wrap items-center gap-2.5">
         <button
           v-if="isAdmin"
           @click="showSettingsModal = true"
@@ -182,6 +192,17 @@ const selectClasses = 'h-10 rounded-xl border border-slate-300 bg-white px-3 tex
         >
           <Settings class="h-4 w-4" />
           <span class="hidden md:inline">Configuración IA</span>
+        </button>
+
+        <button
+          @click="showOfficialPlanModal = true"
+          :disabled="!canGeneratePlan"
+          type="button"
+          class="inline-flex h-11 items-center gap-2 rounded-xl border border-indigo-300 px-4 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-500/40 dark:text-indigo-300 dark:hover:bg-indigo-500/10"
+          title="PCA y planificación microcurricular con códigos oficiales del MinEduc"
+        >
+          <FileText class="h-4 w-4" />
+          <span>PCA y Microcurricular</span>
         </button>
 
         <button
@@ -512,6 +533,15 @@ const selectClasses = 'h-10 rounded-xl border border-slate-300 bg-white px-3 tex
       :generating="generating"
       :on-submit="createStudentSupport"
       :on-close="() => { showSupportModal = false }"
+    />
+
+    <OfficialCurricularPlanModal
+      v-if="showOfficialPlanModal"
+      :create-gateway="createAIGateway"
+      :institution-config="institutionConfig"
+      :defaults="officialPlanDefaults"
+      :is-demo="moduleAccess.is_demo"
+      :on-close="() => { showOfficialPlanModal = false }"
     />
 
     <InstitutionAISettingsModal

@@ -33,7 +33,9 @@ export const AI_TASK_TYPES = Object.freeze({
   PLAN_GENERATION: 'plan_generation',
   SECTION_REGENERATION: 'section_regeneration',
   RESOURCE_GENERATION: 'resource_generation',
-  STUDENT_SUPPORT_GENERATION: 'student_support_generation'
+  STUDENT_SUPPORT_GENERATION: 'student_support_generation',
+  ANNUAL_PLAN_GENERATION: 'annual_plan_generation',
+  UNIT_PLAN_GENERATION: 'unit_plan_generation'
 })
 
 export const AI_STATUSES = Object.freeze({

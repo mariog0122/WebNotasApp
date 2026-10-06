@@ -26,5 +26,7 @@ export class RemoteEducationAIProvider {
   regenerateSection(input, sectionKey) { return this.call('regenerateSection', input, sectionKey) }
   generateResource(input) { return this.call('generateResource', input) }
   generateStudentSupport(input) { return this.call('generateStudentSupport', input) }
+  generateAnnualPlan(input) { return this.call('generateAnnualPlan', input) }
+  generateUnitPlan(input) { return this.call('generateUnitPlan', input) }
   testConnection() { return this.call('test_connection') }
 }

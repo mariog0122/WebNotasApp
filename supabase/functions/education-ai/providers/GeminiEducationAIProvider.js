@@ -1,3 +1,5 @@
+import { CURRICULAR_SYSTEM_PROMPT, annualPlanPrompt, unitPlanPrompt } from '../curricular-prompts.js'
+
 /**
  * Adaptador de Integración para Google Gemini API
  * Utiliza llamadas seguras en formato JSON estructurado con temperatura baja (0.2).
@@ -61,7 +63,7 @@ export class GeminiEducationAIProvider {
     }
   }
 
-  async _callGemini(prompt, systemInstruction = '') {
+  async _callGemini(prompt, systemInstruction = '', { maxOutputTokens = 3000, timeoutMs = 25000 } = {}) {
     if (!this.apiKey) {
       throw new Error('Clave API de Gemini no disponible en el cliente.')
     }
@@ -76,7 +78,7 @@ export class GeminiEducationAIProvider {
       generationConfig: {
         responseMimeType: 'application/json',
         temperature: 0.2,
-        maxOutputTokens: 3000
+        maxOutputTokens
       }
     }
 
@@ -87,7 +89,7 @@ export class GeminiEducationAIProvider {
     }
 
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 25000)
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
     try {
       const response = await fetch(`${this.baseUrl}/${this.model}:generateContent?key=${this.apiKey}`, {
@@ -152,5 +154,14 @@ Devuelve SIEMPRE un objeto JSON estricto con las claves: summary, didactic_seque
     const sysPrompt = `Eres un consejero pedagógico y docente especialista en nivelación y adecuaciones para Ecuador. Diseña una propuesta de apoyo y recuperación en formato JSON estricto sin incluir información clínica ni nombres personales.`
     const userPrompt = `Diseña un plan de apoyo pedagógico para: Dificultad observada: ${input.observedDifficulty}, Evidencia: ${input.evidenceType}, Intensidad: ${input.intensity}, Duración: ${input.durationWeeks} semanas, Materia: ${input.subjectName}, Tema: ${input.topicTitle}.`
     return await this._callGemini(userPrompt, sysPrompt)
+  }
+
+  // Planificación curricular oficial: salidas largas, se amplían tokens y tiempo de espera.
+  async generateAnnualPlan(input) {
+    return await this._callGemini(annualPlanPrompt(input), CURRICULAR_SYSTEM_PROMPT, { maxOutputTokens: 24576, timeoutMs: 110000 })
+  }
+
+  async generateUnitPlan(input) {
+    return await this._callGemini(unitPlanPrompt(input), CURRICULAR_SYSTEM_PROMPT, { maxOutputTokens: 24576, timeoutMs: 110000 })
   }
 }

@@ -362,4 +362,41 @@ export class DemoEducationAIProvider {
       ]
     }
   }
+
+  /**
+   * Planificación curricular oficial en modo demostración: textos de ejemplo derivados de cada
+   * destreza. Los códigos solo se devuelven tal como llegaron (la app los valida contra el currículo).
+   */
+  async generateAnnualPlan(input) {
+    await new Promise(resolve => setTimeout(resolve, 600))
+    const firstClause = text => String(text || '').split(/[,.;]/)[0].trim()
+    return {
+      unidades: (input.unidades || []).map(unidad => ({
+        numero: unidad.numero,
+        titulo: firstClause(unidad.criterios?.[0]?.descripcion).split(' ').slice(0, 8).join(' '),
+        objetivo: `Desarrollar ${unidad.destrezas?.length || 0} destrezas de la unidad aplicándolas a situaciones de la vida cotidiana, laboral y comunitaria.`,
+        contenidos: (unidad.destrezas || []).map(d => ({ codigo: d.codigo, tema: firstClause(d.descripcion).split(' ').slice(0, 12).join(' ') })),
+        orientaciones_metodologicas: 'Ciclo ERCA con DUA: experiencias cercanas al contexto, diálogo reflexivo, conceptualización con material concreto y aplicación en tareas prácticas.',
+        evaluacion: 'Técnicas: observación y prueba. Instrumentos: lista de cotejo, rúbrica y cuestionario.',
+      })),
+    }
+  }
+
+  async generateUnitPlan(input) {
+    await new Promise(resolve => setTimeout(resolve, 600))
+    const destrezas = input.destrezas || []
+    return {
+      objetivo: `Desarrollar las destrezas de la unidad ${input.unidad?.numero || ''} mediante experiencias significativas del entorno.`,
+      destrezas: destrezas.map(d => ({
+        codigo: d.codigo,
+        contenido_esencial: d.tema || String(d.descripcion || '').split(/[,.;]/)[0],
+        orientaciones: 'Experiencia: diálogo sobre una situación cotidiana.\nReflexión: preguntas guía en parejas.\nConceptualización: organizador gráfico con apoyo visual (DUA: representación).\nAplicación: tarea práctica individual o grupal (DUA: acción y expresión).',
+        recursos: 'Material concreto, tarjetas de lectura, pizarra.',
+        actividades_evaluativas: 'Técnica: observación. Instrumento: lista de cotejo.',
+      })),
+      inserciones: [],
+      proyecto: { destreza_codigo: destrezas[0]?.codigo },
+      nee: {},
+    }
+  }
 }

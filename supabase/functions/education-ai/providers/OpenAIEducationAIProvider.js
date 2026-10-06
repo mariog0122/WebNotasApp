@@ -1,3 +1,5 @@
+import { CURRICULAR_SYSTEM_PROMPT, annualPlanPrompt, unitPlanPrompt } from '../curricular-prompts.js'
+
 /**
  * Adaptador de Integración para OpenAI API
  * Soporta modelos públicos GPT-5, GPT-5 mini y GPT-5 nano con formato JSON.
@@ -10,9 +12,9 @@ export class OpenAIEducationAIProvider {
     this.baseUrl = 'https://api.openai.com/v1/chat/completions'
   }
 
-  async _post(payload) {
+  async _post(payload, timeoutMs = 25_000) {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 25_000)
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
     try {
       return await fetch(this.baseUrl, {
         method: 'POST',
@@ -78,7 +80,7 @@ export class OpenAIEducationAIProvider {
     }
   }
 
-  async _executePrompt(systemInstruction, userPrompt) {
+  async _executePrompt(systemInstruction, userPrompt, { maxTokens = 3000, timeoutMs = 25_000 } = {}) {
     if (!this.apiKey) {
       throw new Error('No hay una clave API configurada para OpenAI.')
     }
@@ -91,8 +93,8 @@ export class OpenAIEducationAIProvider {
         ],
         response_format: { type: 'json_object' },
         temperature: 0.2,
-        max_completion_tokens: 3000
-    })
+        max_completion_tokens: maxTokens
+    }, timeoutMs)
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
@@ -140,5 +142,13 @@ Estudiantes con Adaptación Curricular: ${JSON.stringify(input.adaptedStudents |
     const system = `Genera un plan de recuperación pedagógica y apoyo psicopedagógico individualizado según la normativa MINEDEC Ecuador.`
     const prompt = `Diseña un plan de apoyo para el tema "${input.topicTitle}" en ${input.subjectName}. Dificultad: ${input.observedDifficulty}. Nivel: ${input.intensity || 'moderada'}.`
     return await this._executePrompt(system, prompt)
+  }
+
+  async generateAnnualPlan(input) {
+    return await this._executePrompt(CURRICULAR_SYSTEM_PROMPT, annualPlanPrompt(input), { maxTokens: 16000, timeoutMs: 110_000 })
+  }
+
+  async generateUnitPlan(input) {
+    return await this._executePrompt(CURRICULAR_SYSTEM_PROMPT, unitPlanPrompt(input), { maxTokens: 16000, timeoutMs: 110_000 })
   }
 }

@@ -15,6 +15,7 @@ export function createEducationAIHandler({ createClient, env, providers }) {
   const tasks = {
     generatePlan: 'plan_generation', regenerateSection: 'section_regeneration',
     generateResource: 'resource_generation', generateStudentSupport: 'student_support_generation',
+    generateAnnualPlan: 'annual_plan_generation', generateUnitPlan: 'unit_plan_generation',
   }
   const providerModels = {
     openai: new Set(['auto', 'gpt-5-nano', 'gpt-5-mini', 'gpt-5']),

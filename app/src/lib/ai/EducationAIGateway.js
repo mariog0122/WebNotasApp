@@ -222,4 +222,26 @@ export class EducationAIGateway {
   async testConnection() {
     return await this.activeProvider.testConnection()
   }
+
+  /** Planificación Curricular Anual (PCA) a partir del currículo oficial. */
+  async generateAnnualPlan(input) {
+    return this.runCurricularTask('generateAnnualPlan', AI_TASK_TYPES.ANNUAL_PLAN_GENERATION, input)
+  }
+
+  /** Planificación microcurricular de una unidad. */
+  async generateUnitPlan(input) {
+    return this.runCurricularTask('generateUnitPlan', AI_TASK_TYPES.UNIT_PLAN_GENERATION, input)
+  }
+
+  async runCurricularTask(method, taskType, input) {
+    const startTime = Date.now()
+    try {
+      const result = await this.activeProvider[method](input)
+      await this.logUsage(taskType, Date.now() - startTime, 'success')
+      return result
+    } catch (err) {
+      await this.logUsage(taskType, Date.now() - startTime, 'error', err.message)
+      throw err
+    }
+  }
 }

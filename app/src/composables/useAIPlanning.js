@@ -784,6 +784,7 @@ export function useAIPlanning() {
     openPlanViewer,
     deletePlan,
     duplicatePlan,
-    submitFeedback
+    submitFeedback,
+    createAIGateway
   }
 }
