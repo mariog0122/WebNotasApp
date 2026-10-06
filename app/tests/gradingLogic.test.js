@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
     isProjectDefinition,
     getProjectValue,
-    calculateStudentAverages
+    calculateStudentAverages,
+    parseExcelGradesGrid
 } from '../src/lib/gradingLogic'
 
 describe('gradingLogic.js', () => {
@@ -134,4 +135,36 @@ describe('gradingLogic.js', () => {
             expect(result.avgIndividual).toBe(8.0) // Solo cuenta def1
         })
     })
+
+    describe('parseExcelGradesGrid', () => {
+        it('debería parsear texto tabulado con decimales con punto y coma', () => {
+            const raw = '10\t8,5\t9\n7.25\t9,0\t10'
+            const grid = parseExcelGradesGrid(raw)
+
+            expect(grid).toEqual([
+                [10, 8.5, 9],
+                [7.25, 9, 10]
+            ])
+        })
+
+        it('debería soportar valores vacíos o guiones como null', () => {
+            const raw = '10\t-\t9\n\t8.5\t'
+            const grid = parseExcelGradesGrid(raw)
+
+            expect(grid).toEqual([
+                [10, null, 9],
+                [null, 8.5, null]
+            ])
+        })
+
+        it('debería limitar valores al rango 0 a 10', () => {
+            const raw = '15\t-2\t9.75'
+            const grid = parseExcelGradesGrid(raw)
+
+            expect(grid).toEqual([
+                [10, 0, 9.75]
+            ])
+        })
+    })
 })
+

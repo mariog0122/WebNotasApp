@@ -1,0 +1,138 @@
+{
+  "date": "2026-09-06",
+  "project": "ykokuwkvplifbjxgdveu",
+  "productionDeployment": false,
+  "method": "Synthetic fixtures, SQL role claims and candidate DDL tested inside a transaction ending with ROLLBACK; these results do not assert a production deployment.",
+  "baseline": [
+    {
+      "name": "anonymous cannot list proofs",
+      "passed": false
+    },
+    {
+      "name": "billing admin cannot read B/C proofs",
+      "passed": false
+    },
+    {
+      "name": "billing admin reads own proof",
+      "passed": true
+    },
+    {
+      "name": "direct grade rejects foreign student",
+      "passed": false
+    },
+    {
+      "name": "direct grade rejects score above 10",
+      "passed": false
+    },
+    {
+      "name": "role without grades.read cannot read grades",
+      "passed": false
+    },
+    {
+      "name": "school admin cannot move year to B",
+      "passed": true
+    },
+    {
+      "name": "school admin still edits own year",
+      "passed": true
+    },
+    {
+      "name": "teacher cannot modify academic year",
+      "passed": false
+    },
+    {
+      "name": "teacher cannot read B/C grades",
+      "passed": true
+    },
+    {
+      "name": "teacher cannot read B/C students",
+      "passed": true
+    },
+    {
+      "name": "teacher reads own grade",
+      "passed": true
+    },
+    {
+      "name": "teacher RPC still saves own grade",
+      "passed": true
+    }
+  ],
+  "candidate": [
+    {
+      "name": "AI context rejects foreign tenant ID",
+      "passed": true
+    },
+    {
+      "name": "AI key cannot be read by browser role",
+      "passed": true
+    },
+    {
+      "name": "AI metadata remains readable",
+      "passed": true
+    },
+    {
+      "name": "AI pending generation counts against quota",
+      "passed": true
+    },
+    {
+      "name": "AI server reserves first generation",
+      "passed": true
+    },
+    {
+      "name": "anonymous cannot list proofs",
+      "passed": true
+    },
+    {
+      "name": "billing admin cannot read B/C proofs",
+      "passed": true
+    },
+    {
+      "name": "billing admin reads own proof",
+      "passed": true
+    },
+    {
+      "name": "Browser cannot reserve privileged AI calls directly",
+      "passed": true
+    },
+    {
+      "name": "direct grade rejects foreign student",
+      "passed": true
+    },
+    {
+      "name": "direct grade rejects score above 10",
+      "passed": true
+    },
+    {
+      "name": "role without grades.read cannot read grades",
+      "passed": true
+    },
+    {
+      "name": "school admin cannot move year to B",
+      "passed": true
+    },
+    {
+      "name": "school admin still edits own year",
+      "passed": true
+    },
+    {
+      "name": "teacher cannot modify academic year",
+      "passed": true
+    },
+    {
+      "name": "teacher cannot read B/C grades",
+      "passed": true
+    },
+    {
+      "name": "teacher cannot read B/C students",
+      "passed": true
+    },
+    {
+      "name": "teacher reads own grade",
+      "passed": true
+    },
+    {
+      "name": "teacher RPC still saves own grade",
+      "passed": true
+    }
+  ]
+}

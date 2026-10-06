@@ -1,0 +1,1538 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@apideck/better-ajv-errors": {
+      "name": "@apideck/better-ajv-errors",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "ajv"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@apideck/better-ajv-errors"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/core": {
+      "name": "@babel/core",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/helper-compilation-targets",
+        "@babel/helper-module-transforms"
+      ],
+      "effects": [
+        "@babel/helper-create-class-features-plugin",
+        "@babel/helper-create-regexp-features-plugin",
+        "@babel/helper-module-transforms",
+        "@babel/helper-remap-async-to-generator",
+        "@babel/helper-replace-supers",
+        "@babel/plugin-bugfix-firefox-class-in-computed-class-key",
+        "@babel/plugin-bugfix-safari-class-field-initializer-scope",
+        "@babel/plugin-bugfix-safari-id-destructuring-collision-in-function-expression",
+        "@babel/plugin-bugfix-v8-spread-parameters-in-optional-chaining",
+        "@babel/plugin-bugfix-v8-static-class-fields-redefine-readonly",
+        "@babel/plugin-proposal-private-property-in-object",
+        "@babel/plugin-syntax-import-assertions",
+        "@babel/plugin-syntax-import-attributes",
+        "@babel/plugin-syntax-unicode-sets-regex",
+        "@babel/plugin-transform-arrow-functions",
+        "@babel/plugin-transform-async-generator-functions",
+        "@babel/plugin-transform-async-to-generator",
+        "@babel/plugin-transform-block-scoped-functions",
+        "@babel/plugin-transform-block-scoping",
+        "@babel/plugin-transform-class-properties",
+        "@babel/plugin-transform-class-static-block",
+        "@babel/plugin-transform-computed-properties",
+        "@babel/plugin-transform-destructuring",
+        "@babel/plugin-transform-dotall-regex",
+        "@babel/plugin-transform-duplicate-keys",
+        "@babel/plugin-transform-duplicate-named-capturing-groups-regex",
+        "@babel/plugin-transform-dynamic-import",
+        "@babel/plugin-transform-explicit-resource-management",
+        "@babel/plugin-transform-exponentiation-operator",
+        "@babel/plugin-transform-export-namespace-from",
+        "@babel/plugin-transform-for-of",
+        "@babel/plugin-transform-json-strings",
+        "@babel/plugin-transform-literals",
+        "@babel/plugin-transform-logical-assignment-operators",
+        "@babel/plugin-transform-member-expression-literals",
+        "@babel/plugin-transform-modules-amd",
+        "@babel/plugin-transform-modules-commonjs",
+        "@babel/plugin-transform-modules-systemjs",
+        "@babel/plugin-transform-modules-umd",
+        "@babel/plugin-transform-named-capturing-groups-regex",
+        "@babel/plugin-transform-new-target",
+        "@babel/plugin-transform-nullish-coalescing-operator",
+        "@babel/plugin-transform-numeric-separator",
+        "@babel/plugin-transform-object-super",
+        "@babel/plugin-transform-optional-catch-binding",
+        "@babel/plugin-transform-optional-chaining",
+        "@babel/plugin-transform-parameters",
+        "@babel/plugin-transform-private-methods",
+        "@babel/plugin-transform-private-property-in-object",
+        "@babel/plugin-transform-property-literals",
+        "@babel/plugin-transform-regenerator",
+        "@babel/plugin-transform-regexp-modifiers",
+        "@babel/plugin-transform-reserved-words",
+        "@babel/plugin-transform-shorthand-properties",
+        "@babel/plugin-transform-spread",
+        "@babel/plugin-transform-sticky-regex",
+        "@babel/plugin-transform-template-literals",
+        "@babel/plugin-transform-typeof-symbol",
+        "@babel/plugin-transform-unicode-escapes",
+        "@babel/plugin-transform-unicode-property-regex",
+        "@babel/plugin-transform-unicode-regex",
+        "@babel/plugin-transform-unicode-sets-regex",
+        "@babel/preset-modules",
+        "@rollup/plugin-babel",
+        "babel-plugin-polyfill-corejs2",
+        "babel-plugin-polyfill-regenerator"
+      ],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/core"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/helper-compilation-targets": {
+      "name": "@babel/helper-compilation-targets",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "browserslist"
+      ],
+      "effects": [
+        "@babel/core",
+        "@babel/helper-define-polyfill-provider",
+        "@babel/plugin-transform-classes",
+        "@babel/plugin-transform-function-name",
+        "@babel/plugin-transform-object-rest-spread"
+      ],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/helper-compilation-targets"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/helper-create-class-features-plugin": {
+      "name": "@babel/helper-create-class-features-plugin",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-replace-supers"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/helper-create-class-features-plugin"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/helper-create-regexp-features-plugin": {
+      "name": "@babel/helper-create-regexp-features-plugin",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/helper-create-regexp-features-plugin"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/helper-define-polyfill-provider": {
+      "name": "@babel/helper-define-polyfill-provider",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-compilation-targets"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/helper-define-polyfill-provider"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/helper-module-transforms": {
+      "name": "@babel/helper-module-transforms",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/helper-module-transforms"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/helper-remap-async-to-generator": {
+      "name": "@babel/helper-remap-async-to-generator",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/helper-remap-async-to-generator"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/helper-replace-supers": {
+      "name": "@babel/helper-replace-supers",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/helper-replace-supers"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-bugfix-firefox-class-in-computed-class-key": {
+      "name": "@babel/plugin-bugfix-firefox-class-in-computed-class-key",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-bugfix-firefox-class-in-computed-class-key"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-bugfix-safari-class-field-initializer-scope": {
+      "name": "@babel/plugin-bugfix-safari-class-field-initializer-scope",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-bugfix-safari-class-field-initializer-scope"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-bugfix-safari-id-destructuring-collision-in-function-expression": {
+      "name": "@babel/plugin-bugfix-safari-id-destructuring-collision-in-function-expression",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-bugfix-safari-id-destructuring-collision-in-function-expression"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-bugfix-v8-spread-parameters-in-optional-chaining": {
+      "name": "@babel/plugin-bugfix-v8-spread-parameters-in-optional-chaining",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/plugin-transform-optional-chaining"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-bugfix-v8-spread-parameters-in-optional-chaining"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-bugfix-v8-static-class-fields-redefine-readonly": {
+      "name": "@babel/plugin-bugfix-v8-static-class-fields-redefine-readonly",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-bugfix-v8-static-class-fields-redefine-readonly"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-proposal-private-property-in-object": {
+      "name": "@babel/plugin-proposal-private-property-in-object",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-proposal-private-property-in-object"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-syntax-import-assertions": {
+      "name": "@babel/plugin-syntax-import-assertions",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-syntax-import-assertions"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-syntax-import-attributes": {
+      "name": "@babel/plugin-syntax-import-attributes",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-syntax-import-attributes"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-syntax-unicode-sets-regex": {
+      "name": "@babel/plugin-syntax-unicode-sets-regex",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-create-regexp-features-plugin"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-syntax-unicode-sets-regex"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-arrow-functions": {
+      "name": "@babel/plugin-transform-arrow-functions",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-arrow-functions"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-async-generator-functions": {
+      "name": "@babel/plugin-transform-async-generator-functions",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-remap-async-to-generator"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-async-generator-functions"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-async-to-generator": {
+      "name": "@babel/plugin-transform-async-to-generator",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-remap-async-to-generator"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-async-to-generator"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-block-scoped-functions": {
+      "name": "@babel/plugin-transform-block-scoped-functions",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-block-scoped-functions"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-block-scoping": {
+      "name": "@babel/plugin-transform-block-scoping",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-block-scoping"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-class-properties": {
+      "name": "@babel/plugin-transform-class-properties",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-create-class-features-plugin"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-class-properties"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-class-static-block": {
+      "name": "@babel/plugin-transform-class-static-block",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-create-class-features-plugin"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-class-static-block"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-classes": {
+      "name": "@babel/plugin-transform-classes",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-compilation-targets",
+        "@babel/helper-replace-supers"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-classes"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-computed-properties": {
+      "name": "@babel/plugin-transform-computed-properties",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-computed-properties"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-destructuring": {
+      "name": "@babel/plugin-transform-destructuring",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-destructuring"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-dotall-regex": {
+      "name": "@babel/plugin-transform-dotall-regex",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-create-regexp-features-plugin"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-dotall-regex"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-duplicate-keys": {
+      "name": "@babel/plugin-transform-duplicate-keys",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-duplicate-keys"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-duplicate-named-capturing-groups-regex": {
+      "name": "@babel/plugin-transform-duplicate-named-capturing-groups-regex",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-create-regexp-features-plugin"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-duplicate-named-capturing-groups-regex"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-dynamic-import": {
+      "name": "@babel/plugin-transform-dynamic-import",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-dynamic-import"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-explicit-resource-management": {
+      "name": "@babel/plugin-transform-explicit-resource-management",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/plugin-transform-destructuring"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-explicit-resource-management"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-exponentiation-operator": {
+      "name": "@babel/plugin-transform-exponentiation-operator",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-exponentiation-operator"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-export-namespace-from": {
+      "name": "@babel/plugin-transform-export-namespace-from",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-export-namespace-from"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-for-of": {
+      "name": "@babel/plugin-transform-for-of",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-for-of"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-function-name": {
+      "name": "@babel/plugin-transform-function-name",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-compilation-targets"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-function-name"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-json-strings": {
+      "name": "@babel/plugin-transform-json-strings",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-json-strings"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-literals": {
+      "name": "@babel/plugin-transform-literals",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-literals"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-logical-assignment-operators": {
+      "name": "@babel/plugin-transform-logical-assignment-operators",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-logical-assignment-operators"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-member-expression-literals": {
+      "name": "@babel/plugin-transform-member-expression-literals",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-member-expression-literals"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-modules-amd": {
+      "name": "@babel/plugin-transform-modules-amd",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-module-transforms"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-modules-amd"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-modules-commonjs": {
+      "name": "@babel/plugin-transform-modules-commonjs",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-module-transforms"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-modules-commonjs"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-modules-systemjs": {
+      "name": "@babel/plugin-transform-modules-systemjs",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-module-transforms"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-modules-systemjs"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-modules-umd": {
+      "name": "@babel/plugin-transform-modules-umd",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-module-transforms"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-modules-umd"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-named-capturing-groups-regex": {
+      "name": "@babel/plugin-transform-named-capturing-groups-regex",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-create-regexp-features-plugin"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-named-capturing-groups-regex"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-new-target": {
+      "name": "@babel/plugin-transform-new-target",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-new-target"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-nullish-coalescing-operator": {
+      "name": "@babel/plugin-transform-nullish-coalescing-operator",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-nullish-coalescing-operator"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-numeric-separator": {
+      "name": "@babel/plugin-transform-numeric-separator",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-numeric-separator"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-object-rest-spread": {
+      "name": "@babel/plugin-transform-object-rest-spread",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-compilation-targets",
+        "@babel/plugin-transform-destructuring",
+        "@babel/plugin-transform-parameters"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-object-rest-spread"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-object-super": {
+      "name": "@babel/plugin-transform-object-super",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-replace-supers"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-object-super"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-optional-catch-binding": {
+      "name": "@babel/plugin-transform-optional-catch-binding",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-optional-catch-binding"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-optional-chaining": {
+      "name": "@babel/plugin-transform-optional-chaining",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-optional-chaining"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-parameters": {
+      "name": "@babel/plugin-transform-parameters",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-parameters"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-private-methods": {
+      "name": "@babel/plugin-transform-private-methods",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-create-class-features-plugin"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-private-methods"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-private-property-in-object": {
+      "name": "@babel/plugin-transform-private-property-in-object",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-create-class-features-plugin"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-private-property-in-object"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-property-literals": {
+      "name": "@babel/plugin-transform-property-literals",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-property-literals"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-regenerator": {
+      "name": "@babel/plugin-transform-regenerator",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-regenerator"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-regexp-modifiers": {
+      "name": "@babel/plugin-transform-regexp-modifiers",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-create-regexp-features-plugin"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-regexp-modifiers"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-reserved-words": {
+      "name": "@babel/plugin-transform-reserved-words",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-reserved-words"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-shorthand-properties": {
+      "name": "@babel/plugin-transform-shorthand-properties",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-shorthand-properties"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-spread": {
+      "name": "@babel/plugin-transform-spread",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-spread"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-sticky-regex": {
+      "name": "@babel/plugin-transform-sticky-regex",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-sticky-regex"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-template-literals": {
+      "name": "@babel/plugin-transform-template-literals",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-template-literals"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-typeof-symbol": {
+      "name": "@babel/plugin-transform-typeof-symbol",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-typeof-symbol"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-unicode-escapes": {
+      "name": "@babel/plugin-transform-unicode-escapes",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-unicode-escapes"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-unicode-property-regex": {
+      "name": "@babel/plugin-transform-unicode-property-regex",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-create-regexp-features-plugin"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-unicode-property-regex"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-unicode-regex": {
+      "name": "@babel/plugin-transform-unicode-regex",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-create-regexp-features-plugin"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-unicode-regex"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/plugin-transform-unicode-sets-regex": {
+      "name": "@babel/plugin-transform-unicode-sets-regex",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-create-regexp-features-plugin"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/plugin-transform-unicode-sets-regex"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/preset-env": {
+      "name": "@babel/preset-env",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-compilation-targets",
+        "@babel/plugin-bugfix-firefox-class-in-computed-class-key",
+        "@babel/plugin-bugfix-safari-class-field-initializer-scope",
+        "@babel/plugin-bugfix-safari-id-destructuring-collision-in-function-expression",
+        "@babel/plugin-bugfix-v8-spread-parameters-in-optional-chaining",
+        "@babel/plugin-bugfix-v8-static-class-fields-redefine-readonly",
+        "@babel/plugin-proposal-private-property-in-object",
+        "@babel/plugin-syntax-import-assertions",
+        "@babel/plugin-syntax-import-attributes",
+        "@babel/plugin-syntax-unicode-sets-regex",
+        "@babel/plugin-transform-arrow-functions",
+        "@babel/plugin-transform-async-generator-functions",
+        "@babel/plugin-transform-async-to-generator",
+        "@babel/plugin-transform-block-scoped-functions",
+        "@babel/plugin-transform-block-scoping",
+        "@babel/plugin-transform-class-properties",
+        "@babel/plugin-transform-class-static-block",
+        "@babel/plugin-transform-classes",
+        "@babel/plugin-transform-computed-properties",
+        "@babel/plugin-transform-destructuring",
+        "@babel/plugin-transform-dotall-regex",
+        "@babel/plugin-transform-duplicate-keys",
+        "@babel/plugin-transform-duplicate-named-capturing-groups-regex",
+        "@babel/plugin-transform-dynamic-import",
+        "@babel/plugin-transform-explicit-resource-management",
+        "@babel/plugin-transform-exponentiation-operator",
+        "@babel/plugin-transform-export-namespace-from",
+        "@babel/plugin-transform-for-of",
+        "@babel/plugin-transform-function-name",
+        "@babel/plugin-transform-json-strings",
+        "@babel/plugin-transform-literals",
+        "@babel/plugin-transform-logical-assignment-operators",
+        "@babel/plugin-transform-member-expression-literals",
+        "@babel/plugin-transform-modules-amd",
+        "@babel/plugin-transform-modules-commonjs",
+        "@babel/plugin-transform-modules-systemjs",
+        "@babel/plugin-transform-modules-umd",
+        "@babel/plugin-transform-named-capturing-groups-regex",
+        "@babel/plugin-transform-new-target",
+        "@babel/plugin-transform-nullish-coalescing-operator",
+        "@babel/plugin-transform-numeric-separator",
+        "@babel/plugin-transform-object-rest-spread",
+        "@babel/plugin-transform-object-super",
+        "@babel/plugin-transform-optional-catch-binding",
+        "@babel/plugin-transform-optional-chaining",
+        "@babel/plugin-transform-parameters",
+        "@babel/plugin-transform-private-methods",
+        "@babel/plugin-transform-private-property-in-object",
+        "@babel/plugin-transform-property-literals",
+        "@babel/plugin-transform-regenerator",
+        "@babel/plugin-transform-regexp-modifiers",
+        "@babel/plugin-transform-reserved-words",
+        "@babel/plugin-transform-shorthand-properties",
+        "@babel/plugin-transform-spread",
+        "@babel/plugin-transform-sticky-regex",
+        "@babel/plugin-transform-template-literals",
+        "@babel/plugin-transform-typeof-symbol",
+        "@babel/plugin-transform-unicode-escapes",
+        "@babel/plugin-transform-unicode-property-regex",
+        "@babel/plugin-transform-unicode-regex",
+        "@babel/plugin-transform-unicode-sets-regex",
+        "@babel/preset-modules",
+        "babel-plugin-polyfill-corejs2",
+        "babel-plugin-polyfill-corejs3",
+        "babel-plugin-polyfill-regenerator",
+        "core-js-compat"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/preset-env"
+      ],
+      "fixAvailable": true
+    },
+    "@babel/preset-modules": {
+      "name": "@babel/preset-modules",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@babel/preset-modules"
+      ],
+      "fixAvailable": true
+    },
+    "@rollup/plugin-babel": {
+      "name": "@rollup/plugin-babel",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/@rollup/plugin-babel"
+      ],
+      "fixAvailable": true
+    },
+    "ajv": {
+      "name": "ajv",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "fast-uri"
+      ],
+      "effects": [
+        "@apideck/better-ajv-errors",
+        "workbox-build"
+      ],
+      "range": "",
+      "nodes": [
+        "node_modules/ajv"
+      ],
+      "fixAvailable": false
+    },
+    "autoprefixer": {
+      "name": "autoprefixer",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "browserslist"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/autoprefixer"
+      ],
+      "fixAvailable": false
+    },
+    "babel-plugin-polyfill-corejs2": {
+      "name": "babel-plugin-polyfill-corejs2",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-define-polyfill-provider"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/babel-plugin-polyfill-corejs2"
+      ],
+      "fixAvailable": true
+    },
+    "babel-plugin-polyfill-corejs3": {
+      "name": "babel-plugin-polyfill-corejs3",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-define-polyfill-provider",
+        "core-js-compat"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/babel-plugin-polyfill-corejs3"
+      ],
+      "fixAvailable": true
+    },
+    "babel-plugin-polyfill-regenerator": {
+      "name": "babel-plugin-polyfill-regenerator",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@babel/core",
+        "@babel/helper-define-polyfill-provider"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/babel-plugin-polyfill-regenerator"
+      ],
+      "fixAvailable": true
+    },
+    "browserslist": {
+      "name": "browserslist",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1153171,
+          "name": "browserslist",
+          "dependency": "browserslist",
+          "title": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
+          "url": "https://github.com/advisories/GHSA-c83g-rgw3-j3cx",
+          "severity": "high",
+          "cwe": [
+            "CWE-770"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<=4.28.6"
+        },
+        {
+          "source": 1153172,
+          "name": "browserslist",
+          "dependency": "browserslist",
+          "title": "Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)",
+          "url": "https://github.com/advisories/GHSA-73wf-gq98-2v4g",
+          "severity": "high",
+          "cwe": [
+            "CWE-248",
+            "CWE-1321"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<=4.28.6"
+        },
+        "update-browserslist-db"
+      ],
+      "effects": [
+        "@babel/helper-compilation-targets",
+        "autoprefixer",
+        "core-js-compat",
+        "update-browserslist-db"
+      ],
+      "range": "",
+      "nodes": [
+        "node_modules/browserslist"
+      ],
+      "fixAvailable": false
+    },
+    "core-js-compat": {
+      "name": "core-js-compat",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "browserslist"
+      ],
+      "effects": [
+        "@babel/preset-env",
+        "babel-plugin-polyfill-corejs3"
+      ],
+      "range": "",
+      "nodes": [
+        "node_modules/core-js-compat"
+      ],
+      "fixAvailable": true
+    },
+    "fast-uri": {
+      "name": "fast-uri",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1158521,
+          "name": "fast-uri",
+          "dependency": "fast-uri",
+          "title": "fast-uri vulnerable to host confusion via skipped IDN canonicalization on scheme-relative references",
+          "url": "https://github.com/advisories/GHSA-5jgf-p345-68v8",
+          "severity": "high",
+          "cwe": [
+            "CWE-436"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": ">=3.1.3 <3.1.6"
+        },
+        {
+          "source": 1158524,
+          "name": "fast-uri",
+          "dependency": "fast-uri",
+          "title": "fast-uri vulnerable to server-side request forgery via malformed IPv6 normalization",
+          "url": "https://github.com/advisories/GHSA-f65p-4m7j-42xc",
+          "severity": "high",
+          "cwe": [
+            "CWE-20",
+            "CWE-918"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": ">=3.0.0 <3.1.6"
+        },
+        {
+          "source": 1158527,
+          "name": "fast-uri",
+          "dependency": "fast-uri",
+          "title": "fast-uri vulnerable to server-side request forgery via repeated hostname percent-decoding",
+          "url": "https://github.com/advisories/GHSA-fph4-wmhf-6fwf",
+          "severity": "high",
+          "cwe": [
+            "CWE-174",
+            "CWE-918"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": ">=3.1.2 <3.1.6"
+        },
+        {
+          "source": 1158530,
+          "name": "fast-uri",
+          "dependency": "fast-uri",
+          "title": "fast-uri vulnerable to host confusion via percent-encoded scheme normalization",
+          "url": "https://github.com/advisories/GHSA-jqff-g426-hqxp",
+          "severity": "high",
+          "cwe": [
+            "CWE-177"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": ">=3.0.0 <3.1.6"
+        }
+      ],
+      "effects": [
+        "ajv"
+      ],
+      "range": "",
+      "nodes": [
+        "node_modules/fast-uri"
+      ],
+      "fixAvailable": false
+    },
+    "postcss-nested": {
+      "name": "postcss-nested",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "postcss-selector-parser"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/postcss-nested"
+      ],
+      "fixAvailable": true
+    },
+    "postcss-selector-parser": {
+      "name": "postcss-selector-parser",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1153170,
+          "name": "postcss-selector-parser",
+          "dependency": "postcss-selector-parser",
+          "title": "postcss-selector-parser allows denial of service through uncontrolled AST recursion",
+          "url": "https://github.com/advisories/GHSA-w9m9-85wc-3x92",
+          "severity": "low",
+          "cwe": [
+            "CWE-404"
+          ],
+          "cvss": {
+            "score": 4.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L"
+          },
+          "range": ">=6.1.0 <6.1.3"
+        }
+      ],
+      "effects": [
+        "postcss-nested",
+        "tailwindcss"
+      ],
+      "range": "",
+      "nodes": [
+        "node_modules/postcss-selector-parser"
+      ],
+      "fixAvailable": false
+    },
+    "tailwindcss": {
+      "name": "tailwindcss",
+      "severity": "low",
+      "isDirect": true,
+      "via": [
+        "postcss-nested",
+        "postcss-selector-parser"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/tailwindcss"
+      ],
+      "fixAvailable": false
+    },
+    "update-browserslist-db": {
+      "name": "update-browserslist-db",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "browserslist"
+      ],
+      "effects": [
+        "browserslist"
+      ],
+      "range": "",
+      "nodes": [
+        "node_modules/update-browserslist-db"
+      ],
+      "fixAvailable": false
+    },
+    "vite-plugin-pwa": {
+      "name": "vite-plugin-pwa",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "workbox-build"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "node_modules/vite-plugin-pwa"
+      ],
+      "fixAvailable": false
+    },
+    "workbox-build": {
+      "name": "workbox-build",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@apideck/better-ajv-errors",
+        "@babel/core",
+        "@babel/preset-env",
+        "@rollup/plugin-babel",
+        "ajv"
+      ],
+      "effects": [
+        "vite-plugin-pwa"
+      ],
+      "range": "",
+      "nodes": [
+        "node_modules/workbox-build"
+      ],
+      "fixAvailable": false
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 3,
+      "moderate": 0,
+      "high": 83,
+      "critical": 0,
+      "total": 86
+    },
+    "dependencies": {
+      "prod": 137,
+      "dev": 454,
+      "optional": 55,
+      "peer": 10,
+      "peerOptional": 0,
+      "total": 595
+    }
+  }
+}

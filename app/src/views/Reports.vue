@@ -2,22 +2,41 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase'
-import { useCoursesQuery, useQuartersQuery, useInstitutionConfigQuery } from '../composables/useQueries'
+import { useCoursesQuery, useQuartersQuery } from '../composables/useQueries'
 import { computeProjectAverage, computeSubjectTotal, getQuarterOrder, truncate2, computeFinalAnnual, computeFinalObservation, getPeriodLabel, computeTrimesterObservation } from '../lib/reporting'
-import { loadHtml2Pdf } from '../lib/pdf'
+import { normalizeStoragePath, resolvePrivateImageUrl } from '../lib/storageUtils'
+import { useAuthStore } from '../stores/auth'
+import { useAcademicYearStore } from '../stores/academicYear'
+import { isInstitutionAdmin } from '../lib/permissions'
+import AcademicYearBanner from '../components/ui/AcademicYearBanner.vue'
+import StudentRecoveryModal from '../components/grades/StudentRecoveryModal.vue'
+import IndividualReportSheet from '../components/reports/IndividualReportSheet.vue'
+import {
+  FileText,
+  Download,
+  Printer,
+  Calendar,
+  Building2,
+  CheckCircle2,
+  AlertTriangle,
+  Sparkles,
+  MessageCircle
+} from 'lucide-vue-next'
 
 const route = useRoute()
+const authStore = useAuthStore()
+const academicYearStore = useAcademicYearStore()
 
-const { data: coursesData } = useCoursesQuery()
+const { data: coursesData, refetch: refetchCourses } = useCoursesQuery(computed(() => academicYearStore.selectedYearName))
 const courses = computed(() => coursesData.value || [])
 
-const { data: quartersData } = useQuartersQuery()
+const { data: quartersData, refetch: refetchQuarters } = useQuartersQuery()
 const quarters = computed(() => (quartersData.value || []).slice().sort((a, b) => getQuarterOrder(a.name) - getQuarterOrder(b.name)))
 const students = ref([])
 const courseSubjects = ref([])
 
 const reportMode = ref('GENERAL')
-const isExportingPdf = ref(false)
+
 const selectedStudentId = ref(null)
 const individualLoading = ref(false)
 const individualError = ref('')
@@ -30,19 +49,37 @@ const selectedCourse = ref(null)
 const selectedQuarter = ref(null)
 const loading = ref(false)
 const error = ref('')
+const isMissingProjectTableError = (queryError) => (
+  queryError?.code === 'PGRST205'
+  || queryError?.message?.includes('Could not find the table')
+)
+
+watch(courses, (newCourses) => {
+  if (selectedCourse.value && !newCourses.some(c => c.id === selectedCourse.value)) {
+    selectedCourse.value = null
+  }
+})
 
 const configData = ref({})
 
 const fetchInstitutionConfig = async () => {
-  const { data, error } = await supabase
+  const sId = authStore.activeSchoolId || authStore.profile?.school_id
+  if (!sId) return
+  const { data, error: cfgErr } = await supabase
     .from('system_config')
     .select('key, value')
+    .eq('school_id', sId)
     .in('key', ['institution_name', 'institution_logo_url', 'institution_tutor_name', 'institution_rector_name', 'academic_periods', 'regimen'])
   
-  if (error) {
-    console.error('Error fetching institution config:', error.message)
+  if (cfgErr) {
+    console.error('Error fetching institution config:', cfgErr.message)
   } else {
     const map = Object.fromEntries((data || []).map(item => [item.key, item.value]))
+    map.institution_logo_url = await resolvePrivateImageUrl(
+      supabase,
+      'institution-assets',
+      normalizeStoragePath(map.institution_logo_url, 'institution-assets'),
+    ).catch(() => '')
     configData.value = map || {}
   }
 }
@@ -51,7 +88,7 @@ const institutionLogoUrl = computed(() => configData.value?.institution_logo_url
 const institutionTutorName = computed(() => configData.value?.institution_tutor_name || '')
 const institutionRectorName = computed(() => configData.value?.institution_rector_name || '')
 const academicPeriods = computed(() => configData.value?.academic_periods || 'TRIMESTRE')
-const regime = computed(() => configData.value?.regimen || 'SIERRA_AMAZONIA')
+const regime = computed(() => configData.value?.regimen || 'COSTA_GALAPAGOS')
 
 const definitionsByQuarter = ref({})
 const gradesByStudent = ref({})
@@ -68,18 +105,20 @@ const showWhatsappPreview = ref(false)
 const whatsappPreviewText = ref('')
 const whatsappPreviewStudent = ref('')
 
+const showRecoveryModal = ref(false)
+const selectedStudentForRecovery = ref(null)
+const selectedScoreForRecovery = ref(0)
+
+const openStudentRecovery = (row) => {
+  selectedStudentForRecovery.value = row.student
+  selectedScoreForRecovery.value = row.average || 0
+  showRecoveryModal.value = true
+}
+
 const isQualitativeCourse = computed(() => {
   const level = courses.value.find(c => c.id === selectedCourse.value)?.level || ''
   return ['INICIAL', 'PREPARATORIA', 'ELEMENTAL'].includes(level)
 })
-
-// Data is now fetched by Vue Query
-watch(quarters, (newVal) => {
-  if (newVal && newVal.length > 0 && !selectedQuarter.value) {
-    const active = newVal.find(q => q.is_active) || newVal[0]
-    selectedQuarter.value = active?.id || null
-  }
-}, { immediate: true })
 
 const fetchCourseData = async () => {
   if (!selectedCourse.value) return
@@ -89,18 +128,30 @@ const fetchCourseData = async () => {
   qualitativeGradesByStudent.value = {}
   try {
     const courseId = selectedCourse.value
-    const { data: stus, error: stusError } = await supabase
+    const sId = authStore.activeSchoolId || authStore.profile?.school_id
+    if (!sId) throw new Error('No hay una institución activa seleccionada.')
+
+    let stusQuery = supabase
       .from('students')
-      .select('id, full_name, representative_name, representative_phone')
+      .select('id, full_name, representative_name, representative_phone, has_adaptation, adaptation_grade, adaptation_details, school_id')
       .eq('course_id', courseId)
       .order('full_name')
+    stusQuery = stusQuery.eq('school_id', sId)
+    const { data: stus, error: stusError } = await stusQuery
     if (stusError) throw stusError
     students.value = stus || []
 
-    const { data: cs, error: csError } = await supabase
+    let csQuery = supabase
       .from('course_subjects')
-      .select('id, subject_id, subjects (name)')
+      .select('id, subject_id, teacher_id, subjects (name)')
       .eq('course_id', courseId)
+    csQuery = csQuery.eq('school_id', sId)
+    const userId = authStore.user?.id || authStore.profile?.id
+    const isAdmin = isInstitutionAdmin(authStore.accessContext)
+    if (!isAdmin && userId) {
+      csQuery = csQuery.eq('teacher_id', userId)
+    }
+    const { data: cs, error: csError } = await csQuery
     if (csError) throw csError
     courseSubjects.value = cs || []
 
@@ -115,10 +166,12 @@ const fetchCourseData = async () => {
       return
     }
 
-    const { data: defs, error: defsError } = await supabase
+    let defsQuery = supabase
       .from('grade_definitions')
       .select('id, course_subject_id, quarter_id, name, category, sort_order')
       .in('course_subject_id', courseSubjectIds)
+    defsQuery = defsQuery.eq('school_id', sId)
+    const { data: defs, error: defsError } = await defsQuery
     if (defsError) throw defsError
 
     const defIds = (defs || []).map(d => d.id)
@@ -160,9 +213,8 @@ const fetchCourseData = async () => {
         .select('subject_id')
         .eq('course_id', courseId)
         .eq('quarter_id', q.id)
-      if (psError?.message?.includes('Could not find the table')) {
-        projectAvailable.value = false
-      }
+      if (psError && !isMissingProjectTableError(psError)) throw psError
+      if (isMissingProjectTableError(psError)) projectAvailable.value = false
       projectSettingsMap[q.id] = (ps || []).map(p => p.subject_id)
 
       const { data: pg, error: pgError } = await supabase
@@ -170,9 +222,8 @@ const fetchCourseData = async () => {
         .select('student_id, subject_id, score')
         .eq('course_id', courseId)
         .eq('quarter_id', q.id)
-      if (pgError?.message?.includes('Could not find the table')) {
-        projectAvailable.value = false
-      }
+      if (pgError && !isMissingProjectTableError(pgError)) throw pgError
+      if (isMissingProjectTableError(pgError)) projectAvailable.value = false
       if ((projectSettingsMap[q.id] || []).length === 0 && (pg || []).length > 0) {
         const inferred = [...new Set((pg || []).map(row => row.subject_id))]
         projectSettingsMap[q.id] = inferred
@@ -221,6 +272,55 @@ const fetchCourseData = async () => {
   }
   loading.value = false
 }
+
+watch(() => authStore.activeSchoolId, async () => {
+  selectedCourse.value = null
+  await fetchInstitutionConfig()
+  await refetchCourses()
+  await refetchQuarters()
+})
+
+// Auto-select first course when courses data is loaded
+watch(courses, (newCourses) => {
+  if (newCourses && newCourses.length > 0) {
+    if (!selectedCourse.value || !newCourses.some(c => c.id === selectedCourse.value)) {
+      const qCourse = route.query.course_id
+      if (qCourse && newCourses.some(c => c.id === qCourse)) {
+        selectedCourse.value = qCourse
+      } else {
+        selectedCourse.value = newCourses[0].id
+      }
+    }
+  } else {
+    selectedCourse.value = null
+    students.value = []
+  }
+}, { immediate: true })
+
+watch(quarters, (newVal) => {
+  if (newVal && newVal.length > 0) {
+    if (!selectedQuarter.value || !newVal.some(q => q.id === selectedQuarter.value)) {
+      const active = newVal.find(q => q.is_active) || newVal[0]
+      selectedQuarter.value = active?.id || null
+    }
+  }
+}, { immediate: true })
+
+watch(selectedCourse, (newVal) => {
+  if (newVal) {
+    fetchCourseData()
+  }
+})
+
+onMounted(async () => {
+  await fetchInstitutionConfig()
+  if (courses.value && courses.value.length > 0 && !selectedCourse.value) {
+    selectedCourse.value = courses.value[0].id
+  }
+  if (selectedCourse.value) {
+    fetchCourseData()
+  }
+})
 
 const getQuarterName = (id) => quarters.value.find(q => q.id === id)?.name || ''
 const orderedQuarters = computed(() => quarters.value.slice().sort((a, b) => getQuarterOrder(a.name) - getQuarterOrder(b.name)))
@@ -369,8 +469,8 @@ const actaFinalRows = computed(() => {
         : (sVal !== null && !isNaN(sVal) ? sVal : null)
       const finalAnnual = computeFinalAnnual(p, sVal)
       const finalObs = computeFinalObservation(p, sVal, finalAnnual)
-      const allowSuplet = p !== null && p >= 5 && p < 7
-      const supletMessage = p === null ? '' : (p >= 7 ? 'No rinde supletorio' : (p < 5 ? 'No puede rendir supletorio' : 'Habilitado'))
+      const allowSuplet = p !== null && p >= 4.01 && p < 7
+      const supletMessage = p === null ? '' : (p >= 7 ? 'No rinde supletorio' : (p < 4.01 ? 'No puede rendir supletorio' : 'Habilitado'))
       return {
         subject: entry.subject,
         courseSubjectId: entry.courseSubjectId,
@@ -415,7 +515,12 @@ const resumenFinalRows = computed(() => {
     const promedioFinalAnnual = validFinalAnnual.length
       ? (validFinalAnnual.reduce((s, v) => s + v.finalAnnual, 0) / validFinalAnnual.length)
       : null
-    return { student: stu, subjectFinals, promedioAnual, promedioFinalAnnual }
+    const hasFailedSubjects = subjectFinals.some(s => s.finalAnnual !== null && s.finalAnnual < 7)
+    const promocionEstado = validFinalAnnual.length === 0
+      ? '-'
+      : (!hasFailedSubjects && promedioFinalAnnual !== null && promedioFinalAnnual >= 7 ? 'PROMOVIDO' : 'NO PROMOVIDO')
+
+    return { student: stu, subjectFinals, promedioAnual, promedioFinalAnnual, hasFailedSubjects, promocionEstado }
   })
 })
 
@@ -425,32 +530,20 @@ const handlePrint = () => {
 
 const downloadReportsPdf = async () => {
   if (!reportsRef.value) return
-  const courseName = courses.value.find(c => c.id === selectedCourse.value)?.name || 'curso'
-  const quarterName = quarters.value.find(q => q.id === selectedQuarter.value)?.name || 'trimestre'
-  const studentName = students.value.find(s => s.id === selectedStudentId.value)?.full_name || ''
-  const base = reportMode.value === 'INDIVIDUAL' && studentName
-    ? `Reporte_${studentName}_${quarterName}`
-    : `Reportes_${courseName}_${quarterName}`
-  const filename = `${base}.pdf`.replace(/\s+/g, '_')
   try {
-    isExportingPdf.value = true
-    // Wait for DOM to update with the header before capturing
-    await new Promise(resolve => setTimeout(resolve, 100))
-    const html2pdf = await loadHtml2Pdf()
-    await html2pdf()
-    .set({
-      margin: 8,
-      filename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: reportMode.value === 'INDIVIDUAL' ? 'portrait' : 'landscape' }
-    })
-    .from(reportsRef.value)
-    .save()
+    // Inject @page rule dynamically to handle landscape vs portrait
+    let styleEl = document.getElementById('print-page-style')
+    if (!styleEl) {
+      styleEl = document.createElement('style')
+      styleEl.id = 'print-page-style'
+      document.head.appendChild(styleEl)
+    }
+    const orientation = reportMode.value === 'GENERAL' ? 'landscape' : 'portrait'
+    styleEl.innerHTML = `@page { size: A4 ${orientation}; margin: 12mm 10mm 14mm 10mm; }`
+
+    window.print()
   } catch (e) {
-    alert('No se pudo generar el PDF. Usa Imprimir y guarda como PDF.')
-  } finally {
-    isExportingPdf.value = false
+    alert('No se pudo generar el PDF. Hubo un error inesperado.')
   }
 }
 
@@ -497,24 +590,11 @@ const saveSupplementary = async () => {
   })
 
   try {
-    if (upserts.length > 0) {
-      const { error } = await supabase
-        .from('supplementary_exams')
-        .upsert(upserts, { onConflict: 'student_id, course_subject_id' })
-      if (error) throw error
-    }
-
-    if (toDelete.length > 0) {
-      const chunkSize = 50
-      for (let i = 0; i < toDelete.length; i += chunkSize) {
-        const chunk = toDelete.slice(i, i + chunkSize)
-        const orFilter = chunk
-          .map(item => `and(student_id.eq.${item.student_id},course_subject_id.eq.${item.course_subject_id})`)
-          .join(',')
-        const { error } = await supabase.from('supplementary_exams').delete().or(orFilter)
-        if (error) throw error
-      }
-    }
+    const { error } = await supabase.rpc('save_supplementary_batch', {
+      p_upserts: upserts,
+      p_deletes: toDelete
+    })
+    if (error) throw error
 
     supplementaryExistingKeys.value = new Set(
       upserts.map(u => `${u.student_id}:${u.course_subject_id}`)
@@ -601,7 +681,7 @@ onMounted(async () => {
        loadIndividualReport()
        if (route.query.download === '1') {
          setTimeout(() => {
-            generateIndividualReportPdf()
+            downloadReportsPdf()
          }, 500)
        }
     }, 1500)
@@ -624,197 +704,277 @@ watch([selectedStudentId, reportMode], async () => {
 </script>
 
 <template>
-  <div class="min-h-screen report-shell">
-    <main class="report-page">
-      <header class="report-hero">
-        <div class="report-hero-row">
-          <div class="report-brand">
-            <div class="report-logo">
-              <img v-if="institutionLogoUrl" :src="institutionLogoUrl" alt="Logo institucion" />
-              <span v-else>Logo</span>
+  <div class="w-full max-w-[1600px] mx-auto min-w-0 flex flex-col space-y-5 pb-24 sm:pb-20 report-shell">
+    <main class="w-full min-w-0 flex flex-col space-y-5 report-page">
+      <!-- Academic Year Banner (oculto al imprimir) -->
+      <AcademicYearBanner module-name="Reportes y Boletines" :compact="true" class="no-print" />
+
+      <!-- Page Header Principal -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print">
+        <div class="flex items-start sm:items-center gap-3.5 min-w-0">
+          <div class="p-2.5 sm:p-3 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 shadow-sm shrink-0">
+            <FileText class="w-6 h-6 sm:w-7 sm:h-7" />
+          </div>
+          <div class="min-w-0">
+            <h1 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+              Reportes Académicos
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+              Consulta, analiza, imprime y descarga información académica de tus cursos.
+            </p>
+          </div>
+        </div>
+
+        <div class="hidden sm:flex items-center gap-2.5 shrink-0">
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Ciclo {{ academicYearStore.selectedYearName || 'Activo' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Report Summary Card Compacta (no-print) -->
+      <section class="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/80 p-4 sm:p-5 shadow-sm no-print">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <!-- Logo e Institución -->
+          <div class="flex items-center gap-3.5 min-w-0">
+            <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden flex items-center justify-center shrink-0 shadow-sm p-1">
+              <img v-if="institutionLogoUrl" :src="institutionLogoUrl" alt="Logo institucional" class="h-full w-full object-contain" />
+              <Building2 v-else class="w-6 h-6 text-slate-400" />
             </div>
-            <div>
-              <p class="report-kicker">Sistema de Notas</p>
-              <h2 class="report-title">{{ institutionName || 'Institucion' }}</h2>
-              <p class="report-subtitle">Reportes Trimestrales y Finales</p>
+            <div class="min-w-0">
+              <span class="text-[10px] sm:text-[11px] font-bold tracking-wider text-teal-600 dark:text-teal-400 uppercase block">
+                LOGREVA · Gestión Académica
+              </span>
+              <h2 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                {{ institutionName || 'Institución Educativa' }}
+              </h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
+                <span>Informe Académico</span>
+                <span>·</span>
+                <span class="font-medium text-slate-700 dark:text-slate-300">
+                  {{ getQuarterName(selectedQuarter) || 'General' }}
+                </span>
+              </p>
             </div>
           </div>
-          <div class="report-meta">
-            <div>
-              <span class="report-meta-label">Fecha</span>
-              <span class="report-meta-value">{{ new Date().toLocaleDateString('es-EC') }}</span>
+
+          <!-- Matriz compacta de metadatos -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800 text-xs">
+            <div class="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80">
+              <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Curso</span>
+              <span class="font-bold text-slate-800 dark:text-slate-200 truncate block mt-0.5">
+                {{ courses.find(c => c.id === selectedCourse)?.name || 'Sin seleccionar' }}
+              </span>
             </div>
-            <div>
-              <span class="report-meta-label">Documento</span>
-              <span class="report-meta-value">Informe academico</span>
+            <div class="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80">
+              <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Régimen</span>
+              <span class="font-bold text-slate-800 dark:text-slate-200 truncate block mt-0.5">
+                {{ regime === 'COSTA_GALAPAGOS' ? 'Costa-Galápagos' : 'Sierra-Amazonía' }}
+              </span>
             </div>
-            <div>
-              <span class="report-meta-label">Curso</span>
-              <span class="report-meta-value">{{ courses.find(c => c.id === selectedCourse)?.name || '-' }}</span>
+            <div class="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80">
+              <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Período</span>
+              <span class="font-bold text-slate-800 dark:text-slate-200 truncate block mt-0.5">
+                {{ academicPeriods === 'QUIMESTRE' ? 'Quimestral' : 'Trimestral' }}
+              </span>
             </div>
-            <div>
-              <span class="report-meta-label">Regimen</span>
-              <span class="report-meta-value">{{ regime === 'COSTA_GALAPAGOS' ? 'Costa-Galapagos' : 'Sierra-Amazonia' }}</span>
-            </div>
-            <div>
-              <span class="report-meta-label">Periodos</span>
-              <span class="report-meta-value">{{ academicPeriods === 'QUIMESTRE' ? 'Quimestres' : 'Trimestres' }}</span>
+            <div class="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80">
+              <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Fecha</span>
+              <span class="font-bold text-slate-800 dark:text-slate-200 truncate block mt-0.5">
+                {{ new Date().toLocaleDateString('es-EC') }}
+              </span>
             </div>
           </div>
         </div>
-      </header>
+      </section>
 
-      <section class="report-card">
-        <div class="report-controls">
-          <div>
-            <label class="report-label">Curso</label>
-            <select v-model="selectedCourse" @change="fetchCourseData" class="report-select">
-              <option :value="null">Seleccionar</option>
-              <option v-for="c in courses" :key="c.id" :value="c.id">{{ c.name }}</option>
-            </select>
+      <!-- Barra de Filtros y Acciones Administrativa (no-print) -->
+      <section class="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/80 p-4 sm:p-5 shadow-sm no-print">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3.5 items-end">
+          <!-- Selector de Curso -->
+          <div :class="reportMode === 'INDIVIDUAL' ? 'lg:col-span-3' : 'lg:col-span-3'">
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Curso</label>
+            <div class="relative">
+              <select
+                v-model="selectedCourse"
+                @change="fetchCourseData"
+                class="w-full h-10 px-3 text-xs sm:text-sm font-semibold rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors cursor-pointer"
+              >
+                <option :value="null">Seleccionar curso…</option>
+                <option v-for="c in courses" :key="c.id" :value="c.id">{{ c.name }}</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label class="report-label">Periodo</label>
-            <select v-model="selectedQuarter" class="report-select">
-              <option v-for="q in quarters" :key="q.id" :value="q.id">{{ q.name }}</option>
-            </select>
+
+          <!-- Selector de Período -->
+          <div :class="reportMode === 'INDIVIDUAL' ? 'lg:col-span-3' : 'lg:col-span-3'">
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Período</label>
+            <div class="relative">
+              <select
+                v-model="selectedQuarter"
+                class="w-full h-10 px-3 text-xs sm:text-sm font-semibold rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors cursor-pointer"
+              >
+                <option v-for="q in quarters" :key="q.id" :value="q.id">{{ q.name }}</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label class="report-label">Tipo de reporte</label>
-            <select v-model="reportMode" class="report-select">
-              <option value="GENERAL">General</option>
-              <option value="INDIVIDUAL">Individual</option>
-            </select>
+
+          <!-- Tipo de Reporte -->
+          <div :class="reportMode === 'INDIVIDUAL' ? 'lg:col-span-2' : 'lg:col-span-2'">
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Tipo de reporte</label>
+            <div class="relative">
+              <select
+                v-model="reportMode"
+                class="w-full h-10 px-3 text-xs sm:text-sm font-semibold rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors cursor-pointer"
+              >
+                <option value="GENERAL">General (Sábana)</option>
+                <option value="INDIVIDUAL">Individual (Boletín)</option>
+              </select>
+            </div>
           </div>
-          <div v-if="reportMode === 'INDIVIDUAL'">
-            <label class="report-label">Estudiante</label>
-            <select v-model="selectedStudentId" class="report-select">
-              <option :value="null">Seleccionar</option>
-              <option v-for="s in students" :key="s.id" :value="s.id">{{ s.full_name }}</option>
-            </select>
+
+          <!-- Selector de Estudiante (Modo Individual) -->
+          <div v-if="reportMode === 'INDIVIDUAL'" class="lg:col-span-4">
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Estudiante</label>
+            <div class="relative">
+              <select
+                v-model="selectedStudentId"
+                class="w-full h-10 px-3 text-xs sm:text-sm font-semibold rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors cursor-pointer"
+              >
+                <option :value="null">Seleccionar estudiante…</option>
+                <option v-for="s in students" :key="s.id" :value="s.id">{{ s.full_name }}</option>
+              </select>
+            </div>
           </div>
-          <div class="report-actions">
-            <button @click="downloadReportsPdf" class="report-btn report-btn-primary">
-              Descargar PDF
+
+          <!-- Acciones: Descargar PDF + Imprimir -->
+          <div :class="[reportMode === 'INDIVIDUAL' ? 'lg:col-span-12 sm:col-span-2' : 'lg:col-span-4', 'flex items-center justify-end gap-2.5 pt-2 sm:pt-0']">
+            <button
+              @click="downloadReportsPdf"
+              type="button"
+              class="flex-1 sm:flex-initial h-10 px-4 rounded-xl bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-bold text-xs sm:text-sm shadow-sm shadow-teal-900/10 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+              title="Descargar versión en PDF"
+            >
+              <Download class="w-4 h-4" />
+              <span>Descargar PDF</span>
             </button>
-            <button @click="handlePrint" class="report-btn report-btn-ghost">
-              Imprimir
+            <button
+              @click="handlePrint"
+              type="button"
+              class="flex-1 sm:flex-initial h-10 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+              title="Imprimir documento oficial"
+            >
+              <Printer class="w-4 h-4" />
+              <span>Imprimir</span>
             </button>
           </div>
         </div>
       </section>
 
-      <div v-if="error" class="report-alert report-alert-error">{{ error }}</div>
-      <div v-if="!projectAvailable" class="report-alert report-alert-warn">
-        Modulo de Proyecto no instalado. Ejecuta el SQL `project_global_schema.sql` en la base (InsForge).
+      <!-- Error Alert -->
+      <div
+        v-if="error"
+        class="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 p-4 text-xs sm:text-sm text-rose-800 dark:text-rose-300 flex items-center gap-2 shadow-sm"
+        role="alert"
+      >
+        <AlertTriangle class="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+        <span>{{ error }}</span>
       </div>
-      <div v-if="loading" class="report-loading">Cargando reportes...</div>
 
-      <div ref="reportsRef" v-else-if="selectedCourse && students.length > 0 && reportMode === 'GENERAL'" class="report-stack">
-        <!-- CABECERA PARA PDF (OCULTA EN PANTALLA, VISIBLE AL EXPORTAR) -->
-        <div v-if="isExportingPdf" class="pdf-export-header">
-          <div class="pdf-header-content">
-            <div class="pdf-logo-placeholder">
-              <img v-if="institutionLogoUrl" :src="institutionLogoUrl" alt="Logo" class="pdf-logo" />
-              <div v-else class="pdf-logo-fallback">Logo</div>
-            </div>
-            <div class="pdf-header-text">
-              <h1 class="pdf-institution">{{ institutionName || 'Unidad Educativa' }}</h1>
-              <h2 class="pdf-title">Reporte Consolidado de Calificaciones</h2>
-              <p class="pdf-subtitle">
-                Periodo: {{ getQuarterName(selectedQuarter) }} | Curso: {{ courses.find(c => c.id === selectedCourse)?.name || '-' }}
-              </p>
-              <p class="pdf-date">Generado el: {{ new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) }}</p>
-            </div>
+      <!-- Loading State -->
+      <div
+        v-if="loading"
+        class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-8 text-center shadow-sm"
+      >
+        <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 mb-3 animate-spin">
+          <span class="inline-block h-5 w-5 rounded-full border-2 border-teal-600 border-t-transparent"></span>
+        </div>
+        <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Cargando reportes académicos…</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Sincronizando calificaciones y promedios</p>
+      </div>
+
+      <!-- Report Stack (General) -->
+      <div ref="reportsRef" v-else-if="selectedCourse && students.length > 0 && reportMode === 'GENERAL'" class="flex flex-col space-y-6 report-stack">
+        <!-- CABECERA PARA PDF (VISIBLE AL EXPORTAR O IMPRIMIR) -->
+        <div class="report-header screen-hidden">
+          <img v-if="institutionLogoUrl" :src="institutionLogoUrl" alt="Logo" class="report-logo" />
+          <div v-else style="width: 70px; height: 70px; background: #e2e8f0; display:flex; align-items:center; justify-content:center; flex-shrink:0;">Logo</div>
+          <div class="report-header-content">
+            <h1 style="margin: 0; color: #0f172a; font-size: 20px; font-weight: 800; text-transform: uppercase;">{{ institutionName || 'Unidad Educativa' }}</h1>
+            <h2 style="margin: 0; color: #0f766e; font-size: 14px; font-weight: 700; margin-top: 2px;">Reporte Consolidado de Calificaciones</h2>
+            <p style="margin: 0; color: #475569; font-size: 11px; margin-top: 4px;">
+              Período: {{ getQuarterName(selectedQuarter) }} | Curso: {{ courses.find(c => c.id === selectedCourse)?.name || '-' }}
+            </p>
+            <p style="margin: 0; color: #475569; font-size: 10px; margin-top: 2px;">Generado el: {{ new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) }}</p>
           </div>
-          <hr class="pdf-divider" />
         </div>
 
-        <!-- PROYECTO INTERDISCIPLINARIO -->
-        <section class="report-section print-page">
-          <div class="report-section-head">
+        <!-- SÁBANA POR TRIMESTRE -->
+        <section class="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/80 p-4 sm:p-5 shadow-sm report-section print-page">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 report-section-head">
             <div>
-              <p class="report-pill">Proyecto Interdisciplinario</p>
-              <h3>Proyecto Interdisciplinario - {{ getQuarterName(selectedQuarter) }}</h3>
-              <p class="report-section-note">Curso: {{ courses.find(c => c.id === selectedCourse)?.name || '-' }}</p>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-200 dark:border-teal-800/60 report-pill">
+                  Sábana
+                </span>
+              </div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                Sábana de Calificaciones — {{ getQuarterName(selectedQuarter) }}
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 report-section-note">
+                Consolidado académico general y detalle de notas por asignatura para el curso seleccionado.
+              </p>
             </div>
-            <p class="report-section-note">Promedio por asignaturas seleccionadas</p>
           </div>
-          <div v-if="(projectSettingsByQuarter[selectedQuarter] || []).length === 0" class="report-empty">
-            No hay asignaturas seleccionadas para proyecto en este trimestre.
-          </div>
-          <div v-else class="report-table-wrap">
-            <table class="report-table">
-              <thead>
-                <tr>
-                  <th>Estudiante</th>
-                  <th class="text-right">Promedio Proyecto</th>
-                  <th class="text-right">Total Trimestre (15%)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="stu in students" :key="stu.id">
-                  <td>{{ stu.full_name }}</td>
-                  <td class="text-right">{{ getProjectAverageForStudent(stu.id)?.toFixed(2) || '-' }}</td>
-                  <td class="text-right">{{ getProjectTotalForStudent(stu.id)?.toFixed(2) || '-' }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
 
-        <!-- SABANA POR TRIMESTRE -->
-        <section class="report-section print-page">
-          <div class="report-section-head">
-            <div>
-              <p class="report-pill">Sabana</p>
-              <h3>Sabana de Calificaciones - {{ getQuarterName(selectedQuarter) }}</h3>
-            </div>
-          </div>
-          <div v-if="isQualitativeCourse" class="report-table-wrap">
-            <div class="report-legend">
+          <div v-if="isQualitativeCourse" class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 report-table-wrap">
+            <div class="p-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 report-legend">
               Escala cualitativa: A+/A- (alcanzado), B+/B-/C+/C- (en proceso), D+/D-/E+/E- (iniciado).
             </div>
-            <table class="report-table report-table-compact">
+            <table class="w-full text-left border-collapse report-table report-table-compact">
               <thead>
-                <tr>
-                  <th>Estudiante</th>
-                  <th v-for="cs in courseSubjects" :key="cs.id" class="text-center">
+                <tr class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  <th class="py-2.5 px-3">Estudiante</th>
+                  <th v-for="cs in courseSubjects" :key="cs.id" class="py-2.5 px-3 text-center">
                     {{ cs.subjects?.name }}
                   </th>
                 </tr>
               </thead>
-              <tbody>
-                <tr v-for="stu in students" :key="stu.id">
-                  <td>{{ stu.full_name }}</td>
-                  <td v-for="cs in courseSubjects" :key="cs.id" class="text-center">
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                <tr v-for="stu in students" :key="stu.id" class="hover:bg-teal-50/30 dark:hover:bg-slate-800/50 transition-colors">
+                  <td class="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{{ stu.full_name }}</td>
+                  <td v-for="cs in courseSubjects" :key="cs.id" class="py-2.5 px-3 text-center text-slate-600 dark:text-slate-300">
                     {{ qualitativeGradesByStudent?.[stu.id]?.[cs.id] || '-' }}
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div v-else class="report-table-wrap">
-            <table class="report-table report-table-compact">
+
+          <div v-else class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 report-table-wrap">
+            <table class="w-full text-left border-collapse report-table report-table-compact">
               <thead>
-                <tr>
-                  <th>Estudiante</th>
-                  <th v-for="cs in courseSubjects" :key="cs.id" class="text-right">
+                <tr class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  <th class="py-2.5 px-3">Estudiante</th>
+                  <th v-for="cs in courseSubjects" :key="cs.id" class="py-2.5 px-3 text-right">
                     {{ cs.subjects?.name }}
                   </th>
-                  <th class="text-right">Promedio Trimestre</th>
+                  <th class="py-2.5 px-3 text-right text-teal-700 dark:text-teal-400 bg-teal-50/50 dark:bg-teal-950/30">
+                    Promedio Trimestre
+                  </th>
                 </tr>
               </thead>
-              <tbody>
-                <tr v-for="stu in students" :key="stu.id">
-                  <td>{{ stu.full_name }}</td>
-                  <td v-for="cs in courseSubjects" :key="cs.id" class="text-right">
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                <tr v-for="stu in students" :key="stu.id" class="hover:bg-teal-50/30 dark:hover:bg-slate-800/50 transition-colors">
+                  <td class="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{{ stu.full_name }}</td>
+                  <td v-for="cs in courseSubjects" :key="cs.id" class="py-2.5 px-3 text-right tabular-nums text-slate-600 dark:text-slate-300">
                     {{
                       computeQuarterTotalsForStudent(selectedQuarter, stu.id)
                         .find(r => r.subjectId === cs.subject_id)?.total?.toFixed(2) || '-'
                     }}
                   </td>
-                  <td class="text-right strong">
+                  <td class="py-2.5 px-3 text-right font-bold tabular-nums text-teal-700 dark:text-teal-300 bg-teal-50/30 dark:bg-teal-950/20 strong">
                     {{ getStudentQuarterAverage(selectedQuarter, stu.id)?.toFixed(2) || '-' }}
                   </td>
                 </tr>
@@ -824,90 +984,130 @@ watch([selectedStudentId, reportMode], async () => {
         </section>
 
         <!-- ALERTAS WHATSAPP -->
-        <section class="report-section no-print">
-          <div class="report-section-head">
+        <section class="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/80 p-4 sm:p-5 shadow-sm report-section no-print">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 report-section-head">
             <div>
-              <p class="report-pill">Alertas</p>
-              <h3>Rendimiento Bajo (Promedio &lt; 7)</h3>
-              <p class="report-section-note">Envia un mensaje al representante con el detalle de notas.</p>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 report-pill">
+                  Alertas
+                </span>
+              </div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                Rendimiento Bajo (Promedio &lt; 7)
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 report-section-note">
+                Envía un mensaje al representante legal con el desglose de calificaciones.
+              </p>
             </div>
           </div>
-          <div v-if="isQualitativeCourse" class="report-empty">
+
+          <div v-if="isQualitativeCourse" class="py-4 text-center text-xs text-slate-500 dark:text-slate-400 report-empty">
             Este reporte no aplica para cursos cualitativos.
           </div>
-          <div v-else-if="underperformingStudents.length === 0" class="report-empty">
-            No hay estudiantes con promedio menor a 7 en este periodo.
+          <div v-else-if="underperformingStudents.length === 0" class="py-6 text-center text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2 report-empty">
+            <CheckCircle2 class="w-4 h-4 text-emerald-500" />
+            <span>No hay estudiantes con promedio menor a 7 en este período. ¡Excelente rendimiento!</span>
           </div>
-          <div v-else class="report-table-wrap">
-            <table class="report-table report-table-compact">
+          <div v-else class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 report-table-wrap">
+            <table class="w-full text-left border-collapse report-table report-table-compact">
               <thead>
-                <tr>
-                  <th>Estudiante</th>
-                  <th class="text-right">Promedio</th>
-                  <th>Representante</th>
-                  <th class="text-right">WhatsApp</th>
+                <tr class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  <th class="py-2.5 px-3">Estudiante</th>
+                  <th class="py-2.5 px-3 text-right">Promedio</th>
+                  <th class="py-2.5 px-3">Representante</th>
+                  <th class="py-2.5 px-3 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr v-for="row in underperformingStudents" :key="row.student.id">
-                  <td>{{ row.student.full_name }}</td>
-                  <td class="text-right strong">{{ formatScore(row.average) }}</td>
-                  <td>{{ row.student.representative_name || 'Sin representante' }}</td>
-                  <td class="text-right">
-                    <div class="report-inline-actions" style="justify-content:flex-end;">
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                <tr v-for="row in underperformingStudents" :key="row.student.id" class="hover:bg-amber-50/30 dark:hover:bg-slate-800/50 transition-colors">
+                  <td class="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{{ row.student.full_name }}</td>
+                  <td class="py-2.5 px-3 text-right font-bold tabular-nums text-rose-600 dark:text-rose-400 strong">
+                    {{ formatScore(row.average) }}
+                  </td>
+                  <td class="py-2.5 px-3 text-slate-600 dark:text-slate-400">
+                    {{ row.student.representative_name || 'Sin representante' }}
+                  </td>
+                  <td class="py-2.5 px-3 text-right">
+                    <div class="flex items-center justify-end gap-1.5 report-inline-actions">
+                      <button
+                        @click="openStudentRecovery(row)"
+                        type="button"
+                        class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Generar tarea individualizada o plan de recuperación con IA"
+                      >
+                        <Sparkles class="w-3.5 h-3.5" />
+                        <span>Recuperación IA</span>
+                      </button>
                       <button
                         @click="previewWhatsappMessage(row)"
-                        class="report-btn report-btn-ghost"
+                        type="button"
+                        class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold text-xs transition-colors cursor-pointer"
                       >
                         Previsualizar
                       </button>
                       <button
                         @click="sendWhatsappMessage(row)"
                         :disabled="!normalizeWhatsappPhone(row.student.representative_phone)"
-                        class="report-btn report-btn-whatsapp"
+                        type="button"
+                        class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Enviar WhatsApp
+                        <MessageCircle class="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
                       </button>
                     </div>
                   </td>
                 </tr>
               </tbody>
             </table>
-            <p class="report-hint mt-3">
-              Nota: el numero del representante debe incluir codigo de pais (ej. 593XXXXXXXXX).
+            <p class="p-3 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-800 report-hint">
+              Nota: el número de WhatsApp del representante debe incluir código de país (ej. 593XXXXXXXXX).
             </p>
           </div>
         </section>
 
         <!-- CONSISTENCIA DE NOTAS -->
-        <section class="report-section no-print">
-          <div class="report-section-head">
+        <section class="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/80 p-4 sm:p-5 shadow-sm report-section no-print">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 report-section-head">
             <div>
-              <p class="report-pill">Verificacion</p>
-              <h3>Consistencia de Notas</h3>
-              <p class="report-section-note">Estudiantes con asignaturas sin promedio en el periodo seleccionado.</p>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 report-pill">
+                  Verificación
+                </span>
+              </div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                Consistencia de Calificaciones
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 report-section-note">
+                Estudiantes con asignaturas sin promedio registrado en el período seleccionado.
+              </p>
             </div>
           </div>
-          <div v-if="isQualitativeCourse" class="report-empty">
+
+          <div v-if="isQualitativeCourse" class="py-4 text-center text-xs text-slate-500 dark:text-slate-400 report-empty">
             Este reporte no aplica para cursos cualitativos.
           </div>
-          <div v-else-if="studentsWithMissingGrades.length === 0" class="report-empty">
-            No hay inconsistencias de notas detectadas.
+          <div v-else-if="studentsWithMissingGrades.length === 0" class="py-6 text-center text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2 report-empty">
+            <CheckCircle2 class="w-4 h-4 text-emerald-500" />
+            <span>Todas las notas del período están completas y consistentes.</span>
           </div>
-          <div v-else class="report-table-wrap">
-            <table class="report-table report-table-compact">
+          <div v-else class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 report-table-wrap">
+            <table class="w-full text-left border-collapse report-table report-table-compact">
               <thead>
-                <tr>
-                  <th>Estudiante</th>
-                  <th class="text-right">Asignaturas sin promedio</th>
-                  <th>Detalle</th>
+                <tr class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  <th class="py-2.5 px-3">Estudiante</th>
+                  <th class="py-2.5 px-3 text-right">Asignaturas sin promedio</th>
+                  <th class="py-2.5 px-3">Detalle de materias pendientes</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr v-for="row in studentsWithMissingGrades" :key="row.student.id">
-                  <td>{{ row.student.full_name }}</td>
-                  <td class="text-right strong">{{ row.missingCount }}</td>
-                  <td>{{ row.subjectsMissing.join(', ') }}</td>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                <tr v-for="row in studentsWithMissingGrades" :key="row.student.id" class="hover:bg-blue-50/30 dark:hover:bg-slate-800/50 transition-colors">
+                  <td class="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{{ row.student.full_name }}</td>
+                  <td class="py-2.5 px-3 text-right font-bold tabular-nums text-amber-600 dark:text-amber-400 strong">
+                    {{ row.missingCount }}
+                  </td>
+                  <td class="py-2.5 px-3 text-slate-600 dark:text-slate-400">
+                    {{ row.subjectsMissing.join(', ') }}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -915,46 +1115,69 @@ watch([selectedStudentId, reportMode], async () => {
         </section>
 
         <!-- ACTA FINAL -->
-        <section class="report-section print-page" v-if="!isQualitativeCourse">
-          <div class="report-section-head">
+        <section class="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/80 p-4 sm:p-5 shadow-sm report-section print-page" v-if="!isQualitativeCourse">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 report-section-head">
             <div>
-              <p class="report-pill">Acta Final</p>
-              <h3>Acta Final</h3>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 report-pill">
+                  Acta Final
+                </span>
+              </div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                Acta Final y Calificación de Supletorio
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 report-section-note">
+                Registro anual consolidado con habilitación de examen supletorio (Normativa MINEDEC).
+              </p>
             </div>
-            <div class="report-inline-actions no-print">
-              <button @click="toggleSupplementaryEdit" class="report-btn report-btn-ghost">
+            <div class="flex items-center gap-2 no-print report-inline-actions">
+              <button
+                @click="toggleSupplementaryEdit"
+                type="button"
+                class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+              >
                 {{ supplementaryEditing ? 'Cancelar' : 'Editar Supletorio' }}
               </button>
-              <button @click="saveSupplementary" :disabled="supplementarySaving" class="report-btn report-btn-primary">
-                {{ supplementarySaving ? 'Guardando...' : 'Guardar Supletorio' }}
+              <button
+                @click="saveSupplementary"
+                :disabled="supplementarySaving"
+                type="button"
+                class="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <span>{{ supplementarySaving ? 'Guardando...' : 'Guardar Supletorio' }}</span>
               </button>
-              <span v-if="supplementaryMessage" class="report-hint">{{ supplementaryMessage }}</span>
+              <span v-if="supplementaryMessage" class="text-xs text-teal-600 dark:text-teal-400 font-medium report-hint">
+                {{ supplementaryMessage }}
+              </span>
             </div>
           </div>
-          <div class="report-table-wrap">
-            <table class="report-table report-table-compact">
+
+          <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 report-table-wrap">
+            <table class="w-full text-left border-collapse report-table report-table-compact">
               <thead>
-                <tr>
-                  <th>Estudiante</th>
-                  <th v-for="cs in courseSubjects" :key="cs.id" class="text-center">
+                <tr class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  <th class="py-2.5 px-3">Estudiante</th>
+                  <th v-for="cs in courseSubjects" :key="cs.id" class="py-2.5 px-3 text-center">
                     {{ cs.subjects?.name }}
                   </th>
                 </tr>
-                <tr>
-                  <th class="subhead"></th>
-                  <th v-for="cs in courseSubjects" :key="cs.id" class="subhead text-center">
+                <tr class="bg-slate-100/60 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-700 text-[10px] text-slate-500 dark:text-slate-400">
+                  <th class="py-1.5 px-3 subhead"></th>
+                  <th v-for="cs in courseSubjects" :key="cs.id" class="py-1.5 px-3 subhead text-center font-medium">
                     {{ orderedPeriodLabels.join(' | ') }} | P | S | PF | FA | OBS
                   </th>
                 </tr>
               </thead>
-              <tbody>
-                <tr v-for="row in actaFinalRows" :key="row.student.id">
-                  <td>{{ row.student.full_name }}</td>
-                  <td v-for="sub in row.subjects" :key="sub.subject" class="text-center">
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                <tr v-for="row in actaFinalRows" :key="row.student.id" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                  <td class="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{{ row.student.full_name }}</td>
+                  <td v-for="sub in row.subjects" :key="sub.subject" class="py-2.5 px-3 text-center tabular-nums text-slate-600 dark:text-slate-300">
                     <span v-for="(val, idx) in sub.periods" :key="idx">
-                      {{ val?.toFixed(2) || '-' }}<span v-if="idx < sub.periods.length - 1"> | </span>
+                      {{ val?.toFixed(2) || '-' }}<span v-if="idx < sub.periods.length - 1" class="text-slate-300 dark:text-slate-700"> | </span>
                     </span>
-                    | <span>{{ sub.p?.toFixed(2) || '-' }}</span> |
+                    <span class="text-slate-300 dark:text-slate-700"> | </span>
+                    <span class="font-semibold">{{ sub.p?.toFixed(2) || '-' }}</span>
+                    <span class="text-slate-300 dark:text-slate-700"> | </span>
                     <template v-if="supplementaryEditing">
                       <input
                         type="number"
@@ -964,15 +1187,18 @@ watch([selectedStudentId, reportMode], async () => {
                         :value="supplementaryScores?.[row.student.id]?.[sub.courseSubjectId] ?? ''"
                         @input="(e) => updateSupplementaryScore(row.student.id, sub.courseSubjectId, e.target.value)"
                         :disabled="!sub.allowSuplet"
-                        class="report-input-small"
+                        class="w-14 py-0.5 px-1 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-center text-xs font-semibold focus:ring-1 focus:ring-teal-500 focus:outline-none disabled:opacity-40 disabled:bg-slate-100 dark:disabled:bg-slate-900 report-input-small"
                       />
                     </template>
                     <template v-else>
-                      <span>{{ sub.s ?? '-' }}</span>
+                      <span class="font-semibold" :class="sub.s ? 'text-amber-600 dark:text-amber-400' : ''">{{ sub.s ?? '-' }}</span>
                     </template>
-                    | <span>{{ sub.pf?.toFixed(2) || '-' }}</span>
-                    | <span>{{ sub.finalAnnual?.toFixed(2) || '-' }}</span>
-                    | <span class="subtle">{{ sub.finalObs || '-' }}</span>
+                    <span class="text-slate-300 dark:text-slate-700"> | </span>
+                    <span class="font-bold text-teal-700 dark:text-teal-400">{{ sub.pf?.toFixed(2) || '-' }}</span>
+                    <span class="text-slate-300 dark:text-slate-700"> | </span>
+                    <span class="font-bold">{{ sub.finalAnnual?.toFixed(2) || '-' }}</span>
+                    <span class="text-slate-300 dark:text-slate-700"> | </span>
+                    <span class="text-[10px] uppercase font-semibold subtle text-slate-500 dark:text-slate-400">{{ sub.finalObs || '-' }}</span>
                   </td>
                 </tr>
               </tbody>
@@ -981,42 +1207,55 @@ watch([selectedStudentId, reportMode], async () => {
         </section>
 
         <!-- RESUMEN FINAL -->
-        <section class="report-section print-page" v-if="!isQualitativeCourse">
-          <div class="report-section-head">
+        <section class="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/80 p-4 sm:p-5 shadow-sm report-section print-page" v-if="!isQualitativeCourse">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 report-section-head">
             <div>
-              <p class="report-pill">Resumen Final</p>
-              <h3>Resumen Final</h3>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 report-pill">
+                  Resumen Final
+                </span>
+              </div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                Resumen Final y Promoción Anual
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 report-section-note">
+                Consolidado final de promedios anuales y estado de promoción escolar.
+              </p>
             </div>
           </div>
-          <div class="report-table-wrap">
-            <table class="report-table report-table-compact">
+
+          <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 report-table-wrap">
+            <table class="w-full text-left border-collapse report-table report-table-compact">
               <thead>
-                <tr>
-                  <th>Estudiante</th>
-                  <th v-for="cs in courseSubjects" :key="cs.id" class="text-right">
+                <tr class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  <th class="py-2.5 px-3">Estudiante</th>
+                  <th v-for="cs in courseSubjects" :key="cs.id" class="py-2.5 px-3 text-right">
                     {{ cs.subjects?.name }}
                   </th>
-                  <th class="text-right">Promedio Anual (PF)</th>
-                  <th class="text-right">Final Anual (Cap 7)</th>
-                  <th>Observacion</th>
+                  <th class="py-2.5 px-3 text-right">Promedio Anual (PF)</th>
+                  <th class="py-2.5 px-3 text-right text-teal-700 dark:text-teal-400 bg-teal-50/50 dark:bg-teal-950/30">Final Anual (Cap 7)</th>
+                  <th class="py-2.5 px-3">Observación / Estado</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr v-for="row in resumenFinalRows" :key="row.student.id">
-                  <td>{{ row.student.full_name }}</td>
-                  <td v-for="sub in row.subjectFinals" :key="sub.subject" class="text-right">
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                <tr v-for="row in resumenFinalRows" :key="row.student.id" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                  <td class="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{{ row.student.full_name }}</td>
+                  <td v-for="sub in row.subjectFinals" :key="sub.subject" class="py-2.5 px-3 text-right tabular-nums text-slate-600 dark:text-slate-300">
                     {{ sub.pf?.toFixed(2) || '-' }}
                   </td>
-                  <td class="text-right strong">
+                  <td class="py-2.5 px-3 text-right font-bold tabular-nums text-slate-800 dark:text-slate-200 strong">
                     {{ row.promedioAnual?.toFixed(2) || '-' }}
                   </td>
-                  <td class="text-right">
+                  <td class="py-2.5 px-3 text-right font-bold tabular-nums text-teal-700 dark:text-teal-300 bg-teal-50/30 dark:bg-teal-950/20">
                     {{ row.promedioFinalAnnual?.toFixed(2) || '-' }}
                   </td>
-                  <td>
-                    {{
-                      (row.promedioAnual !== null && row.promedioAnual >= 7) ? 'PROMOVIDO' : (row.promedioAnual !== null ? 'NO PROMOVIDO' : '-')
-                    }}
+                  <td class="py-2.5 px-3 font-semibold">
+                    <span
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold"
+                      :class="row.promocionEstado === 'PROMOVIDO' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300'"
+                    >
+                      {{ row.promocionEstado || '-' }}
+                    </span>
                   </td>
                 </tr>
               </tbody>
@@ -1024,706 +1263,384 @@ watch([selectedStudentId, reportMode], async () => {
           </div>
         </section>
 
-        <!-- Firmas -->
-        <section class="report-section print-page">
+        <!-- FIRMAS -->
+        <section class="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/80 p-6 shadow-sm report-section print-page">
           <div class="report-signatures">
-            <div class="signature-date">
-              <span class="report-meta-label">Fecha de Emisión:</span>
-              <span class="report-meta-value">{{ new Date().toLocaleDateString('es-EC') }}</span>
+            <div class="signature-date mb-8">
+              <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider report-meta-label">Fecha de Emisión: </span>
+              <span class="text-xs font-bold text-slate-800 dark:text-slate-200 report-meta-value">{{ new Date().toLocaleDateString('es-EC') }}</span>
             </div>
-            <div class="signature-grid">
-              <div class="report-signature-line">
-                <span class="signature-name">{{ institutionTutorName || 'Tutor' }}</span>
-                <span class="signature-role">DOCENTE TUTOR</span>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 signature-grid">
+              <div class="border-t border-slate-300 dark:border-slate-700 pt-3 text-center report-signature-line">
+                <span class="text-xs font-bold text-slate-800 dark:text-slate-200 block uppercase signature-name">{{ institutionTutorName || 'Docente Tutor' }}</span>
+                <span class="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5 uppercase tracking-wider signature-role">Docente Tutor</span>
               </div>
-              <div class="report-signature-line">
-                <span class="signature-name">{{ institutionRectorName || 'Rector/a' }}</span>
-                <span class="signature-role">RECTOR/A</span>
+              <div class="border-t border-slate-300 dark:border-slate-700 pt-3 text-center report-signature-line">
+                <span class="text-xs font-bold text-slate-800 dark:text-slate-200 block uppercase signature-name">{{ institutionRectorName || 'Rector/a' }}</span>
+                <span class="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5 uppercase tracking-wider signature-role">Rector/a</span>
               </div>
-              <div class="report-signature-line">
-                <span class="signature-name">Secretario/a</span>
-                <span class="signature-role">SECRETARIO/A</span>
+              <div class="border-t border-slate-300 dark:border-slate-700 pt-3 text-center report-signature-line">
+                <span class="text-xs font-bold text-slate-800 dark:text-slate-200 block uppercase signature-name">Secretario/a</span>
+                <span class="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5 uppercase tracking-wider signature-role">Secretario/a</span>
               </div>
             </div>
-            <div class="report-legal-note">
-              <strong>Nota Legal:</strong> El presente documento tiene un fin estrictamente informativo para comunicar los resultados académicos obtenidos por el estudiante. Las calificaciones aquí reflejadas podrían presentar variaciones mínimas respecto al sistema oficial. La validez legal y definitiva de las notas está sujeta a la información registrada y emitida por la plataforma educativa del Ministerio de Educación (MINEDUC).
+            <div class="mt-8 pt-4 border-t border-dashed border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 text-justify leading-relaxed report-legal-note">
+              <strong>Nota Legal:</strong> El presente documento tiene un fin estrictamente informativo para comunicar los resultados académicos obtenidos por el estudiante. Las calificaciones aquí reflejadas podrían presentar variaciones mínimas respecto al sistema oficial. La validez legal y definitiva de las notas está sujeta a la información registrada y emitida por la plataforma educativa del Ministerio de Educación (MINEDEC).
             </div>
           </div>
         </section>
       </div>
 
-      <div ref="reportsRef" v-else-if="selectedCourse && reportMode === 'INDIVIDUAL'" class="report-stack">
-        <!-- CABECERA PARA PDF (OCULTA EN PANTALLA, VISIBLE AL EXPORTAR) -->
-        <div v-if="isExportingPdf" class="pdf-export-header">
-          <div class="pdf-header-content">
-            <div class="pdf-logo-placeholder">
-              <img v-if="institutionLogoUrl" :src="institutionLogoUrl" alt="Logo" class="pdf-logo" />
-              <div v-else class="pdf-logo-fallback">Logo</div>
-            </div>
-            <div class="pdf-header-text">
-              <h1 class="pdf-institution">{{ institutionName || 'Unidad Educativa' }}</h1>
-              <h2 class="pdf-title">Reporte Individual de Calificaciones</h2>
-              <p class="pdf-subtitle">
-                Periodo: {{ getQuarterName(selectedQuarter) }} | Curso: {{ courses.find(c => c.id === selectedCourse)?.name || '-' }} | Estudiante: {{ students.find(s => s.id === selectedStudentId)?.full_name || '-' }}
-              </p>
-              <p class="pdf-date">Generado el: {{ new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) }}</p>
-            </div>
-          </div>
-          <hr class="pdf-divider" />
+      <!-- MODO INDIVIDUAL -->
+      <div ref="reportsRef" v-else-if="selectedCourse && reportMode === 'INDIVIDUAL'">
+        <IndividualReportSheet
+          :institution-logo-url="institutionLogoUrl"
+          :institution-name="institutionName"
+          :institution-tutor-name="institutionTutorName"
+          :institution-rector-name="institutionRectorName"
+          :quarter-name="getQuarterName(selectedQuarter)"
+          :course-name="courses.find(c => c.id === selectedCourse)?.name || '-'"
+          :student-name="students.find(s => s.id === selectedStudentId)?.full_name || ''"
+          :has-students="students.length > 0"
+          :has-selected-student="!!selectedStudentId"
+          :individual-loading="individualLoading"
+          :individual-error="individualError"
+          :is-qualitative-course="isQualitativeCourse"
+          :individual-subjects="individualSubjects"
+          :individual-project-average="individualProjectAverage"
+          :individual-average="individualAverage"
+        />
+      </div>
+
+      <!-- Empty States -->
+      <div
+        v-else-if="selectedCourse"
+        class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-8 text-center shadow-sm text-slate-500 dark:text-slate-400 text-sm report-empty"
+      >
+        No hay estudiantes registrados en este curso.
+      </div>
+      <div
+        v-else
+        class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-12 text-center shadow-sm text-slate-500 dark:text-slate-400 text-sm report-empty"
+      >
+        <div class="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 mx-auto flex items-center justify-center mb-3">
+          <FileText class="w-6 h-6" />
         </div>
-
-        <section class="report-section print-page">
-          <div v-if="students.length === 0" class="report-empty">No hay estudiantes en el curso.</div>
-          <div v-else>
-            <div class="report-section-head">
-              <div>
-                <p class="report-pill">Reporte Individual</p>
-                <h3>{{ students.find(s => s.id === selectedStudentId)?.full_name || 'Seleccione un estudiante' }}</h3>
-                <p class="report-section-note">
-                  Curso: {{ courses.find(c => c.id === selectedCourse)?.name || '-' }} ·
-                  {{ getQuarterName(selectedQuarter) }}
-                </p>
-              </div>
-            </div>
-
-            <div v-if="!selectedStudentId" class="report-empty">
-              Selecciona un estudiante para ver su reporte.
-            </div>
-            <div v-else-if="individualLoading" class="report-loading">Cargando reporte individual...</div>
-            <div v-else-if="individualError" class="report-alert report-alert-error">{{ individualError }}</div>
-            <div v-else class="report-table-wrap">
-              <div v-if="isQualitativeCourse" class="report-legend">
-                Escala cualitativa: A+/A- (alcanzado), B+/B-/C+/C- (en proceso), D+/D-/E+/E- (iniciado).
-              </div>
-              <table class="report-table report-table-compact">
-                <thead>
-                  <tr>
-                    <th>Asignatura</th>
-                    <th class="text-right" v-if="!isQualitativeCourse">Promedio</th>
-                    <th class="text-center" v-else>Calificacion</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in individualSubjects" :key="row.subject">
-                    <td>{{ row.subject }}</td>
-                    <td v-if="!isQualitativeCourse" class="text-right">{{ row.total?.toFixed(2) || '-' }}</td>
-                    <td v-else class="text-center">{{ row.qualitative || '-' }}</td>
-                  </tr>
-                  <tr v-if="!isQualitativeCourse && individualProjectAverage !== null && individualProjectAverage !== undefined">
-                    <td>Proyecto Interdisciplinario</td>
-                    <td class="text-right">{{ individualProjectAverage?.toFixed(2) || '-' }}</td>
-                  </tr>
-                </tbody>
-                <tfoot v-if="!isQualitativeCourse">
-                  <tr class="bg-gray-50">
-                    <td class="strong">Promedio General del Trimestre</td>
-                    <td class="text-right strong">{{ individualAverage !== null ? individualAverage.toFixed(2) : '-' }}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- Firmas -->
-        <section class="report-section print-page">
-          <div class="report-signatures">
-            <div class="signature-date">
-              <span class="report-meta-label">Fecha de Emisión:</span>
-              <span class="report-meta-value">{{ new Date().toLocaleDateString('es-EC') }}</span>
-            </div>
-            <div class="signature-grid">
-              <div class="report-signature-line">
-                <span class="signature-name">{{ institutionTutorName || 'Tutor' }}</span>
-                <span class="signature-role">DOCENTE TUTOR</span>
-              </div>
-              <div class="report-signature-line">
-                <span class="signature-name">{{ institutionRectorName || 'Rector/a' }}</span>
-                <span class="signature-role">RECTOR/A</span>
-              </div>
-              <div class="report-signature-line">
-                <span class="signature-name">Secretario/a</span>
-                <span class="signature-role">SECRETARIO/A</span>
-              </div>
-            </div>
-            <div class="report-legal-note">
-              <strong>Nota Legal:</strong> El presente documento tiene un fin estrictamente informativo para comunicar los resultados académicos obtenidos por el estudiante. Las calificaciones aquí reflejadas podrían presentar variaciones mínimas respecto al sistema oficial. La validez legal y definitiva de las notas está sujeta a la información registrada y emitida por la plataforma educativa del Ministerio de Educación (MINEDUC).
-            </div>
-          </div>
-        </section>
+        <p class="font-semibold text-slate-700 dark:text-slate-300">Selecciona un curso y período académico</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Elige los filtros superiores para visualizar la sábana o generar boletines individuales.</p>
       </div>
-
-      <div v-else-if="selectedCourse" class="report-empty">No hay estudiantes en el curso.</div>
-      <div v-else class="report-empty">Selecciona un curso para ver reportes.</div>
     </main>
 
     <!-- WhatsApp Preview Modal -->
-    <div v-if="showWhatsappPreview" class="modal-container" role="dialog" aria-modal="true">
-        <div class="modal-backdrop" @click="showWhatsappPreview = false"></div>
-        <div class="modal-panel sm:max-w-2xl w-full">
-          <div class="modal-body">
-            <h3 class="text-lg leading-6 font-semibold text-slate-900">Mensaje para {{ whatsappPreviewStudent }}</h3>
-            <textarea
-              class="app-input mt-4 w-full h-64 font-mono text-xs"
-              readonly
-              :value="whatsappPreviewText"
-            ></textarea>
-          </div>
-          <div class="modal-footer">
-            <button @click="copyWhatsappMessage" class="app-btn app-btn-primary w-full sm:w-auto">Copiar</button>
-            <button @click="showWhatsappPreview = false" class="app-btn app-btn-ghost w-full sm:w-auto mt-3 sm:mt-0">Cerrar</button>
-          </div>
+    <div v-if="showWhatsappPreview" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm modal-container" role="dialog" aria-modal="true">
+      <div class="fixed inset-0 modal-backdrop" @click="showWhatsappPreview = false"></div>
+      <div class="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden p-6 z-10 modal-panel">
+        <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+          Mensaje de WhatsApp para {{ whatsappPreviewStudent }}
+        </h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-4">
+          Previsualización del texto a enviar al representante legal.
+        </p>
+        <textarea
+          class="w-full h-64 p-3 font-mono text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/20 resize-none app-input"
+          readonly
+          :value="whatsappPreviewText"
+        ></textarea>
+        <div class="flex items-center justify-end gap-2.5 mt-5 modal-footer">
+          <button
+            @click="copyWhatsappMessage"
+            type="button"
+            class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-sm transition-colors cursor-pointer app-btn app-btn-primary"
+          >
+            Copiar Mensaje
+          </button>
+          <button
+            @click="showWhatsappPreview = false"
+            type="button"
+            class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold text-xs transition-colors cursor-pointer app-btn app-btn-ghost"
+          >
+            Cerrar
+          </button>
         </div>
+      </div>
     </div>
+
+    <!-- Modal de Recuperación Pedagógica con IA -->
+    <StudentRecoveryModal
+      v-if="showRecoveryModal && selectedStudentForRecovery"
+      :student="{ ...selectedStudentForRecovery, course_id: selectedCourse }"
+      subject-name="Rendimiento General"
+      :score="selectedScoreForRecovery"
+      :course-name="courses.find(c => c.id === selectedCourse)?.name || ''"
+      :on-close="() => { showRecoveryModal = false }"
+    />
   </div>
 </template>
 
 <style scoped>
-:global(.report-shell) {
-  --paper: #f6f1ea;
-  --paper-strong: #fdfaf6;
-  --ink: #1f2937;
-  --muted: #6b7280;
-  --line: #e6e0d8;
-  --accent: #0f766e;
-  --accent-ink: #0b4d47;
-  --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
-  background: radial-gradient(circle at top, #f9f6f1 0%, #efe7dc 60%, #e8e0d6 100%);
-  color: var(--ink);
-}
-
-.report-page {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 28px 20px 64px;
-  font-family: 'Source Sans 3', sans-serif;
-}
-
-.report-hero {
-  background: var(--paper-strong);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 22px 24px;
-  box-shadow: var(--shadow);
-}
-
-.report-hero-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.report-brand {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.report-logo {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  border: 1px solid var(--line);
-  background: #fff;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.report-logo img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  padding: 8px;
-}
-
-.report-kicker {
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 11px;
-  color: var(--accent-ink);
-  margin: 0;
-}
-
-.report-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 26px;
-  margin: 4px 0;
-}
-
-.report-subtitle {
-  color: var(--muted);
-  margin: 0;
-}
-
-.report-meta {
-  display: grid;
-  gap: 10px;
-  min-width: 180px;
-  text-align: right;
-}
-
-.report-meta-label {
-  display: block;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 10px;
-  color: var(--muted);
-}
-
-.report-meta-value {
-  font-weight: 600;
-}
-
-.report-card {
-  margin-top: 18px;
-  background: var(--paper-strong);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 18px 20px;
-  box-shadow: var(--shadow);
-}
-
-.report-controls {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
-  align-items: end;
-}
-
-.report-label {
-  display: block;
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.report-select {
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px 12px;
-  background: #fff;
-  color: var(--ink);
-}
-
-.report-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.report-btn {
-  border-radius: 12px;
-  padding: 10px 16px;
-  font-weight: 600;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: 'Source Sans 3', sans-serif;
-}
-
-.report-btn-primary {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-
-.report-btn-primary:hover {
-  filter: brightness(0.95);
-}
-
-.report-btn-ghost {
-  background: #fff;
-  color: var(--ink);
-  border-color: var(--line);
-}
-
-.report-btn-ghost:hover {
-  border-color: var(--accent);
-  color: var(--accent-ink);
-}
-
-.report-btn-whatsapp {
-  background: #16a34a;
-  color: #fff;
-  border-color: #16a34a;
-}
-
-.report-btn-whatsapp:hover {
-  filter: brightness(0.95);
-}
-
-.report-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.report-alert {
-  margin: 16px 0;
-  padding: 12px 14px;
-  border-radius: 12px;
-  font-weight: 600;
-}
-
-.report-alert-error {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.report-alert-warn {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.report-loading {
-  color: var(--muted);
-  margin-top: 12px;
-}
-
-.report-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 26px;
-  margin-top: 22px;
-}
-
-.report-section {
-  background: var(--paper-strong);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 18px 20px;
-  box-shadow: var(--shadow);
-}
-
-.report-section-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
-}
-
-.report-section h3 {
-  font-size: 18px;
-  margin: 6px 0 0;
-}
-
-.report-section-note {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.report-pill {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #e0f2f1;
-  color: var(--accent-ink);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 700;
-}
-
-.report-empty {
-  color: var(--muted);
-  padding: 12px 0;
-}
-
-.report-table-wrap {
-  overflow-x: auto;
-}
-
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.report-table thead {
-  background: #f0ebe3;
-}
-
-.report-table th,
-.report-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-  vertical-align: middle;
-}
-
-.report-table tbody tr:nth-child(even) {
-  background: #fbf8f3;
-}
-
-.report-table-compact th,
-.report-table-compact td {
-  padding: 8px 10px;
-  font-size: 12px;
-}
-
-.report-table .subhead {
-  font-size: 11px;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.report-table .strong {
-  font-weight: 700;
-}
-
-.report-table .subtle {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.report-inline-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.report-legend {
-  font-size: 11px;
-  color: var(--muted);
-  margin-bottom: 8px;
-}
-
-.report-hint {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.report-input-small {
-  width: 52px;
-  padding: 2px 6px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: #fff;
-  color: var(--ink);
-  font-size: 11px;
-  text-align: center;
-  margin: 0 4px;
-}
-
-.report-signatures {
-  margin-top: 50px;
-  page-break-inside: avoid;
-  break-inside: avoid;
-}
-
-.signature-date {
-  margin-bottom: 40px;
-  text-align: left;
-}
-
-.signature-grid {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.report-signature-line {
-  flex: 1;
-  border-top: 1px solid #1e293b;
-  padding-top: 8px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-}
-
-.signature-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: #0f172a;
-  text-transform: uppercase;
-}
-
-.signature-role {
-  font-size: 11px;
-  color: #64748b;
-  margin-top: 2px;
-}
-
-.report-legal-note {
-  margin-top: 40px;
-  font-size: 10.5px;
-  color: #64748b;
-  text-align: justify;
-  line-height: 1.4;
-  border-top: 1px dashed #cbd5e1;
-  padding-top: 12px;
-}
-
-/* ============================================
-   PDF EXPORT HEADER
-   ============================================ */
-.pdf-export-header {
-  margin-bottom: 24px;
-  color: #0f172a;
-  background: white;
-  padding: 10px 0;
-}
-
-.pdf-header-content {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.pdf-logo-placeholder {
-  width: 80px;
-  height: 80px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #f1f5f9;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 1px solid #e2e8f0;
-}
-
-.pdf-logo {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  padding: 4px;
-}
-
-.pdf-logo-fallback {
-  color: #94a3b8;
-  font-size: 14px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.pdf-header-text {
-  flex: 1;
-}
-
-.pdf-institution {
-  font-size: 24px;
-  font-weight: 800;
-  margin: 0 0 4px;
-  color: #0f172a;
-  text-transform: uppercase;
-  letter-spacing: -0.5px;
-}
-
-.pdf-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #0f766e;
-  margin: 0 0 4px;
-}
-
-.pdf-subtitle, .pdf-date {
-  font-size: 13px;
-  color: #475569;
-  margin: 0 0 2px;
-}
-
-.pdf-divider {
-  margin-top: 16px;
-  border: none;
-  border-top: 3px solid #0f766e;
-  border-bottom: 1px solid #e2e8f0;
-  height: 5px;
-  background: transparent;
+/* Estilos utilitarios y transiciones */
+select:focus,
+input:focus {
+  outline: none;
+}
+</style>
+
+<!-- =============================================
+     PRINT STYLES — NON-SCOPED so they can reach
+     parent containers (sidebar, header, main, body)
+     ============================================= -->
+<style>
+/* Hide the report-header on screen; show only when printing */
+.report-header.screen-hidden {
+  display: none !important;
 }
 
 @media print {
+  /* ── Reset the entire page ── */
+  @page {
+    size: A4;
+    margin: 12mm 10mm 14mm 10mm;
+  }
+
+  html, body {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    min-height: 0 !important;
+  }
+
+  * {
+    box-sizing: border-box;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* ── Kill the app shell (sidebar, top header, wrappers) ── */
+  aside,
   nav,
+  header,
+  .content-layout-wrapper > header,
   button,
   select,
-  .no-print {
+  label,
+  .no-print,
+  .report-hero,
+  .report-card,
+  .report-controls,
+  .report-actions,
+  .report-inline-actions,
+  .modal-container,
+  .modal-backdrop {
     display: none !important;
   }
 
-  body,
-  html {
-    background: white !important;
-  }
-
-  table {
-    font-size: 10px;
-    border-collapse: collapse !important;
-  }
-
-  th,
-  td {
-    border: 1px solid #d1d5db !important;
-    padding: 4px !important;
-  }
-
-  .print-page {
-    page-break-after: auto !important;
-    break-after: auto !important;
-  }
-
-  .print-page:last-of-type {
-    page-break-after: auto;
-    break-after: auto;
-  }
-
+  /* ── Unwrap ALL layout containers ── */
+  .content-layout-wrapper,
+  .flex.min-h-screen,
+  main,
   .report-shell,
-  .report-section,
-  .report-hero,
-  .report-card {
+  .report-page,
+  .report-stack {
+    display: block !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
     box-shadow: none !important;
-    background: white !important;
-    border-color: #e5e7eb !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    position: static !important;
   }
 
-  .report-title,
-  .report-section h3 {
-    color: #111827 !important;
+  /* ── Show the print-only header ── */
+  .report-header.screen-hidden {
+    display: flex !important;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 10px 0;
+    padding-bottom: 8px;
+    border-bottom: 2.5px solid #0f766e;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .report-header .report-logo,
+  .report-header img {
+    width: 55px !important;
+    height: 55px !important;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    padding: 3px;
+  }
+
+  .report-header-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ── Sections: flat document style, no cards ── */
+  .report-section {
+    margin-top: 14px !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .report-section-head {
+    break-after: avoid;
+    page-break-after: avoid;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 6px !important;
   }
 
   .report-pill {
-    background: #e5f4f2 !important;
-    color: #0f766e !important;
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    border: 1px solid #94a3b8 !important;
+    font-size: 8px !important;
+    padding: 1px 6px !important;
+    border-radius: 3px !important;
+    font-weight: 700 !important;
+    display: inline-block;
+    margin-bottom: 3px !important;
   }
 
-  .report-section {
-    padding: 10px 12px !important;
+  .report-section h3 {
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    margin: 2px 0 4px !important;
   }
 
-  .report-hero,
-  .report-card {
-    padding: 10px 12px !important;
+  .report-section-note {
+    font-size: 9px !important;
+    color: #64748b !important;
   }
 
-  .report-stack {
-    gap: 10px !important;
+  /* ── Tables: tight, bordered, professional ── */
+  table,
+  .report-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: auto !important;
+    margin-top: 4px !important;
+    font-size: 8.5px !important;
+    line-height: 1.3;
+  }
+
+  .report-table th,
+  .report-table td {
+    border: 1px solid #94a3b8 !important;
+    padding: 4px 5px !important;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    color: #0f172a !important;
+  }
+
+  .report-table th {
+    background: #e2e8f0 !important;
+    font-weight: 700 !important;
+    text-align: left;
+    font-size: 8px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .report-table tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    background-color: transparent !important;
+  }
+
+  .report-table tbody tr:nth-child(even) {
+    background: #f8fafc !important;
+  }
+
+  .report-table thead {
+    display: table-header-group !important;
+    background-color: transparent !important;
+  }
+
+  .report-table tfoot {
+    display: table-footer-group !important;
+  }
+
+  .report-table .subhead {
+    font-size: 7px !important;
+    color: #475569 !important;
+  }
+
+  .report-table-wrap {
+    overflow: visible !important;
+  }
+
+  /* ── Signatures ── */
+  .report-signatures {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-top: 30px !important;
+  }
+
+  .signature-grid {
+    gap: 28px !important;
+  }
+
+  .report-signature-line {
+    border-top: 1.5px solid #1e293b !important;
+    padding-top: 6px !important;
+    text-align: center !important;
+  }
+
+  .signature-name {
+    display: block !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+  }
+
+  .signature-role {
+    display: block !important;
+    font-size: 8px !important;
+  }
+
+  .report-legal-note {
+    margin-top: 24px !important;
+    font-size: 8px !important;
+    color: #64748b !important;
+  }
+
+  /* ── Misc ── */
+  .report-title {
+    font-size: 14px !important;
+    color: #0f172a !important;
+  }
+
+  .report-legend {
+    font-size: 8px !important;
+  }
+
+  .report-empty {
+    font-size: 10px !important;
   }
 
   .report-table-compact th,
   .report-table-compact td {
-    padding: 4px 6px !important;
-    font-size: 10px !important;
-  }
-}
-
-@media (max-width: 900px) {
-  .report-controls {
-    grid-template-columns: 1fr;
-  }
-
-  .report-meta {
-    text-align: left;
-    width: 100%;
+    padding: 3px 4px !important;
+    font-size: 8px !important;
   }
 }
 </style>

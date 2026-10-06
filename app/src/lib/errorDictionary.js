@@ -17,7 +17,10 @@ export function translateError(error) {
         { match: 'user not found', reply: 'Usuario no encontrado.' },
         { match: 'password should be at least', reply: 'La contraseña debe tener al menos 6 caracteres.' },
         { match: 'email rate limit exceeded', reply: 'Demasiados intentos. Por favor, espera unos minutos e inténtalo de nuevo.' },
-        { match: 'duplicate key value violates unique constraint', reply: 'Ya existe un registro con estos datos únicos (ej. identificación o correo).' },
+        { match: 'duplicate_course_name', reply: 'Ya existe un curso con este nombre en este año lectivo. Por favor, utiliza un nombre diferente.' },
+        { match: 'idx_courses_unique', reply: 'Ya existe un curso con ese nombre en este año lectivo. Por favor, utiliza un nombre diferente.' },
+        { match: 'curso con el nombre', reply: 'Ya existe un curso con este nombre en el año lectivo seleccionado.' },
+        { match: 'duplicate key value violates unique constraint', reply: 'Ya existe un registro con estos datos únicos (ej. nombre repetido, identificación o correo).' },
         { match: 'network error', reply: 'Error de red. Verifica tu conexión a internet.' },
         {
             match: 'failed to fetch',
@@ -27,6 +30,7 @@ export function translateError(error) {
         { match: 'jwt expired', reply: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.' },
         { match: 'authentication failed', reply: 'Fallo de autenticación. Verifica tus credenciales.' },
         { match: 'could not find the table', reply: 'Falta ejecutar migraciones o tablas en la base de datos.' },
+        { match: 'permission denied for function', reply: 'Error de permisos en función de base de datos. Ejecuta la migración de sincronización de permisos.' },
         { match: 'email not verified', reply: 'Debes verificar tu correo antes de iniciar sesión.' }
     ];
 
@@ -38,4 +42,15 @@ export function translateError(error) {
 
     // Fallback to original message if not found, but we could also return a generic error.
     return msg;
+}
+
+export const EMAIL_ALREADY_REGISTERED_MESSAGE = 'Este correo ya está registrado en otra institución. Ingresa un correo electrónico diferente.'
+
+/** Unifica los avisos de correo duplicado que devuelven las funciones de usuarios. */
+export function normalizeUserEmailConflict(message) {
+    const text = String(message || '')
+    if (/correo[^.]*(ya pertenece|ya se encuentra registrado|ya est[aá] registrado)|already (been )?registered/i.test(text)) {
+        return EMAIL_ALREADY_REGISTERED_MESSAGE
+    }
+    return text
 }

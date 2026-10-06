@@ -89,3 +89,38 @@ export function calculateStudentAverages(studentGrades, gradeDefinitions, projec
         total
     };
 }
+
+/**
+ * Parsea un texto copiado desde Excel/Google Sheets (con tabulaciones o punto y coma y saltos de línea)
+ * a una matriz 2D de números válidos de 0 a 10 (o null si la celda está vacía).
+ * 
+ * @param {string} rawText Texto con columnas separadas por \t o ; y filas por \n
+ * @returns {Array<Array<number|null>>} Matriz 2D de calificaciones
+ */
+export function parseExcelGradesGrid(rawText) {
+    if (!rawText || typeof rawText !== 'string') return [];
+    
+    const lines = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    const result = [];
+
+    for (const line of lines) {
+        if (!line.trim()) continue;
+        const separator = line.includes('\t') ? '\t' : (line.includes(';') ? ';' : (line.includes(',') && !line.match(/\d,\d/) ? ',' : '\t'));
+        const rawTokens = line.split(separator);
+
+        const row = rawTokens.map(tok => {
+            const cleaned = tok.trim().replace(',', '.');
+            if (cleaned === '' || cleaned === '-') return null;
+            const val = parseFloat(cleaned);
+            if (isNaN(val)) return null;
+            return Math.max(0, Math.min(10, Math.round(val * 100) / 100));
+        });
+
+        if (row.length > 0) {
+            result.push(row);
+        }
+    }
+
+    return result;
+}
+
