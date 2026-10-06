@@ -3,7 +3,7 @@ registro de correcciones. Hoy solo se usa para Adaptaciones curriculares de jóv
 cuenta con su PDF; Inicial, Preparatoria, Elemental y Media se extraen del PDF oficial (extract_inicial.py y
 extract_priorizado_egb.py), que es la fuente preferida.
 
-Uso: python3 normalize_priorizados.py <carpeta_json_origen> <carpeta_salida> [id ...]   (por defecto: adaptaciones_jovenes_adultos)
+Uso: python3 normalize_priorizados.py <carpeta_json_origen> <carpeta_salida> [id ...]   (por defecto: adaptaciones_jovenes_adultos, superior, bachillerato)
 Salida: src/data/curriculos/<id>.json
 
 Los JSON de origen fueron generados por un extractor externo y traen errores sistemáticos. Este script:
@@ -24,6 +24,8 @@ SOURCES = {
     'elemental': 'Curriculo-Priorizado-Elemental.json',
     'media': 'Curriculo-Priorizado-EGB-Media.json',
     'adaptaciones_jovenes_adultos': 'Adaptaciones__curriculares__EGB_BS_BG_jovenes_adultos__y__adultos__mayores.json',
+    'superior': 'Curriculo-Priorizado-Superior.json',
+    'bachillerato': 'Curriculo_Bachillerato.json',
 }
 TITULOS = {
     'inicial': 'Currículo Priorizado de Educación Inicial (Inicial 2, 3-5 años)',
@@ -31,6 +33,8 @@ TITULOS = {
     'elemental': 'Currículo Priorizado de EGB Elemental (2.º a 4.º)',
     'media': 'Currículo Priorizado de EGB Media (5.º a 7.º)',
     'adaptaciones_jovenes_adultos': 'Adaptaciones curriculares EGB y BGU para personas jóvenes, adultas y adultas mayores',
+    'superior': 'Currículo Priorizado de EGB Superior (8.º a 10.º)',
+    'bachillerato': 'Currículo Priorizado de Bachillerato General Unificado (1.º a 3.º BGU)',
 }
 SUBNIVELES = {'1': 'Preparatoria', '2': 'Básica Elemental', '3': 'Básica Media', '4': 'Básica Superior', '5': 'Bachillerato'}
 COMPETENCIAS = {'COM': 'comunicacionales', 'MAT': 'matematicas', 'DIG': 'digitales', 'SOC': 'socioemocionales'}
@@ -173,6 +177,21 @@ def normalize_coded(data, cid):
                                               'competencias': comp, 'inserciones': ins or ['civica_etica_integridad']})
                 target['avisos'].append(f'{len(cai)} destrezas de Cívica (CAI) estaban dentro de "{area["area"]}"; se movieron a su propia asignatura.')
 
+    # Prefijos con errata respecto del prefijo de la asignatura (RCS.H -> CS.H, ECS.F/S.F -> CS.F, CA -> ECA, E.G -> EG).
+    for asig in asignaturas.values():
+        main = dominant_prefix([d['codigo'] for c in asig['criterios'] for d in c['destrezas']])
+        if not main or main == 'CAI':
+            continue
+        for crit in asig['criterios']:
+            for d in crit['destrezas']:
+                q = SKILL_RX.match(d['codigo']).group(1) if SKILL_RX.match(d['codigo']) else None
+                if not q or q == main:
+                    continue
+                if main.endswith(q) or q.endswith(main) or q.replace('.', '') == main.replace('.', ''):
+                    fixed = main + d['codigo'][len(q):]
+                    asig['avisos'].append(f'Código "{d["codigo"]}" corregido a "{fixed}" (prefijo con error en el archivo).')
+                    d['codigo'] = fixed
+
     # Destrezas repetidas en varios bloques: se conserva la primera aparición.
     for asig in asignaturas.values():
         seen = set()
@@ -250,7 +269,7 @@ def normalize_inicial(data):
 def main(src_dir, out_dir, ids=None):
     src_dir, out_dir = Path(src_dir), Path(out_dir)
     for cid, filename in SOURCES.items():
-        if cid not in (ids or ['adaptaciones_jovenes_adultos']):
+        if cid not in (ids or ['adaptaciones_jovenes_adultos', 'superior', 'bachillerato']):
             continue
         path = next(src_dir.glob(f'*{filename}'))
         data = json.loads(path.read_text(encoding='utf-8'))

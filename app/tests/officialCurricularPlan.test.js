@@ -170,7 +170,7 @@ describe('servicio education-ai: tareas de planificación curricular', () => {
 })
 
 describe('currículos priorizados entregados en JSON (normalizados)', () => {
-  const files = ['preparatoria', 'elemental', 'media', 'adaptaciones_jovenes_adultos']
+  const files = ['preparatoria', 'elemental', 'media', 'superior', 'bachillerato', 'adaptaciones_jovenes_adultos']
   const load = id => JSON.parse(fs.readFileSync(path.resolve(__dirname, `../src/data/curriculos/${id}.json`), 'utf8'))
 
   it('solo deja códigos oficiales bien formados, sin números de página ni encabezados de tabla', () => {
@@ -277,5 +277,33 @@ describe('todos los currículos y asignaturas disponibles', () => {
       }
     }
     expect(checked).toBeGreaterThan(30)
+  })
+})
+
+describe('EGB Superior y Bachillerato (JSON normalizados)', () => {
+  const load = id => JSON.parse(fs.readFileSync(path.resolve(__dirname, `../src/data/curriculos/${id}.json`), 'utf8'))
+
+  it('corrige prefijos con errata y separa Cívica', () => {
+    const bgu = load('bachillerato')
+    const filo = bgu.asignaturas.find(a => a.nombre === 'Ciencias Sociales/Filosofía')
+    const codes = filo.criterios.flatMap(c => c.destrezas.map(d => d.codigo))
+    expect(codes).toContain('CS.F.5.2.15')
+    expect(codes.some(c => c.startsWith('S.F.') || c.startsWith('ECS.'))).toBe(false)
+    expect(bgu.asignaturas.find(a => a.prefijo === 'CAI').total_destrezas).toBe(16)
+    expect(bgu.asignaturas.find(a => a.nombre === 'Emprendimiento y Gestión').criterios.flatMap(c => c.destrezas).some(d => d.codigo.startsWith('CAI.'))).toBe(false)
+  })
+
+  it('bloquea Inglés de EGB Superior porque el archivo no trae sus destrezas', async () => {
+    const ingles = load('superior').asignaturas.find(a => a.nombre === 'Inglés')
+    expect(ingles.estado).toBe('incompleta')
+    await expect(loadProgram('superior', { asignatura: ingles.id })).rejects.toThrow(/no se puede planificar/)
+  })
+
+  it('planifica Matemática de Bachillerato con códigos M.5', async () => {
+    const curriculum = await loadProgram('bachillerato', { asignatura: 'matematica' })
+    const units = applyAnnualAI(distributeUnits(curriculum.criterios, 6), {})
+    const codes = units.flatMap(u => unitSkills(u).map(s => s.destreza.codigo))
+    expect(codes.length).toBe(82)
+    expect(codes.every(c => /^M\.5\.\d+\.\d+$/.test(c))).toBe(true)
   })
 })

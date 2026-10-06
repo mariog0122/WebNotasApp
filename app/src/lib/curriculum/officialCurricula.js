@@ -2,7 +2,8 @@
  * Catálogo de currículos oficiales del MinEduc.
  * - Extraídos de los PDF oficiales (scripts/curriculum/extract_*.py): Primera Infancia, Inicial, Preparatoria,
  *   Elemental, Media, Alfabetización y Postalfabetización. Las erratas del PDF corregidas quedan en `avisos`.
- * - Adaptaciones para jóvenes/adultos: JSON entregado por la institución (no se tiene su PDF), normalizado y
+ * - EGB Superior, Bachillerato y Adaptaciones para jóvenes/adultos: JSON entregados por la institución (no se tienen
+ *   sus PDF), normalizados y
  *   validado con scripts/curriculum/normalize_priorizados.py.
  * Ninguna parte de la app ni de la IA puede inventar o modificar códigos y textos curriculares.
  */
@@ -33,6 +34,8 @@ export const OFFICIAL_PROGRAMS = Object.freeze([
   { id: 'preparatoria', grupo: 'Educación ordinaria', nombre: 'Preparatoria (1.º EGB)', archivo: 'preparatoria', tipo: 'por_asignatura', integrado: true },
   { id: 'elemental', grupo: 'Educación ordinaria', nombre: 'EGB Elemental (2.º a 4.º)', archivo: 'elemental', tipo: 'por_asignatura' },
   { id: 'media', grupo: 'Educación ordinaria', nombre: 'EGB Media (5.º a 7.º)', archivo: 'media', tipo: 'por_asignatura' },
+  { id: 'superior', grupo: 'Educación ordinaria', nombre: 'EGB Superior (8.º a 10.º)', archivo: 'superior', tipo: 'por_asignatura' },
+  { id: 'bachillerato', grupo: 'Educación ordinaria', nombre: 'Bachillerato General Unificado (1.º a 3.º BGU)', archivo: 'bachillerato', tipo: 'por_asignatura' },
   { id: 'alfabetizacion', grupo: 'Jóvenes, adultos y adultos mayores', nombre: 'Alfabetización', archivo: 'alfabetizacion_postalfabetizacion_2025', subnivel: 'alfabetizacion', tipo: 'codificado' },
   { id: 'postalfabetizacion', grupo: 'Jóvenes, adultos y adultos mayores', nombre: 'Postalfabetización', archivo: 'alfabetizacion_postalfabetizacion_2025', subnivel: 'postalfabetizacion', tipo: 'codificado' },
   { id: 'adaptaciones_jovenes_adultos', grupo: 'Jóvenes, adultos y adultos mayores', nombre: 'EGB Superior y Bachillerato (adaptaciones curriculares)', archivo: 'adaptaciones_jovenes_adultos', tipo: 'por_asignatura' },
@@ -45,6 +48,8 @@ const loaders = {
   preparatoria: () => import('../../data/curriculos/preparatoria.json'),
   elemental: () => import('../../data/curriculos/elemental.json'),
   media: () => import('../../data/curriculos/media.json'),
+  superior: () => import('../../data/curriculos/superior.json'),
+  bachillerato: () => import('../../data/curriculos/bachillerato.json'),
   adaptaciones_jovenes_adultos: () => import('../../data/curriculos/adaptaciones_jovenes_adultos.json'),
 }
 
