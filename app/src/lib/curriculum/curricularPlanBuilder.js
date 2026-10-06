@@ -105,11 +105,15 @@ export function unitAIInput({ curriculum, datos, unit }) {
   }
 }
 
+// La IA a veces cambia espacios, mayúsculas o el punto final del código; se compara normalizado.
+const normalizeCode = code => String(code || '').toUpperCase().replace(/\s+/g, '').replace(/\.$/, '')
+
 const byCode = (items, allowed) => {
+  const official = new Map([...allowed].map(key => [normalizeCode(key), key]))
   const map = new Map()
   for (const item of Array.isArray(items) ? items : []) {
-    const code = typeof item?.codigo === 'string' ? item.codigo.trim().replace(/\.$/, '') : ''
-    if (allowed.has(code) && !map.has(code)) map.set(code, item)
+    const key = official.get(normalizeCode(typeof item?.codigo === 'string' ? item.codigo : ''))
+    if (key && !map.has(key)) map.set(key, item)
   }
   return map
 }
@@ -147,15 +151,19 @@ export function applyUnitAI(unit, ai = {}) {
   const rows = byCode(ai.destrezas, allowed)
   const inserciones = byCode(ai.inserciones, allowed)
   const proyecto = ai.proyecto && typeof ai.proyecto === 'object' ? ai.proyecto : {}
-  const proyectoCode = allowed.has(String(proyecto.destreza_codigo || '').replace(/\.$/, ''))
-    ? String(proyecto.destreza_codigo).replace(/\.$/, '')
-    : skillKey(skills[0].destreza)
+  // Con respuesta de IA el documento lleva solo las semanas que la IA planificó, sin mezclar
+  // filas de respaldo; sin IA se usan todas las destrezas con textos base.
+  const planned = rows.size ? skills.filter(({ destreza }) => rows.has(skillKey(destreza))) : skills
+  const proyectoCode = byCode([{ codigo: proyecto.destreza_codigo }], new Set(planned.map(({ destreza }) => skillKey(destreza)))).keys().next().value
+    || skillKey(planned[0].destreza)
   const nee = ai.nee && typeof ai.nee === 'object' ? ai.nee : {}
 
   return {
     ...unit,
     objetivoUnidad: cleanText(ai.objetivo, 800) || unit.objetivo || '',
-    filas: skills.map(({ destreza, criterio }) => {
+    generadoConIA: rows.size > 0,
+    destrezasOmitidas: skills.length - planned.length,
+    filas: planned.map(({ destreza, criterio }) => {
       const key = skillKey(destreza)
       const row = rows.get(key) || {}
       return {

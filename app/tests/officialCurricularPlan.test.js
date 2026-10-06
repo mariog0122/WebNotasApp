@@ -103,6 +103,26 @@ describe('armado de la planificación', () => {
     expect(unit.proyecto.destrezaKey).toBe('A.RS.9')
   })
 
+  it('con IA el documento lleva solo las semanas que planificó la IA, sin filas de respaldo', async () => {
+    const curriculum = await loadProgram('alfabetizacion')
+    const units = applyAnnualAI(distributeUnits(curriculum.criterios, 4), {})
+    const codes = unitSkills(units[0]).map(s => s.destreza.codigo)
+    expect(codes.length).toBeGreaterThan(1)
+    const second = codes[1]
+    const unit = applyUnitAI(units[0], {
+      destrezas: [{ codigo: ` ${second.toLowerCase()}. `, contenido_esencial: 'Tema de la IA', orientaciones: 'Experiencia: IA' }],
+      proyecto: { destreza_codigo: codes[0] },
+    })
+    expect(unit.filas.map(f => f.key)).toEqual([second])
+    expect(unit.filas[0].contenido).toBe('Tema de la IA')
+    expect(unit.generadoConIA).toBe(true)
+    expect(unit.destrezasOmitidas).toBe(codes.length - 1)
+    expect(unit.proyecto.destrezaKey).toBe(second)
+    const data = buildUnitTemplateData({ datos: { fechaInicio: '2025-05-05' }, unit, weekCount: 2 })
+    expect(data.SEMANAS).toHaveLength(1)
+    expect(data.SEMANAS[0].ORIENTACIONES).toBe('Experiencia: IA')
+  })
+
   it('limpia texto de IA y fija semanas lunes-viernes', () => {
     expect(cleanText('  <script>x</script>Hola\u0007 mundo ')).toBe('xHola mundo')
     expect(scheduleWeeks(3, 2, '2025-05-07')).toEqual([

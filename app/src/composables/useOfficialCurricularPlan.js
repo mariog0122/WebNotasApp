@@ -170,8 +170,11 @@ export function useOfficialCurricularPlan({ createGateway, institutionConfig, de
     try {
       const gateway = await createGateway()
       const ai = await gateway.generateUnitPlan(unitAIInput({ curriculum: curriculum.value, datos, unit }))
-      unitPlans[unit.numero] = applyUnitAI(unit, ai)
-      toast.success(`Microcurricular de la unidad ${unit.numero} generada.`)
+      const plan = applyUnitAI(unit, ai)
+      unitPlans[unit.numero] = plan
+      if (!plan.generadoConIA) toast.warning(`La IA no devolvió semanas válidas para la unidad ${unit.numero}; se usaron textos base.`)
+      else if (plan.destrezasOmitidas) toast.success(`Microcurricular de la unidad ${unit.numero} generada con ${plan.filas.length} semanas de la IA (${plan.destrezasOmitidas} destreza(s) no incluidas por la IA).`)
+      else toast.success(`Microcurricular de la unidad ${unit.numero} generada.`)
     } catch (err) {
       unitPlans[unit.numero] = applyUnitAI(unit, {})
       toast.error(`${err.message || 'La IA no respondió.'} Se usaron textos base para la unidad ${unit.numero}.`)
